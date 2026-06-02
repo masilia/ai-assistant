@@ -1,0 +1,31 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Masilia\AiAssistant\:
+        resource: '../../../lib/*'
+
+    Masilia\Bundle\AiAssistant\Controller\:
+        resource: '../../Controller/*'
+        public: true
+
+    Masilia\Bundle\AiAssistant\Form\:
+        resource: '../../Form/*'
+        tags: ['form.type']
+
+    Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry:
+        arguments:
+            $adapters: !tagged_iterator masilia.ai.provider_adapter
+
+    Masilia\AiAssistant\Client\OpenAiClient:
+        arguments:
+            $apiKey: '%masilia_ai_assistant.openai.api_key%'
+            $model: '%masilia_ai_assistant.openai.model%'
+            $temperature: '%masilia_ai_assistant.openai.temperature%'
+            $maxTokens: '%masilia_ai_assistant.openai.max_tokens%'
+
+twig:
+    globals:
+        field_format_resolver: '@Masilia\AiAssistant\FieldFormatResolver'

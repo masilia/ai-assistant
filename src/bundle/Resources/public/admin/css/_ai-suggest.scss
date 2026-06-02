@@ -1,0 +1,531 @@
+// ============================================================
+// AI Content Assistant — Styling
+// ============================================================
+
+$_ai-bg: #1b1f3b;
+$_ai-bg-card: #252a4a;
+$_ai-bg-hover: #2d3358;
+$_ai-accent: #ae1164;
+$_ai-accent-hover: #c81a73;
+$_ai-accent-glow: rgba(174, 17, 100, 0.3);
+$_ai-text: #c4c9d4;
+$_ai-text-bright: #ffffff;
+$_ai-muted: #6b7280;
+$_ai-border: rgba(255, 255, 255, 0.1);
+$_ai-radius: 12px;
+$_ai-radius-sm: 8px;
+$_ai-font: 'Inter', 'Source Sans 3', system-ui, sans-serif;
+$_ai-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+$_ai-success: #22c55e;
+$_ai-danger: #ef4444;
+
+// ── Trigger button (injected next to field labels) ───────
+.ai-suggest-trigger {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-left: 8px !important;
+    padding: 3px 8px !important;
+    background: linear-gradient(135deg, $_ai-accent, darken($_ai-accent, 8%)) !important;
+    color: $_ai-text-bright !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-family: $_ai-font !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    cursor: pointer !important;
+    transition: all $_ai-transition !important;
+    line-height: 1.4 !important;
+    vertical-align: middle !important;
+    box-shadow: 0 2px 8px $_ai-accent-glow !important;
+
+    svg {
+        width: 12px !important;
+        height: 12px !important;
+        fill: none !important;
+        stroke: currentColor !important;
+    }
+
+    &:hover {
+        background: linear-gradient(135deg, $_ai-accent-hover, $_ai-accent) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 16px $_ai-accent-glow !important;
+    }
+
+    &:active {
+        transform: translateY(0) scale(0.97) !important;
+    }
+}
+
+// ── Overlay ──────────────────────────────────────────────
+.ai-suggest-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 100000 !important;
+    animation: ai-fade-in 0.15s ease !important;
+}
+
+// ── Modal ────────────────────────────────────────────────
+.ai-suggest-modal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 560px !important;
+    max-width: 90vw !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    background: $_ai-bg !important;
+    border: 1px solid $_ai-border !important;
+    border-radius: $_ai-radius !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+    font-family: $_ai-font !important;
+    color: $_ai-text !important;
+    z-index: 100001 !important;
+    animation: ai-slide-up 0.2s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+
+    // Scrollbar
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent !important;
+    &::-webkit-scrollbar { width: 5px !important; }
+    &::-webkit-scrollbar-track { background: transparent !important; }
+    &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-radius: 3px !important;
+    }
+
+    // ── Header ───────────────────────────────────────────
+    &__header {
+        padding: 18px 20px !important;
+        border-bottom: 1px solid $_ai-border !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+    }
+
+    &__title {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: $_ai-text-bright !important;
+
+        svg { color: $_ai-accent !important; stroke: $_ai-accent !important; }
+    }
+
+    &__close {
+        background: none !important;
+        border: none !important;
+        width: 30px !important;
+        height: 30px !important;
+        border-radius: $_ai-radius-sm !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        color: $_ai-muted !important;
+        font-size: 20px !important;
+        line-height: 1 !important;
+        transition: all $_ai-transition !important;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: $_ai-text-bright !important;
+        }
+    }
+
+    // ── Field info bar ───────────────────────────────────
+    &__field-info {
+        padding: 10px 20px !important;
+        background: $_ai-bg-card !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        font-size: 12px !important;
+        border-bottom: 1px solid $_ai-border !important;
+    }
+
+    &__field-name {
+        color: $_ai-text-bright !important;
+        font-weight: 600 !important;
+    }
+
+    &__field-type {
+        background: rgba($_ai-accent, 0.15) !important;
+        color: $_ai-accent !important;
+        padding: 2px 8px !important;
+        border-radius: 4px !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+    }
+
+    // ── Prompt section ───────────────────────────────────
+    &__prompt-section {
+        padding: 16px 20px 8px !important;
+    }
+
+    &__label {
+        display: block !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: $_ai-text !important;
+        margin-bottom: 8px !important;
+    }
+
+    &__textarea {
+        width: 100% !important;
+        background: $_ai-bg-card !important;
+        border: 1px solid $_ai-border !important;
+        border-radius: $_ai-radius-sm !important;
+        color: $_ai-text-bright !important;
+        font-family: $_ai-font !important;
+        font-size: 13px !important;
+        padding: 12px !important;
+        resize: vertical !important;
+        min-height: 70px !important;
+        transition: border-color $_ai-transition !important;
+        line-height: 1.5 !important;
+
+        &::placeholder { color: $_ai-muted !important; }
+        &:focus {
+            outline: none !important;
+            border-color: $_ai-accent !important;
+            box-shadow: 0 0 0 3px $_ai-accent-glow !important;
+        }
+        &:disabled { opacity: 0.5 !important; }
+    }
+
+    // ── Quick actions ────────────────────────────────────
+    &__quick-actions {
+        padding: 0 20px 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex-wrap: wrap !important;
+    }
+
+    &__quick-actions-label {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: $_ai-muted !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        flex-shrink: 0 !important;
+    }
+
+    &__quick-actions-list {
+        display: flex !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+
+    &__quick-action {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        padding: 4px 10px !important;
+        background: $_ai-bg-card !important;
+        border: 1px solid $_ai-border !important;
+        border-radius: 20px !important;
+        font-family: $_ai-font !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        color: $_ai-text !important;
+        cursor: pointer !important;
+        transition: all $_ai-transition !important;
+
+        &:hover {
+            background: $_ai-bg-hover !important;
+            border-color: rgba($_ai-accent, 0.4) !important;
+            color: $_ai-text-bright !important;
+        }
+
+        &:disabled {
+            opacity: 0.4 !important;
+            cursor: not-allowed !important;
+        }
+
+        &--active {
+            background: rgba($_ai-accent, 0.2) !important;
+            border-color: $_ai-accent !important;
+            color: $_ai-text-bright !important;
+        }
+    }
+
+    &__quick-action-icon {
+        font-size: 12px !important;
+        line-height: 1 !important;
+    }
+
+    &__quick-action-label {
+        line-height: 1 !important;
+    }
+
+    // ── Source language input for translation ───────────
+    &__source-lang {
+        padding: 0 20px 12px !important;
+    }
+
+    &__source-lang-label {
+        display: block !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: $_ai-text !important;
+        margin-bottom: 6px !important;
+    }
+
+    &__source-lang-row {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+    }
+
+    &__source-lang-input {
+        flex: 1 !important;
+        background: $_ai-bg-card !important;
+        border: 1px solid $_ai-border !important;
+        border-radius: $_ai-radius-sm !important;
+        color: $_ai-text-bright !important;
+        font-family: $_ai-font !important;
+        font-size: 12px !important;
+        padding: 8px 12px !important;
+
+        &::placeholder { color: $_ai-muted !important; }
+        &:focus {
+            outline: none !important;
+            border-color: $_ai-accent !important;
+        }
+        &:disabled { opacity: 0.5 !important; }
+    }
+
+    // ── Mode selector ────────────────────────────────────
+    &__mode {
+        padding: 8px 20px 12px !important;
+        display: flex !important;
+        gap: 12px !important;
+    }
+
+    &__mode-option {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 12px !important;
+        color: $_ai-muted !important;
+        cursor: pointer !important;
+        transition: color $_ai-transition !important;
+
+        input[type="radio"] {
+            accent-color: $_ai-accent !important;
+        }
+
+        &--active { color: $_ai-text-bright !important; }
+        &:hover { color: $_ai-text-bright !important; }
+    }
+
+    // ── Action buttons ───────────────────────────────────
+    &__actions {
+        padding: 0 20px 16px !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 8px !important;
+    }
+
+    &__btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 8px 16px !important;
+        border: none !important;
+        border-radius: $_ai-radius-sm !important;
+        font-family: $_ai-font !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        transition: all $_ai-transition !important;
+
+        &--secondary {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: $_ai-text !important;
+
+            &:hover { background: rgba(255, 255, 255, 0.14) !important; color: $_ai-text-bright !important; }
+        }
+
+        &--primary {
+            background: linear-gradient(135deg, $_ai-accent, darken($_ai-accent, 6%)) !important;
+            color: $_ai-text-bright !important;
+            box-shadow: 0 2px 8px $_ai-accent-glow !important;
+
+            svg { fill: none !important; stroke: currentColor !important; }
+
+            &:hover {
+                background: linear-gradient(135deg, $_ai-accent-hover, $_ai-accent) !important;
+                transform: translateY(-1px) !important;
+            }
+
+            &:disabled {
+                opacity: 0.5 !important;
+                cursor: not-allowed !important;
+                transform: none !important;
+            }
+        }
+
+        &--apply {
+            background: $_ai-success !important;
+            color: $_ai-text-bright !important;
+            padding: 6px 14px !important;
+
+            kbd {
+                background: rgba(0, 0, 0, 0.2) !important;
+                padding: 1px 5px !important;
+                border-radius: 3px !important;
+                font-size: 10px !important;
+                font-family: inherit !important;
+                margin-left: 4px !important;
+            }
+
+            &:hover { background: darken($_ai-success, 8%) !important; }
+        }
+    }
+
+    // ── Spinner ──────────────────────────────────────────
+    &__spinner {
+        display: inline-block !important;
+        width: 14px !important;
+        height: 14px !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        border-top-color: $_ai-text-bright !important;
+        border-radius: 50% !important;
+        animation: ai-spin 0.6s linear infinite !important;
+    }
+
+    // ── Streaming indicator ─────────────────────────────
+    &__streaming-indicator {
+        display: inline-block !important;
+        width: 14px !important;
+        height: 14px !important;
+        position: relative !important;
+
+        &::before,
+        &::after {
+            content: '' !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 6px !important;
+            height: 6px !important;
+            border-radius: 50% !important;
+            background: $_ai-text-bright !important;
+            animation: ai-pulse 1s ease-in-out infinite !important;
+        }
+
+        &::after {
+            animation-delay: 0.5s !important;
+        }
+    }
+
+    // ── Error ────────────────────────────────────────────
+    &__error {
+        margin: 0 20px 12px !important;
+        padding: 10px 14px !important;
+        background: rgba($_ai-danger, 0.12) !important;
+        border: 1px solid rgba($_ai-danger, 0.3) !important;
+        border-radius: $_ai-radius-sm !important;
+        color: $_ai-danger !important;
+        font-size: 12px !important;
+
+        strong { margin-right: 4px !important; }
+    }
+
+    // ── Preview section ──────────────────────────────────
+    &__preview-section {
+        margin: 0 20px 20px !important;
+        border: 1px solid $_ai-border !important;
+        border-radius: $_ai-radius-sm !important;
+        overflow: hidden !important;
+    }
+
+    &__preview-header {
+        padding: 10px 14px !important;
+        background: $_ai-bg-card !important;
+        border-bottom: 1px solid $_ai-border !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        color: $_ai-muted !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+    }
+
+    &__preview {
+        padding: 16px !important;
+        background: $_ai-bg-hover !important;
+        color: $_ai-text-bright !important;
+        font-size: 13px !important;
+        line-height: 1.6 !important;
+        max-height: 300px !important;
+        overflow-y: auto !important;
+
+        // Rich text preview styles
+        p { margin: 0 0 12px !important; }
+        h2, h3, h4, h5, h6 {
+            margin: 16px 0 8px !important;
+            color: $_ai-text-bright !important;
+        }
+        h2 { font-size: 18px !important; }
+        h3 { font-size: 16px !important; }
+        ul, ol { padding-left: 20px !important; margin: 0 0 12px !important; }
+        li { margin-bottom: 4px !important; }
+        strong { font-weight: 700 !important; }
+        em { font-style: italic !important; }
+        blockquote {
+            border-left: 3px solid $_ai-accent !important;
+            padding-left: 12px !important;
+            margin: 8px 0 !important;
+            color: $_ai-text !important;
+        }
+        a { color: $_ai-accent !important; text-decoration: underline !important; }
+
+        // Plain text preview
+        pre {
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+            font-family: $_ai-font !important;
+            font-size: 13px !important;
+            margin: 0 !important;
+        }
+    }
+}
+
+// ── Animations ───────────────────────────────────────────
+@keyframes ai-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ai-slide-up {
+    from { opacity: 0; transform: translate(-50%, -48%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+@keyframes ai-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes ai-pulse {
+    0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+

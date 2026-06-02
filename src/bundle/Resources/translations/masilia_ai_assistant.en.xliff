@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="en" datatype="plaintext" original="messages.en">
+        <body>
+            <trans-unit id="ai.settings.title">
+                <source>AI Assistant Settings</source>
+            </trans-unit>
+            <trans-unit id="ai.settings.providers">
+                <source>AI Providers</source>
+            </trans-unit>
+            <trans-unit id="ai.settings.models">
+                <source>AI Models</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

@@ -1,0 +1,33 @@
+{% extends "@ibexadesign/ui/layout.html.twig" %}
+
+{% block body_class %}ibexa-ai-settings-react-view{% endblock %}
+
+{% block stylesheets %}
+    {{ encore_entry_link_tags('ibexa-admin-ui-ai-settings-react-js', null, 'ibexa') }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {% include '@ibexadesign/ui/breadcrumbs.html.twig' with { items: [
+        { value: 'Admin' },
+        { value: 'AI Assistant Settings' }
+    ]} %}
+{% endblock %}
+
+{% block title %}AI Assistant Settings{% endblock %}
+
+{% block header %}
+    {% include '@ibexadesign/ui/page_title.html.twig' with {
+        title: 'AI Assistant Settings',
+    } %}
+{% endblock %}
+
+{% block content %}
+    <div id="ai-settings-react-root"></div>
+    <script>
+        window.AI_SUPPORTED_FIELDS = {{ field_format_resolver.getSupportedFieldTypes()|json_encode|raw }};
+    </script>
+{% endblock %}
+
+{% block javascripts %}
+    {{ encore_entry_script_tags('ibexa-admin-ui-ai-settings-react-js', null, 'ibexa') }}
+{% endblock %}

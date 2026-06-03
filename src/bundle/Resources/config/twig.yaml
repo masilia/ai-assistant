@@ -1,0 +1,2 @@
+globals:
+  field_format_resolver: '@Masilia\AiAssistant\FieldFormatResolver'

@@ -48,16 +48,24 @@ class MiniMaxAdapter extends AnthropicAdapter
         string $userPrompt,
     ): array
     {
-        return [
-            'model' => $modelIdentifier,
-            // MiniMax requires temperature strictly > 0; clamp 0 → 0.01
-            'temperature' => max(0.01, $temperature),
-            'max_tokens' => $maxTokens,
-            'system' => $systemPrompt,
-            'messages' => [
-                ['role' => 'user', 'content' => $userPrompt],
-            ],
-        ];
+        // MiniMax requires temperature strictly > 0; clamp 0 → 0.01.
+        $body = parent::buildRequestBody($modelIdentifier, max(0.01, $temperature), $maxTokens, $systemPrompt, $userPrompt);
+
+        return $body;
+    }
+
+    public function buildStreamRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        string $systemPrompt,
+        string $userPrompt,
+    ): array
+    {
+        $body = $this->buildRequestBody($modelIdentifier, $temperature, $maxTokens, $systemPrompt, $userPrompt);
+        $body['stream'] = true;
+
+        return $body;
     }
 
     public function parseResponse(array $data): string

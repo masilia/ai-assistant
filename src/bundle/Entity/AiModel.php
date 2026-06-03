@@ -1,8 +1,8 @@
 <?php
 
-namespace Masilia\AiAssistant\Entity;
+namespace Masilia\Bundle\AiAssistant\Entity;
 
-use Masilia\AiAssistant\Repository\AiModelRepository;
+use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 

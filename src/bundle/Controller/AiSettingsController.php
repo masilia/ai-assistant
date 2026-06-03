@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Controller;
 
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
-use Masilia\AiAssistant\Entity\AiModel;
-use Masilia\AiAssistant\Entity\AiProvider;
-use Masilia\AiAssistant\Repository\AiModelRepository;
-use Masilia\AiAssistant\Repository\AiProviderRepository;
+use Masilia\Bundle\AiAssistant\Entity\AiModel;
+use Masilia\Bundle\AiAssistant\Entity\AiProvider;
+use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
+use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
@@ -42,7 +42,7 @@ class AiSettingsController extends Controller
     {
         $this->checkAccess();
 
-        return $this->render('themes/admin/ai_settings/index.html.twig');
+        return $this->render('@ibexadesign/ai_settings/index.html.twig');
     }
 
     #[Route('/api/data', name: 'app.admin.ai_settings.api.data', methods: ['GET'])]
@@ -53,7 +53,7 @@ class AiSettingsController extends Controller
         $providers = $this->providerRepository->findAll();
         $models = $this->modelRepository->findAll();
 
-        $providersData = array_map(function (AiProvider $provider) {
+        $providersData = array_map(static function (AiProvider $provider) {
             return [
                 'id' => $provider->getId(),
                 'name' => $provider->getName(),
@@ -64,7 +64,7 @@ class AiSettingsController extends Controller
             ];
         }, $providers);
 
-        $modelsData = array_map(function (AiModel $model) {
+        $modelsData = array_map(static function (AiModel $model) {
             return [
                 'id' => $model->getId(),
                 'providerId' => $model->getProvider()->getId(),
@@ -83,8 +83,8 @@ class AiSettingsController extends Controller
         return new JsonResponse([
             'providers' => $providersData,
             'models' => $modelsData,
-            'activeProviderId' => $activeProvider ? $activeProvider->getId() : null,
-            'activeModelId' => $activeModel ? $activeModel->getId() : null,
+            'activeProviderId' => $activeProvider?->getId(),
+            'activeModelId' => $activeModel?->getId(),
         ]);
     }
 
@@ -299,14 +299,14 @@ class AiSettingsController extends Controller
     private function deactivateOtherProviders(AiProvider $activeProvider): void
     {
         $this->entityManager->createQuery(
-            'UPDATE Masilia\AiAssistant\Entity\AiProvider p SET p.isActive = false WHERE p.id != :id'
+            sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id', AiProvider::class)
         )->setParameter('id', $activeProvider->getId())->execute();
     }
 
     private function deactivateOtherModels(AiModel $activeModel): void
     {
         $this->entityManager->createQuery(
-            'UPDATE Masilia\AiAssistant\Entity\AiModel m SET m.isActive = false WHERE m.id != :id'
+            sprintf('UPDATE %s m SET m.isActive = false WHERE m.id != :id', AiModel::class)
         )->setParameter('id', $activeModel->getId())->execute();
     }
 }

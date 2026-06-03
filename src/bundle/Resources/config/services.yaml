@@ -4,8 +4,53 @@ services:
         autoconfigure: true
         public: false
 
+    Masilia\AiAssistant\Client\AiClientInterface:
+        alias: Masilia\AiAssistant\Client\AiClient
+
+    Masilia\AiAssistant\Repository\AiProviderRepositoryInterface:
+        alias: Masilia\Bundle\AiAssistant\Repository\AiProviderRepository
+
+    Masilia\AiAssistant\Repository\AiModelRepositoryInterface:
+        alias: Masilia\Bundle\AiAssistant\Repository\AiModelRepository
+
+    Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface:
+        abstract: true
+
     Masilia\AiAssistant\:
         resource: '../../../lib/*'
+        exclude:
+            - '../../../lib/Client/Adapter/ProviderAdapterInterface.php'
+            - '../../../lib/Client/AiClientInterface.php'
+            - '../../../lib/Client/AiTarget.php'
+            - '../../../lib/Repository/'
+            - '../../../lib/DTO/'
+            - '../../../lib/FieldFormat.php'
+
+    Masilia\AiAssistant\Client\Adapter\OpenAiAdapter:
+        tags: [masilia.ai.provider_adapter]
+
+    Masilia\AiAssistant\Client\Adapter\AnthropicAdapter:
+        tags: [masilia.ai.provider_adapter]
+
+    Masilia\AiAssistant\Client\Adapter\MistralAdapter:
+        tags: [masilia.ai.provider_adapter]
+
+    Masilia\AiAssistant\Client\Adapter\OllamaAdapter:
+        tags: [masilia.ai.provider_adapter]
+
+    Masilia\AiAssistant\Client\Adapter\MiniMaxAdapter:
+        tags: [masilia.ai.provider_adapter]
+
+    Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry:
+        arguments:
+            $adapters: !tagged_iterator masilia.ai.provider_adapter
+
+    Masilia\AiAssistant\Client\AiClient:
+        arguments:
+            $apiKey: '%masilia_ai_assistant.openai.api_key%'
+            $model: '%masilia_ai_assistant.openai.model%'
+            $temperature: '%masilia_ai_assistant.openai.temperature%'
+            $maxTokens: '%masilia_ai_assistant.openai.max_tokens%'
 
     Masilia\Bundle\AiAssistant\Controller\:
         resource: '../../Controller/*'
@@ -15,17 +60,8 @@ services:
         resource: '../../Form/*'
         tags: ['form.type']
 
-    Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry:
-        arguments:
-            $adapters: !tagged_iterator masilia.ai.provider_adapter
+    Masilia\Bundle\AiAssistant\EventListener\:
+        resource: '../../EventListener/*'
 
-    Masilia\AiAssistant\Client\OpenAiClient:
-        arguments:
-            $apiKey: '%masilia_ai_assistant.openai.api_key%'
-            $model: '%masilia_ai_assistant.openai.model%'
-            $temperature: '%masilia_ai_assistant.openai.temperature%'
-            $maxTokens: '%masilia_ai_assistant.openai.max_tokens%'
-
-twig:
-    globals:
-        field_format_resolver: '@Masilia\AiAssistant\FieldFormatResolver'
+    Masilia\Bundle\AiAssistant\Repository\:
+        resource: '../../Repository/*'

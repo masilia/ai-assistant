@@ -5,5 +5,5 @@
  * Imports the field scanner (vanilla JS) and the React modal component.
  * Styles are loaded separately via ibexa-admin-ui-content-edit-parts-css.
  */
-import './js/ai-suggest-button.js';
-import './components/AiSuggestModal.jsx';
+import './ai-suggest-button.js';
+import '../components/AiSuggestModal.jsx';

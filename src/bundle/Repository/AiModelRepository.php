@@ -1,16 +1,17 @@
 <?php
 
-namespace Masilia\AiAssistant\Repository;
+namespace Masilia\Bundle\AiAssistant\Repository;
 
-use Masilia\AiAssistant\Entity\AiModel;
-use Masilia\AiAssistant\Entity\AiProvider;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Masilia\AiAssistant\Repository\AiModelRepositoryInterface;
+use Masilia\Bundle\AiAssistant\Entity\AiModel;
+use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 
 /**
  * @extends ServiceEntityRepository<AiModel>
  */
-class AiModelRepository extends ServiceEntityRepository
+class AiModelRepository extends ServiceEntityRepository implements AiModelRepositoryInterface
 {
     public function __construct(ManagerRegistry $registry)
     {

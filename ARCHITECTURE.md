@@ -70,10 +70,19 @@ packages/masilia/ai-assistant/
 │   │       │       ├── components/
 │   │       │       │   ├── AiSuggestModal.jsx
 │   │       │       │   └── ai-settings/
+│   │       │       │       ├── AiSettingsDashboard.jsx
+│   │       │       │       ├── ActiveBanner.jsx
+│   │       │       │       ├── ConfirmModal.jsx
+│   │       │       │       ├── ModelCard.jsx
+│   │       │       │       ├── ModelDrawer.jsx
+│   │       │       │       ├── ProviderCard.jsx
+│   │       │       │       ├── ProviderDrawer.jsx
+│   │       │       │       ├── useAiSettings.js
 │   │       │       │       ├── constants.js
 │   │       │       │       └── api-routes.js
-│   │       │       └── css/
-│   │       │           └── _ai-suggest.scss
+│   │       │       └── scss/
+│   │       │           ├── _ai-suggest.scss
+│   │       │           └── _ai-settings-dashboard.scss
 │   │       ├── translations/
 │   │       │   └── masilia_ai_assistant.en.xliff
 │   │       └── views/
@@ -91,7 +100,8 @@ packages/masilia/ai-assistant/
 │       ├── LanguageNormalizer.php
 │       ├── Client/
 │       │   ├── AiClientInterface.php
-│       │   └── OpenAiClient.php
+│       │   ├── AiClient.php
+│       │   └── AiTarget.php
 │       ├── Client/Adapter/
 │       │   ├── ProviderAdapterInterface.php
 │       │   ├── ProviderAdapterRegistry.php
@@ -106,8 +116,13 @@ packages/masilia/ai-assistant/
 │       │   ├── AiError.php
 │       │   └── SiblingField.php
 │       └── Repository/
-│           ├── AiProviderRepository.php
-│           └── AiModelRepository.php
+│           ├── AiProviderRepositoryInterface.php
+│           └── AiModelRepositoryInterface.php
+
+Note: the menu integration (`MainMenuBuilderListener`) lives in the **bundle**
+layer (`src/bundle/EventListener/`) because it depends on Ibexa AdminUi and
+KnpMenu. The concrete Doctrine repositories live in `src/bundle/Repository/`
+and implement the lib-layer interfaces above.
 │
 ├── migrations/
 │   └── Version20260602000000.php
@@ -144,15 +159,14 @@ module.exports = (Encore) => {
         path.resolve(__dirname, '../public/admin/js/ai-settings.js'),
     ]);
 
-    Encore.addEntry('ibexa-admin-ui-content-edit-parts-js', [
-        path.resolve(__dirname, '../public/admin/js/ai-suggest.js'),
-    ]);
-
-    Encore.addEntry('ibexa-admin-ui-content-edit-parts-css', [
-        path.resolve(__dirname, '../public/admin/css/_ai-suggest.scss'),
+    Encore.addEntry('ibexa-admin-ui-ai-settings-react-css', [
+        path.resolve(__dirname, '../public/admin/scss/_ai-settings-dashboard.scss'),
     ]);
 };
 ```
+
+The content-edit suggest assets (`js/ai-suggest.js`, `scss/_ai-suggest.scss`) are
+wired through the dedicated `ibexa.config.manager.js` Encore manager config.
 
 The `var/encore/ibexa.config.js` auto-discovers this config during build.
 
@@ -184,7 +198,8 @@ Framework-agnostic domain logic. No Symfony or Ibexa dependencies except for Rep
 | Component | Responsibility |
 |-----------|---------------|
 | `AiClientInterface` | Provider-agnostic AI client contract |
-| `OpenAiClient` | Resolves active provider/model from DB, delegates to adapters |
+| `AiClient` | Resolves active provider/model from DB (or env fallback), delegates to adapters |
+| `AiTarget` | Value object: resolved adapter + endpoint + headers + model params |
 | `ProviderAdapterInterface` | Provider-specific HTTP adapter contract |
 | `ProviderAdapterRegistry` | Registry of all adapter implementations |
 | `OpenAiAdapter` | OpenAI API adapter (request building, response parsing, SSE) |
@@ -202,8 +217,8 @@ Framework-agnostic domain logic. No Symfony or Ibexa dependencies except for Rep
 | `FieldFormat` | Enum: PLAIN_TEXT, TEXT_BLOCK, HTML |
 | `LanguageNormalizer` | Normalizes locales to base language (eng-GB → en) |
 | `AiConstants` | Shared constants (truncation limits) |
-| `AiProviderRepository` | Doctrine repository for providers |
-| `AiModelRepository` | Doctrine repository for models |
+| `AiProviderRepositoryInterface` | Lib contract for finding the active provider |
+| `AiModelRepositoryInterface` | Lib contract for finding the active model |
 
 ## Data Flow
 
@@ -227,13 +242,13 @@ Framework-agnostic domain logic. No Symfony or Ibexa dependencies except for Rep
 │  6. Handle translation if sourceLanguage provided               │
 │  7. Build system prompt (AiPromptBuilder)                       │
 │  8. Enrich user prompt with current value                       │
-│  9. Call AI client (OpenAiClient → ProviderAdapter)             │
+│  9. Call AI client (AiClient → ProviderAdapter)             │
 │  10. Return AiSuggestResponse                                   │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
                            v
 ┌─────────────────────────────────────────────────────────────────┐
-│  OpenAiClient::suggest()                                        │
+│  AiClient::suggest()                                        │
 │  1. Load active provider from DB (AiProviderRepository)         │
 │  2. Load active model from DB (AiModelRepository)              │
 │  3. Get matching adapter (ProviderAdapterRegistry)              │
@@ -263,9 +278,9 @@ Framework-agnostic domain logic. No Symfony or Ibexa dependencies except for Rep
                            │
                            v
 ┌─────────────────────────────────────────────────────────────────┐
-│  OpenAiClient::suggestStream()                                  │
+│  AiClient::suggestStream()                                  │
 │  Returns Generator<string> yielding tokens                      │
-│  Uses buffer: false on HttpClient for real-time streaming       │
+│  Uses buffer:false + HttpClient::stream() for real-time SSE     │
 │  Adapter parses SSE chunks line-by-line                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -344,7 +359,7 @@ twig:
 | id        | INTEGER (PK) | Auto-increment |
 | name      | VARCHAR(100) | Display name |
 | identifier | VARCHAR(100) | Unique: openai, anthropic, etc. |
-| api_key   | VARCHAR(255) | Nullable, encrypted at rest |
+| api_key   | VARCHAR(255) | Nullable. Stored as-is; masked in the admin API responses |
 | api_url   | VARCHAR(255) | Nullable, custom endpoint |
 | is_active | BOOLEAN      | Only one active at a time |
 

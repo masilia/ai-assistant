@@ -34,9 +34,4 @@ class AiSuggestRequest
             sourceLanguage: $data['sourceLanguage'] ?? '',
         );
     }
-
-    public function getContentIdRaw(): string
-    {
-        return $this->contentId > 0 ? (string)$this->contentId : '';
-    }
 }

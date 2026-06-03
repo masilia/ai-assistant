@@ -5,11 +5,7 @@ module.exports = (Encore) => {
         path.resolve(__dirname, '../public/admin/js/ai-settings.js'),
     ]);
 
-    Encore.addEntry('ibexa-admin-ui-content-edit-parts-js', [
-        path.resolve(__dirname, '../public/admin/js/ai-suggest.js'),
-    ]);
-
-    Encore.addEntry('ibexa-admin-ui-content-edit-parts-css', [
-        path.resolve(__dirname, '../public/admin/css/_ai-suggest.scss'),
+    Encore.addEntry('ibexa-admin-ui-ai-settings-react-css', [
+        path.resolve(__dirname, '../public/admin/scss/_ai-settings-dashboard.scss'),
     ]);
 };

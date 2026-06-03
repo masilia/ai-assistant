@@ -11,6 +11,7 @@ use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\AiPromptBuilder;
 use Masilia\AiAssistant\Client\AiClientInterface;
 use Masilia\AiAssistant\FieldContextExtractor;
+use Masilia\AiAssistant\FieldFormat;
 use Masilia\AiAssistant\FieldFormatResolver;
 use Masilia\AiAssistant\LanguageNormalizer;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
@@ -46,85 +47,31 @@ readonly class AiSuggestController
     #[Route('/admin/api/ai/suggest', name: 'app.ai.suggest', methods: ['POST'])]
     public function suggest(Request $request): JsonResponse
     {
-        if ($this->permissionResolver->hasAccess('content', 'edit') === false) {
-            return new JsonResponse(
-                AiError::accessDenied()->toArray(),
-                Response::HTTP_FORBIDDEN
-            );
-        }
-
-        $payload = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
-
-        $aiRequest = AiSuggestRequest::fromArray($payload);
-        $normalizedLanguage = $this->languageNormalizer->normalize($aiRequest->language);
-
-        if ($aiRequest->fieldType === '' || $aiRequest->prompt === '') {
-            return new JsonResponse(
-                AiError::validationError('Missing required fields: fieldType, prompt')->toArray(),
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        if (!$this->formatResolver->supports($aiRequest->fieldType)) {
-            return new JsonResponse(
-                AiError::unsupportedFieldType($aiRequest->fieldType)->toArray(),
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        $enriched = $this->contextExtractor->extractFromContent($aiRequest, $normalizedLanguage);
-
-        $siblingFields = array_map(
-            static fn(SiblingField $f) => $f->toArray(),
-            $enriched['siblingFields']
-        );
-
-        if (empty($siblingFields) && !empty($aiRequest->siblingFields)) {
-            $siblingFields = $aiRequest->siblingFields;
-        }
-
-        $currentValue = $aiRequest->currentValue;
-        $userPromptText = $aiRequest->prompt;
-
-        if ($aiRequest->sourceLanguage !== '') {
-            $sourceValue = $this->contextExtractor->getFieldValueInLanguage(
-                $aiRequest,
-                $this->languageNormalizer->normalize($aiRequest->sourceLanguage),
-                $normalizedLanguage,
-            );
-
-            if ($sourceValue !== null && $sourceValue['value'] !== '') {
-                $currentValue = $sourceValue['value'];
-                $sourceLabel = $sourceValue['label'];
-                $normalizedSourceLang = $this->languageNormalizer->normalize($aiRequest->sourceLanguage);
-                $userPromptText = sprintf(
-                    'Translate the following %s content to %s. Only output the translated text, nothing else. Preserve the tone and style of the original.\n\n%s',
-                    $normalizedSourceLang,
-                    $normalizedLanguage,
-                    $currentValue
-                );
-                $currentValue = '';
-            }
+        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
+            return new JsonResponse(AiError::accessDenied()->toArray(), Response::HTTP_FORBIDDEN);
         }
 
         try {
-            $format = $this->formatResolver->resolve($aiRequest->fieldType);
-            $systemPrompt = $this->promptBuilder->buildSystemPrompt(
-                $format,
-                $aiRequest->fieldName,
-                $enriched['contentType'],
-                $normalizedLanguage,
-                $enriched['contentTitle'],
-                $siblingFields,
-                $this->languageNormalizer,
+            $payload = $this->decodePayload($request);
+        } catch (\JsonException) {
+            return new JsonResponse(
+                AiError::validationError('Invalid JSON payload')->toArray(),
+                Response::HTTP_BAD_REQUEST
             );
-            $userPrompt = $this->promptBuilder->enrichUserPrompt(
-                $userPromptText,
-                $currentValue
-            );
-            $suggestion = $this->aiClient->suggest($systemPrompt, $userPrompt);
+        }
 
-            $response = new AiSuggestResponse($suggestion, $format->value);
+        $aiRequest = AiSuggestRequest::fromArray($payload);
+
+        $validationError = $this->validate($aiRequest);
+        if ($validationError !== null) {
+            return new JsonResponse($validationError->toArray(), Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $prepared = $this->prepareSuggestion($aiRequest);
+            $suggestion = $this->aiClient->suggest($prepared['systemPrompt'], $prepared['userPrompt']);
+
+            $response = new AiSuggestResponse($suggestion, $prepared['format']->value);
 
             return new JsonResponse($response->toArray());
         } catch (\RuntimeException $e) {
@@ -132,6 +79,7 @@ readonly class AiSuggestController
                 'message' => $e->getMessage(),
                 'exception' => $e,
             ]);
+
             return new JsonResponse(
                 AiError::serviceUnavailable($e->getMessage())->toArray(),
                 Response::HTTP_SERVICE_UNAVAILABLE
@@ -142,34 +90,100 @@ readonly class AiSuggestController
     #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]
     public function suggestStream(Request $request): StreamedResponse
     {
-        if ($this->permissionResolver->hasAccess('content', 'edit') === false) {
-            return new StreamedResponse(function () {
-                echo "data: " . json_encode(AiError::accessDenied()->toArray()) . "\n\n";
-            }, Response::HTTP_FORBIDDEN, ['Content-Type' => 'text/event-stream']);
+        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
+            return $this->streamError(AiError::accessDenied(), Response::HTTP_FORBIDDEN);
         }
 
         try {
-            $payload = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
-        } catch (\JsonException $e) {
-            return new StreamedResponse(function () {
-                echo "data: " . json_encode(AiError::validationError('Invalid JSON payload')->toArray()) . "\n\n";
-            }, Response::HTTP_BAD_REQUEST, ['Content-Type' => 'text/event-stream']);
+            $payload = $this->decodePayload($request);
+        } catch (\JsonException) {
+            return $this->streamError(
+                AiError::validationError('Invalid JSON payload'),
+                Response::HTTP_BAD_REQUEST
+            );
         }
 
         $aiRequest = AiSuggestRequest::fromArray($payload);
-        $normalizedLanguage = $this->languageNormalizer->normalize($aiRequest->language);
 
+        $validationError = $this->validate($aiRequest);
+        if ($validationError !== null) {
+            return $this->streamError($validationError, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $prepared = $this->prepareSuggestion($aiRequest);
+        } catch (\RuntimeException $e) {
+            $this->logger->error('[AI] Streaming preparation failed: {message}', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return $this->streamError(
+                AiError::serviceUnavailable($e->getMessage()),
+                Response::HTTP_SERVICE_UNAVAILABLE
+            );
+        }
+
+        $systemPrompt = $prepared['systemPrompt'];
+        $userPrompt = $prepared['userPrompt'];
+        $formatValue = $prepared['format']->value;
+
+        $response = new StreamedResponse(function () use ($systemPrompt, $userPrompt, $formatValue) {
+            try {
+                foreach ($this->aiClient->suggestStream($systemPrompt, $userPrompt) as $token) {
+                    echo 'data: ' . json_encode(['token' => $token, 'done' => false]) . "\n\n";
+                    flush();
+                }
+
+                echo 'data: ' . json_encode(['token' => '', 'done' => true, 'format' => $formatValue]) . "\n\n";
+                flush();
+            } catch (\RuntimeException $e) {
+                $this->logger->error('[AI] Streaming suggestion failed: {message}', [
+                    'message' => $e->getMessage(),
+                    'exception' => $e,
+                ]);
+
+                echo 'data: ' . json_encode(AiError::serviceUnavailable($e->getMessage())->toArray()) . "\n\n";
+                flush();
+            }
+        }, Response::HTTP_OK, ['Content-Type' => 'text/event-stream']);
+
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('X-Accel-Buffering', 'no');
+
+        return $response;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decodePayload(Request $request): array
+    {
+        return json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+    }
+
+    private function validate(AiSuggestRequest $aiRequest): ?AiError
+    {
         if ($aiRequest->fieldType === '' || $aiRequest->prompt === '') {
-            return new StreamedResponse(function () {
-                echo "data: " . json_encode(AiError::validationError('Missing required fields: fieldType, prompt')->toArray()) . "\n\n";
-            }, Response::HTTP_BAD_REQUEST, ['Content-Type' => 'text/event-stream']);
+            return AiError::validationError('Missing required fields: fieldType, prompt');
         }
 
         if (!$this->formatResolver->supports($aiRequest->fieldType)) {
-            return new StreamedResponse(function () use ($aiRequest) {
-                echo "data: " . json_encode(AiError::unsupportedFieldType($aiRequest->fieldType)->toArray()) . "\n\n";
-            }, Response::HTTP_BAD_REQUEST, ['Content-Type' => 'text/event-stream']);
+            return AiError::unsupportedFieldType($aiRequest->fieldType);
         }
+
+        return null;
+    }
+
+    /**
+     * Builds the system and user prompts for an AI suggestion request, including
+     * sibling-field context and optional translation handling.
+     *
+     * @return array{systemPrompt: string, userPrompt: string, format: FieldFormat}
+     */
+    private function prepareSuggestion(AiSuggestRequest $aiRequest): array
+    {
+        $normalizedLanguage = $this->languageNormalizer->normalize($aiRequest->language);
 
         $enriched = $this->contextExtractor->extractFromContent($aiRequest, $normalizedLanguage);
 
@@ -186,69 +200,51 @@ readonly class AiSuggestController
         $userPromptText = $aiRequest->prompt;
 
         if ($aiRequest->sourceLanguage !== '') {
+            $normalizedSourceLang = $this->languageNormalizer->normalize($aiRequest->sourceLanguage);
             $sourceValue = $this->contextExtractor->getFieldValueInLanguage(
                 $aiRequest,
-                $this->languageNormalizer->normalize($aiRequest->sourceLanguage),
+                $normalizedSourceLang,
                 $normalizedLanguage,
             );
 
             if ($sourceValue !== null && $sourceValue['value'] !== '') {
-                $currentValue = $sourceValue['value'];
-                $normalizedSourceLang = $this->languageNormalizer->normalize($aiRequest->sourceLanguage);
                 $userPromptText = sprintf(
-                    'Translate the following %s content to %s. Only output the translated text, nothing else. Preserve the tone and style of the original.\n\n%s',
+                    "Translate the following %s content to %s. Only output the translated text, "
+                    . "nothing else. Preserve the tone and style of the original.\n\n%s",
                     $normalizedSourceLang,
                     $normalizedLanguage,
-                    $currentValue
+                    $sourceValue['value']
                 );
                 $currentValue = '';
             }
         }
 
-        try {
-            $format = $this->formatResolver->resolve($aiRequest->fieldType);
-            $systemPrompt = $this->promptBuilder->buildSystemPrompt(
-                $format,
-                $aiRequest->fieldName,
-                $enriched['contentType'],
-                $normalizedLanguage,
-                $enriched['contentTitle'],
-                $siblingFields,
-                $this->languageNormalizer,
-            );
-            $userPrompt = $this->promptBuilder->enrichUserPrompt(
-                $userPromptText,
-                $currentValue
-            );
+        $format = $this->formatResolver->resolve($aiRequest->fieldType);
 
-            $formatValue = $format->value;
+        $systemPrompt = $this->promptBuilder->buildSystemPrompt(
+            $format,
+            $aiRequest->fieldName,
+            $enriched['contentType'],
+            $normalizedLanguage,
+            $enriched['contentTitle'],
+            $siblingFields,
+            $this->languageNormalizer,
+        );
 
-            $response = new StreamedResponse(function () use ($systemPrompt, $userPrompt, $formatValue) {
-                $tokens = $this->aiClient->suggestStream($systemPrompt, $userPrompt);
+        $userPrompt = $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
 
-                foreach ($tokens as $token) {
-                    $chunk = json_encode(['token' => $token, 'done' => false]);
-                    echo "data: {$chunk}\n\n";
-                    flush();
-                }
+        return [
+            'systemPrompt' => $systemPrompt,
+            'userPrompt' => $userPrompt,
+            'format' => $format,
+        ];
+    }
 
-                $done = json_encode(['token' => '', 'done' => true, 'format' => $formatValue]);
-                echo "data: {$done}\n\n";
-                flush();
-            }, Response::HTTP_OK, ['Content-Type' => 'text/event-stream']);
-
-            $response->headers->set('Cache-Control', 'no-cache');
-            $response->headers->set('X-Accel-Buffering', 'no');
-
-            return $response;
-        } catch (\RuntimeException $e) {
-            $this->logger->error('[AI] Streaming suggestion failed: {message}', [
-                'message' => $e->getMessage(),
-                'exception' => $e,
-            ]);
-            return new StreamedResponse(function () use ($e) {
-                echo "data: " . json_encode(AiError::serviceUnavailable($e->getMessage())->toArray()) . "\n\n";
-            }, Response::HTTP_SERVICE_UNAVAILABLE, ['Content-Type' => 'text/event-stream']);
-        }
+    private function streamError(AiError $error, int $status): StreamedResponse
+    {
+        return new StreamedResponse(static function () use ($error) {
+            echo 'data: ' . json_encode($error->toArray()) . "\n\n";
+            flush();
+        }, $status, ['Content-Type' => 'text/event-stream']);
     }
 }

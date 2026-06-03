@@ -1,0 +1,947 @@
+// ============================================================
+// AI Settings Dashboard — Complete Design System
+// Zero Bootstrap dependencies. Built on 8pt grid.
+// ============================================================
+
+// ── Design Tokens ──
+$ai-primary: hsl(328, 82%, 44%);
+$ai-primary-light: hsl(328, 82%, 96%);
+$ai-secondary: hsl(262, 83%, 58%);
+$ai-gradient: linear-gradient(135deg, $ai-primary, $ai-secondary);
+$ai-gradient-hover: linear-gradient(135deg, lighten($ai-primary, 6%), lighten($ai-secondary, 6%));
+
+$ai-bg: hsl(220, 30%, 97%);
+$ai-surface: hsl(0, 0%, 100%);
+$ai-text: hsl(220, 26%, 14%);
+$ai-text-secondary: hsl(220, 13%, 46%);
+$ai-text-hint: hsl(220, 12%, 62%);
+$ai-border: hsl(220, 26%, 90%);
+$ai-border-light: hsl(220, 26%, 94%);
+
+$ai-success: hsl(152, 69%, 31%);
+$ai-success-light: hsl(152, 69%, 95%);
+$ai-warning: hsl(38, 92%, 50%);
+$ai-warning-light: hsl(38, 92%, 95%);
+$ai-danger: hsl(0, 72%, 51%);
+$ai-danger-light: hsl(0, 86%, 97%);
+
+$ai-radius-xl: 16px;
+$ai-radius-lg: 12px;
+$ai-radius-md: 8px;
+$ai-radius-sm: 6px;
+$ai-radius-pill: 100px;
+
+$ai-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+$ai-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+$ai-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+$ai-shadow-drawer: -12px 0 48px rgba(0, 0, 0, 0.12);
+
+$ai-ease: cubic-bezier(0.4, 0, 0.2, 1);
+$ai-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+$ai-duration-fast: 0.15s;
+$ai-duration: 0.25s;
+$ai-duration-slow: 0.4s;
+
+$ai-font: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+
+
+// ═══════════════════════════════════════════════════════
+// ROOT SCOPE
+// ═══════════════════════════════════════════════════════
+.ai-dashboard {
+  font-family: $ai-font;
+  color: $ai-text;
+  padding: 24px;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+
+  // ── Banner ──
+  .ai-banner {
+    background: $ai-surface;
+    border: 1px solid $ai-border;
+    border-radius: $ai-radius-lg;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    box-shadow: $ai-shadow-sm;
+    transition: box-shadow $ai-duration $ai-ease;
+
+    &:hover {
+      box-shadow: $ai-shadow-md;
+    }
+
+    &__label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: $ai-text-secondary;
+    }
+
+    &__title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: $ai-text;
+      margin: 4px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    &__divider {
+      color: $ai-border;
+      font-weight: 300;
+    }
+
+    &__status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: $ai-radius-pill;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: hsl(220, 26%, 95%);
+      color: $ai-text-secondary;
+
+      &--online {
+        background: $ai-success-light;
+        color: $ai-success;
+      }
+    }
+
+    &__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: $ai-text-hint;
+      flex-shrink: 0;
+
+      &--active {
+        background: $ai-success;
+        animation: ai-pulse 2s ease-in-out infinite;
+      }
+    }
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+  }
+
+
+  // ── Action Bar ──
+  .ai-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    &__search {
+      position: relative;
+      flex: 1;
+      max-width: 320px;
+      min-width: 200px;
+    }
+
+    &__input {
+      width: 100%;
+      border: 1px solid $ai-border;
+      border-radius: $ai-radius-md;
+      padding: 10px 14px 10px 38px;
+      font-size: 0.875rem;
+      font-family: $ai-font;
+      color: $ai-text;
+      background: $ai-surface;
+      transition: border-color $ai-duration-fast $ai-ease, box-shadow $ai-duration-fast $ai-ease;
+
+      &::placeholder {
+        color: $ai-text-hint;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $ai-primary;
+        box-shadow: 0 0 0 3px rgba($ai-primary, 0.12);
+      }
+    }
+
+    &__search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $ai-text-hint;
+      pointer-events: none;
+      font-size: 0.875rem;
+    }
+  }
+
+  .ai-btn-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 2px solid $ai-primary;
+    background: transparent;
+    color: $ai-primary;
+    font-family: $ai-font;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 10px 20px;
+    border-radius: $ai-radius-pill;
+    cursor: pointer;
+    transition: all $ai-duration $ai-ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: $ai-gradient;
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 16px rgba($ai-primary, 0.25);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+
+  // ── Provider Cards Stack ──
+  .ai-providers-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ai-provider-card {
+    background: $ai-surface;
+    border: 1px solid $ai-border;
+    border-radius: $ai-radius-lg;
+    box-shadow: $ai-shadow-sm;
+    overflow: hidden;
+    transition: box-shadow $ai-duration $ai-ease, border-color $ai-duration $ai-ease;
+
+    &--active {
+      border-color: $ai-primary;
+      box-shadow: 0 0 0 1px $ai-primary, $ai-shadow-md;
+    }
+
+    &__header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background $ai-duration-fast $ai-ease;
+
+      &:hover {
+        background: hsl(220, 30%, 98.5%);
+      }
+    }
+
+    &__chevron {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      color: $ai-text-hint;
+      transition: transform $ai-duration $ai-ease;
+
+      &--open {
+        transform: rotate(90deg);
+      }
+    }
+
+    &__info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: $ai-text;
+      margin: 0;
+    }
+
+    &__meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+      font-size: 0.75rem;
+      color: $ai-text-secondary;
+    }
+
+    &__type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: $ai-radius-sm;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: hsl(262, 40%, 95%);
+      color: $ai-secondary;
+    }
+
+    &__actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    // Expand/collapse body with CSS grid trick
+    &__body-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows $ai-duration-slow $ai-ease-spring;
+
+      &--open {
+        grid-template-rows: 1fr;
+      }
+    }
+
+    &__body {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    &__details {
+      padding: 0 20px;
+      padding-bottom: 16px;
+      border-top: 1px solid $ai-border-light;
+      font-size: 0.8rem;
+      color: $ai-text-secondary;
+      display: flex;
+      gap: 24px;
+      padding-top: 12px;
+
+      span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      strong {
+        font-weight: 600;
+        color: $ai-text;
+      }
+    }
+
+    &__models-section {
+      padding: 0 20px 20px;
+    }
+
+    &__models-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-top: 8px;
+
+      h6 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: $ai-text-hint;
+        margin: 0;
+      }
+    }
+
+    &__models-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    &__add-model-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px dashed $ai-border;
+      background: transparent;
+      color: $ai-text-secondary;
+      font-family: $ai-font;
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 6px 14px;
+      border-radius: $ai-radius-md;
+      cursor: pointer;
+      transition: all $ai-duration-fast $ai-ease;
+
+      &:hover {
+        border-color: $ai-primary;
+        color: $ai-primary;
+        background: $ai-primary-light;
+      }
+    }
+  }
+
+
+  // ── Model Row ──
+  .ai-model-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: hsl(220, 30%, 98%);
+    border: 1px solid $ai-border-light;
+    border-radius: $ai-radius-md;
+    transition: border-color $ai-duration-fast $ai-ease, box-shadow $ai-duration-fast $ai-ease;
+
+    &:hover {
+      border-color: $ai-border;
+      box-shadow: $ai-shadow-sm;
+    }
+
+    &--active {
+      border-color: rgba($ai-success, 0.3);
+      background: $ai-success-light;
+    }
+
+    &__info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__name {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: $ai-text;
+    }
+
+    &__details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 2px;
+      font-size: 0.75rem;
+      color: $ai-text-secondary;
+
+      code {
+        background: hsl(220, 26%, 94%);
+        color: $ai-secondary;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+      }
+    }
+
+    &__actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+  }
+
+
+  // ── Shared Button Atoms ──
+  .ai-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+
+      &:checked + .ai-toggle__track {
+        background: $ai-gradient;
+      }
+
+      &:checked + .ai-toggle__track::before {
+        transform: translateX(18px);
+      }
+
+      &:focus-visible + .ai-toggle__track {
+        box-shadow: 0 0 0 3px rgba($ai-primary, 0.2);
+      }
+    }
+
+    &__track {
+      position: absolute;
+      inset: 0;
+      background: hsl(220, 13%, 82%);
+      border-radius: $ai-radius-pill;
+      cursor: pointer;
+      transition: background $ai-duration $ai-ease;
+
+      &::before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        left: 3px;
+        bottom: 3px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        transition: transform $ai-duration $ai-ease;
+      }
+    }
+  }
+
+  .ai-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid $ai-border;
+    border-radius: $ai-radius-sm;
+    background: $ai-surface;
+    color: $ai-text-secondary;
+    font-family: $ai-font;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all $ai-duration-fast $ai-ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: hsl(220, 26%, 96%);
+      border-color: $ai-text-hint;
+      color: $ai-text;
+    }
+
+    &--test {
+      background: hsl(262, 40%, 96%);
+      border-color: transparent;
+      color: $ai-secondary;
+
+      &:hover {
+        background: $ai-secondary;
+        color: #fff;
+      }
+    }
+
+    &--danger {
+      border-color: transparent;
+      background: transparent;
+      color: $ai-danger;
+
+      &:hover {
+        background: $ai-danger-light;
+      }
+    }
+  }
+
+
+  // ── Test Result Toast ──
+  .ai-test-toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: $ai-radius-sm;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+    animation: ai-fade-in $ai-duration $ai-ease;
+
+    &--success {
+      background: $ai-success-light;
+      color: $ai-success;
+    }
+
+    &--error {
+      background: $ai-danger-light;
+      color: $ai-danger;
+    }
+  }
+
+
+  // ── Empty State ──
+  .ai-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+
+    &__icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: $ai-primary-light;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 1.5rem;
+    }
+
+    &__title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: $ai-text;
+      margin: 0 0 4px;
+    }
+
+    &__desc {
+      font-size: 0.85rem;
+      color: $ai-text-secondary;
+      margin: 0 0 20px;
+    }
+  }
+
+
+  // ── Loader ──
+  .ai-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 0;
+
+    &__spinner {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 3px solid $ai-border;
+      border-top-color: $ai-primary;
+      animation: ai-spin 0.7s linear infinite;
+    }
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════
+// DRAWERS (outside scope — they are portaled/fixed)
+// ═══════════════════════════════════════════════════════
+.ai-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.25);
+  backdrop-filter: blur(6px);
+  z-index: 99990;
+  display: flex;
+  justify-content: flex-end;
+  animation: ai-fade-in $ai-duration $ai-ease;
+  font-family: $ai-font;
+}
+
+.ai-drawer {
+  background: $ai-surface;
+  width: 100%;
+  max-width: 460px;
+  height: 100%;
+  box-shadow: $ai-shadow-drawer;
+  display: flex;
+  flex-direction: column;
+  animation: ai-slide-in $ai-duration-slow $ai-ease-spring;
+  overflow-y: auto;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 24px 0;
+
+    h4 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin: 0;
+      background: $ai-gradient;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    color: $ai-text-hint;
+    padding: 4px;
+    transition: color $ai-duration-fast;
+
+    &:hover {
+      color: $ai-primary;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    flex: 1;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: $ai-text-secondary;
+    }
+
+    input, select {
+      border: 1px solid $ai-border;
+      border-radius: $ai-radius-md;
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      font-family: $ai-font;
+      color: $ai-text;
+      background: $ai-surface;
+      transition: border-color $ai-duration-fast $ai-ease, box-shadow $ai-duration-fast $ai-ease;
+      width: 100%;
+
+      &:focus {
+        outline: none;
+        border-color: $ai-primary;
+        box-shadow: 0 0 0 3px rgba($ai-primary, 0.12);
+      }
+    }
+
+    small {
+      font-size: 0.75rem;
+      color: $ai-text-hint;
+    }
+  }
+
+  &__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 0;
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: $ai-primary;
+      cursor: pointer;
+    }
+
+    span {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: $ai-text;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 24px 24px;
+  }
+
+  &__submit {
+    background: $ai-gradient;
+    color: #fff;
+    font-family: $ai-font;
+    font-weight: 700;
+    font-size: 0.875rem;
+    padding: 12px 24px;
+    border: none;
+    border-radius: $ai-radius-md;
+    cursor: pointer;
+    transition: all $ai-duration $ai-ease;
+    box-shadow: 0 4px 12px rgba($ai-primary, 0.15);
+    text-align: center;
+
+    &:hover {
+      background: $ai-gradient-hover;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba($ai-primary, 0.25);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+  }
+
+  &__cancel {
+    background: hsl(220, 26%, 96%);
+    color: $ai-text-secondary;
+    font-family: $ai-font;
+    font-weight: 700;
+    font-size: 0.875rem;
+    padding: 12px 24px;
+    border: none;
+    border-radius: $ai-radius-md;
+    cursor: pointer;
+    transition: all $ai-duration-fast $ai-ease;
+    text-align: center;
+
+    &:hover {
+      background: hsl(220, 26%, 92%);
+      color: $ai-text;
+    }
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════
+// CONFIRM MODAL
+// ═══════════════════════════════════════════════════════
+.ai-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(4px);
+  z-index: 99995;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ai-fade-in $ai-duration-fast $ai-ease;
+  font-family: $ai-font;
+}
+
+.ai-confirm {
+  background: $ai-surface;
+  border-radius: $ai-radius-lg;
+  padding: 32px;
+  max-width: 400px;
+  width: calc(100% - 32px);
+  box-shadow: $ai-shadow-lg;
+  animation: ai-scale-in $ai-duration $ai-ease-spring;
+  text-align: center;
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: $ai-danger-light;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 1.3rem;
+  }
+
+  &__title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: $ai-text;
+    margin: 0 0 8px;
+  }
+
+  &__desc {
+    font-size: 0.85rem;
+    color: $ai-text-secondary;
+    margin: 0 0 24px;
+    line-height: 1.5;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  &__btn {
+    font-family: $ai-font;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 10px 24px;
+    border-radius: $ai-radius-md;
+    border: none;
+    cursor: pointer;
+    transition: all $ai-duration-fast $ai-ease;
+
+    &--cancel {
+      background: hsl(220, 26%, 96%);
+      color: $ai-text-secondary;
+
+      &:hover {
+        background: hsl(220, 26%, 92%);
+        color: $ai-text;
+      }
+    }
+
+    &--danger {
+      background: $ai-danger;
+      color: #fff;
+
+      &:hover {
+        background: darken($ai-danger, 8%);
+      }
+    }
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════
+// ANIMATIONS
+// ═══════════════════════════════════════════════════════
+@keyframes ai-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba($ai-success, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba($ai-success, 0);
+  }
+}
+
+@keyframes ai-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ai-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes ai-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

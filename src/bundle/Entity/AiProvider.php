@@ -1,8 +1,8 @@
 <?php
 
-namespace Masilia\AiAssistant\Entity;
+namespace Masilia\Bundle\AiAssistant\Entity;
 
-use Masilia\AiAssistant\Repository\AiProviderRepository;
+use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;

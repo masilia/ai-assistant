@@ -123,7 +123,9 @@ function AiSuggestModal() {
             const decoder = new TextDecoder();
             let buffer = '';
 
-            while (true) {
+            let streamDone = false;
+
+            while (!streamDone) {
                 const { done, value } = await reader.read();
 
                 if (done) break;
@@ -146,6 +148,7 @@ function AiSuggestModal() {
                             const errorMessage = data.error.message || 'An error occurred';
                             setError(errorMessage);
                             setStreaming(false);
+                            streamDone = true;
                             break;
                         }
 
@@ -155,14 +158,13 @@ function AiSuggestModal() {
 
                         if (data.done) {
                             setStreaming(false);
+                            streamDone = true;
                             break;
                         }
                     } catch (e) {
                         // Skip malformed JSON lines
                     }
                 }
-
-                if (!streaming) break;
             }
         } catch (err) {
             if (err.name === 'AbortError') {
@@ -175,7 +177,7 @@ function AiSuggestModal() {
             setLoading(false);
             setStreaming(false);
         }
-    }, [fieldContext, streaming]);
+    }, [fieldContext, prompt, sourceLanguage]);
 
     const handleApply = useCallback(() => {
         if (!suggestion || !onApplyRef.current) return;

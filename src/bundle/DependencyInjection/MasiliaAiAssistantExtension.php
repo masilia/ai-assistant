@@ -9,6 +9,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
+use Symfony\Component\Yaml\Yaml;
 
 class MasiliaAiAssistantExtension extends Extension implements PrependExtensionInterface
 {
@@ -24,7 +25,7 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
                             'is_bundle' => false,
                             'type' => 'attribute',
                             'dir' => __DIR__ . '/../Entity',
-                            'prefix' => 'Masilia\AiAssistant\Entity',
+                            'prefix' => 'Masilia\Bundle\AiAssistant\Entity',
                             'alias' => 'MasiliaAiAssistant',
                         ],
                     ],
@@ -33,11 +34,9 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
         }
 
         if (isset($bundles['TwigBundle'])) {
-            $container->prependExtensionConfig('twig', [
-                'paths' => [
-                    __DIR__ . '/../Resources/views' => 'MasiliaAiAssistant',
-                ],
-            ]);
+            $configFile = __DIR__ . '/../Resources/config/twig.yaml';
+            $config = Yaml::parse(file_get_contents($configFile));
+            $container->prependExtensionConfig('twig', $config);
         }
     }
 

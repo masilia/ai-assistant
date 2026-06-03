@@ -2,7 +2,7 @@
 
 namespace Masilia\Bundle\AiAssistant\Form;
 
-use Masilia\AiAssistant\Entity\AiProvider;
+use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;

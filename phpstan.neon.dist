@@ -1,0 +1,11 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    excludePaths:
+        # Frontend assets are not PHP.
+        - src/bundle/Resources
+    ignoreErrors:
+        # Ibexa field value objects expose dynamic properties at runtime.
+        - identifier: property.notFound
+          path: src/lib/FieldContextExtractor.php

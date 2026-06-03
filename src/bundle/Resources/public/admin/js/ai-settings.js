@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import AiSettingsDashboard from './components/ai-settings/AiSettingsDashboard.jsx';
-
+import AiSettingsDashboard from '../components/ai-settings/AiSettingsDashboard.jsx';
+import '../scss/_ai-settings-dashboard.scss';
 function mountAiSettings() {
     const container = document.getElementById('ai-settings-react-root');
     if (container) {

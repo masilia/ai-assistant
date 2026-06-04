@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
+use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
+use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
 use Masilia\AiAssistant\Repository\AiModelRepositoryInterface;
@@ -12,26 +14,26 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Provider-agnostic AI client.
+ * Provider-agnostic, siteaccess-aware AI client.
  *
- * Resolves the active provider/model from the database and delegates request
- * building and response parsing to the matching {@see ProviderAdapterInterface}.
- * When no provider is configured in the database, it falls back to an
- * environment-configured OpenAI provider routed through the same adapter system.
+ * Resolution priority:
+ *   1. DB provider scoped to the current siteaccess (isActive + siteaccess match)
+ *   2. DB provider scoped globally (isActive + siteaccess IS NULL)
+ *   3. YAML config via ConfigResolver (siteaccess-aware, with group/default inheritance)
+ *   4. Env var fallback (referenced by YAML defaults)
  */
 class AiClient implements AiClientInterface
 {
-    private const FALLBACK_PROVIDER_IDENTIFIER = 'openai';
+    private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
+    private const FALLBACK_PROVIDER = 'openai';
 
     public function __construct(
-        private readonly HttpClientInterface              $httpClient,
-        private readonly AiProviderRepositoryInterface    $providerRepository,
-        private readonly AiModelRepositoryInterface       $modelRepository,
-        private readonly ProviderAdapterRegistry          $adapterRegistry,
-        private readonly ?string                          $apiKey,
-        private readonly string                           $model = 'gpt-4o-mini',
-        private readonly float                            $temperature = 0.7,
-        private readonly int                              $maxTokens = 4096,
+        private readonly HttpClientInterface           $httpClient,
+        private readonly AiProviderRepositoryInterface $providerRepository,
+        private readonly AiModelRepositoryInterface    $modelRepository,
+        private readonly ProviderAdapterRegistry       $adapterRegistry,
+        private readonly ConfigResolverInterface       $configResolver,
+        private readonly SiteAccessServiceInterface    $siteAccessService,
     ) {
     }
 
@@ -81,12 +83,14 @@ class AiClient implements AiClientInterface
     }
 
     /**
-     * Resolves the active provider/model (or the env fallback) into a single
-     * value object carrying everything needed to perform a request.
+     * Resolves the target using the siteaccess-aware priority chain:
+     *   DB (scoped → global) → YAML (siteaccess-aware) → env fallback
      */
     private function resolveTarget(): AiTarget
     {
-        $activeProvider = $this->providerRepository->findActive();
+        // 1) Try DB-configured providers (siteaccess-scoped → global)
+        $currentSiteaccess = $this->getCurrentSiteaccess();
+        $activeProvider = $this->providerRepository->findActiveForSiteaccess($currentSiteaccess);
 
         if ($activeProvider !== null) {
             $activeModel = $this->modelRepository->findActiveForProvider($activeProvider)
@@ -111,33 +115,49 @@ class AiClient implements AiClientInterface
             );
         }
 
-        return $this->buildFallbackTarget();
+        // 2) Fall back to siteaccess-aware YAML config
+        return $this->buildConfigTarget();
     }
 
     /**
-     * Builds an env-configured OpenAI target routed through the OpenAI adapter,
-     * so the fallback shares the exact same request/parse logic as DB providers.
+     * Builds target from siteaccess-aware YAML config (via ConfigResolver).
+     * ConfigResolver automatically resolves: siteaccess → group → default.
      */
-    private function buildFallbackTarget(): AiTarget
+    private function buildConfigTarget(): AiTarget
     {
-        if (empty($this->apiKey)) {
+        $provider  = $this->configResolver->getParameter('provider', self::CONFIG_NAMESPACE);
+        $apiKey    = $this->configResolver->getParameter('api_key', self::CONFIG_NAMESPACE);
+        $apiUrl    = $this->configResolver->getParameter('api_url', self::CONFIG_NAMESPACE);
+        $model     = $this->configResolver->getParameter('model', self::CONFIG_NAMESPACE);
+        $temp      = $this->configResolver->getParameter('temperature', self::CONFIG_NAMESPACE);
+        $maxTokens = $this->configResolver->getParameter('max_tokens', self::CONFIG_NAMESPACE);
+
+        $providerIdentifier = $provider ?: self::FALLBACK_PROVIDER;
+
+        // Ollama typically runs locally without an API key
+        if (empty($apiKey) && $providerIdentifier !== 'ollama') {
             throw new \RuntimeException(
-                'No active AI provider is configured and no fallback OpenAI API key is set '
-                . '(masilia_ai_assistant.openai.api_key).'
+                'No active AI provider is configured and no API key is set for the current siteaccess. '
+                . 'Configure a provider in the admin dashboard or set masilia_ai_assistant.system.{scope}.api_key in YAML.'
             );
         }
 
-        $adapter = $this->adapterRegistry->getForProvider(self::FALLBACK_PROVIDER_IDENTIFIER);
+        $adapter = $this->adapterRegistry->getForProvider($providerIdentifier);
 
         return new AiTarget(
             adapter: $adapter,
-            providerIdentifier: self::FALLBACK_PROVIDER_IDENTIFIER,
-            modelIdentifier: $this->model,
-            temperature: $this->temperature,
-            maxTokens: $this->maxTokens,
-            url: $adapter->buildEndpointUrl(null),
-            headers: $adapter->buildHeaders($this->apiKey),
+            providerIdentifier: $providerIdentifier,
+            modelIdentifier: (string) ($model ?: 'gpt-4o-mini'),
+            temperature: (float) ($temp ?: 0.7),
+            maxTokens: (int) ($maxTokens ?: 4096),
+            url: $adapter->buildEndpointUrl($apiUrl),
+            headers: $adapter->buildHeaders($apiKey),
         );
+    }
+
+    private function getCurrentSiteaccess(): string
+    {
+        return $this->siteAccessService->getCurrent()?->name ?? 'default';
     }
 
     private function assertOk(ResponseInterface $response, string $providerIdentifier): void

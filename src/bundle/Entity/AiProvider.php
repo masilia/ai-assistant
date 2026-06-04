@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: AiProviderRepository::class)]
 #[ORM\Table(name: 'app_ai_provider')]
+#[ORM\UniqueConstraint(name: 'uniq_provider_identifier_siteaccess', columns: ['identifier', 'siteaccess'])]
 class AiProvider
 {
     #[ORM\Id]
@@ -22,8 +23,11 @@ class AiProvider
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $name;
 
-    #[ORM\Column(type: Types::STRING, length: 100, unique: true)]
+    #[ORM\Column(type: Types::STRING, length: 100)]
     private string $identifier;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $siteaccess = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $apiKey = null;
@@ -69,6 +73,20 @@ class AiProvider
     public function setIdentifier(string $identifier): self
     {
         $this->identifier = $identifier;
+        return $this;
+    }
+
+    /**
+     * Returns the siteaccess this provider is scoped to, or null for global.
+     */
+    public function getSiteaccess(): ?string
+    {
+        return $this->siteaccess;
+    }
+
+    public function setSiteaccess(?string $siteaccess): self
+    {
+        $this->siteaccess = $siteaccess;
         return $this;
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\DependencyInjection;
 
+use Ibexa\Bundle\Core\DependencyInjection\Configuration\SiteAccessAware\ConfigurationProcessor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
@@ -45,20 +46,23 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        // Wire openai fallback config → container parameters (overridable by env vars in default_parameters.yaml).
-        foreach ($config['openai'] as $key => $value) {
-            $paramName = 'masilia_ai_assistant.openai.' . $key;
-            if (!$container->hasParameter($paramName)) {
-                $container->setParameter($paramName, $value);
-            }
-        }
-
         $loader = new YamlFileLoader(
             $container,
             new FileLocator(__DIR__ . '/../Resources/config')
         );
         $loader->load('services.yaml');
-        $loader->load('default_parameters.yaml');
+        $loader->load('default_settings.yaml');
+
+        // Map siteaccess-aware settings → scoped container parameters
+        if (!empty($config['system'])) {
+            $processor = new ConfigurationProcessor($container, $this->getAlias());
+            $processor->mapSetting('provider', $config);
+            $processor->mapSetting('api_key', $config);
+            $processor->mapSetting('api_url', $config);
+            $processor->mapSetting('model', $config);
+            $processor->mapSetting('temperature', $config);
+            $processor->mapSetting('max_tokens', $config);
+        }
     }
 
     public function getAlias(): string

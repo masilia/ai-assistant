@@ -60,7 +60,8 @@ class AiSettingsController extends Controller
                 'id' => $provider->getId(),
                 'name' => $provider->getName(),
                 'identifier' => $provider->getIdentifier(),
-                'apiKey' => $provider->getApiKey() ? '••••••••' : null, // Mask API key for security
+                'siteaccess' => $provider->getSiteaccess(),
+                'apiKey' => $provider->getApiKey() ? '••••••••' : null,
                 'apiUrl' => $provider->getApiUrl(),
                 'isActive' => $provider->isActive(),
             ];
@@ -132,6 +133,10 @@ class AiSettingsController extends Controller
 
         $provider->setName($data['name']);
         $provider->setIdentifier($data['identifier']);
+
+        // Siteaccess scoping: null = global, string = scoped to specific siteaccess
+        $siteaccess = !empty($data['siteaccess']) ? $data['siteaccess'] : null;
+        $provider->setSiteaccess($siteaccess);
 
         // Only update API key if a new one is provided or changed
         if (isset($data['apiKey']) && $data['apiKey'] !== '••••••••' && $data['apiKey'] !== '') {
@@ -343,11 +348,26 @@ class AiSettingsController extends Controller
         }
     }
 
+    /**
+     * Deactivates other providers within the same siteaccess scope.
+     * A global provider (siteaccess = null) only deactivates other global providers.
+     * A scoped provider deactivates other providers for the same siteaccess.
+     */
     private function deactivateOtherProviders(AiProvider $activeProvider): void
     {
-        $this->entityManager->createQuery(
-            sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id', AiProvider::class)
-        )->setParameter('id', $activeProvider->getId())->execute();
+        $siteaccess = $activeProvider->getSiteaccess();
+
+        if ($siteaccess === null) {
+            $this->entityManager->createQuery(
+                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess IS NULL', AiProvider::class)
+            )->setParameter('id', $activeProvider->getId())->execute();
+        } else {
+            $this->entityManager->createQuery(
+                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess = :sa', AiProvider::class)
+            )->setParameter('id', $activeProvider->getId())
+             ->setParameter('sa', $siteaccess)
+             ->execute();
+        }
     }
 
     private function deactivateOtherModels(AiModel $activeModel): void

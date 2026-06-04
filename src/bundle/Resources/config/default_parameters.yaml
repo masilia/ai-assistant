@@ -1,6 +1,0 @@
-parameters:
-    masilia_ai_assistant.openai.api_key: '%env(default::AI_OPENAI_API_KEY)%'
-    masilia_ai_assistant.openai.model: '%env(default:masilia_ai_assistant.openai.model.default:AI_OPENAI_MODEL)%'
-    masilia_ai_assistant.openai.model.default: 'gpt-4o-mini'
-    masilia_ai_assistant.openai.temperature: 0.7
-    masilia_ai_assistant.openai.max_tokens: 4096

@@ -55,12 +55,7 @@ services:
         arguments:
             $stringifiers: !tagged_iterator masilia.ai.field_value_stringifier
 
-    Masilia\AiAssistant\Client\AiClient:
-        arguments:
-            $apiKey: '%masilia_ai_assistant.openai.api_key%'
-            $model: '%masilia_ai_assistant.openai.model%'
-            $temperature: '%masilia_ai_assistant.openai.temperature%'
-            $maxTokens: '%masilia_ai_assistant.openai.max_tokens%'
+    Masilia\AiAssistant\Client\AiClient: ~
 
     Masilia\Bundle\AiAssistant\Controller\:
         resource: '../../Controller/*'

@@ -1,0 +1,9 @@
+parameters:
+    # SiteAccess-aware defaults (Ibexa naming: {namespace}.default.{setting})
+    masilia_ai_assistant.default.provider: ~
+    masilia_ai_assistant.default.api_key: '%env(default::AI_OPENAI_API_KEY)%'
+    masilia_ai_assistant.default.api_url: ~
+    masilia_ai_assistant.default.model: '%env(default:masilia_ai_assistant.model.fallback:AI_OPENAI_MODEL)%'
+    masilia_ai_assistant.model.fallback: 'gpt-4o-mini'
+    masilia_ai_assistant.default.temperature: 0.7
+    masilia_ai_assistant.default.max_tokens: 4096

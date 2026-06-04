@@ -19,6 +19,18 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
         parent::__construct($registry, AiProvider::class);
     }
 
+    public function findActiveForSiteaccess(string $siteaccess): ?AiProvider
+    {
+        // 1. Try siteaccess-specific provider
+        $scoped = $this->findOneBy(['isActive' => true, 'siteaccess' => $siteaccess]);
+        if ($scoped !== null) {
+            return $scoped;
+        }
+
+        // 2. Fall back to global provider (siteaccess = null)
+        return $this->findOneBy(['isActive' => true, 'siteaccess' => null]);
+    }
+
     public function findActive(): ?AiProvider
     {
         return $this->findOneBy(['isActive' => true]);

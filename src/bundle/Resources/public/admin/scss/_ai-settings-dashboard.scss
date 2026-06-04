@@ -296,6 +296,22 @@ $ai-font: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
       color: $ai-secondary;
     }
 
+    &__scope-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: $ai-radius-sm;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: hsl(220, 26%, 94%);
+      color: $ai-text-secondary;
+
+      &--scoped {
+        background: hsl(180, 55%, 92%);
+        color: hsl(180, 60%, 30%);
+        font-weight: 700;
+      }
+    }
+
     &__actions {
       display: flex;
       align-items: center;

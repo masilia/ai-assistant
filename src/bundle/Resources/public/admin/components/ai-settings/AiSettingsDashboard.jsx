@@ -71,7 +71,8 @@ export default function AiSettingsDashboard() {
 
     const filteredProviders = data.providers.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.identifier.toLowerCase().includes(searchQuery.toLowerCase())
+        p.identifier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.siteaccess || 'global').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -147,6 +148,7 @@ export default function AiSettingsDashboard() {
             {editingProvider && (
                 <ProviderDrawer
                     provider={editingProvider}
+                    siteaccesses={data.siteaccesses || []}
                     onClose={() => setEditingProvider(null)}
                     onSave={handleSaveProvider}
                     submitting={submitting}

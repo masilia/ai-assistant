@@ -13,6 +13,7 @@ use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
+use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +30,7 @@ class AiSettingsController extends Controller
         private readonly AiModelRepository $modelRepository,
         private readonly ProviderAdapterRegistry $adapterRegistry,
         private readonly HttpClientInterface $httpClient,
+        private readonly SiteAccessServiceInterface $siteAccessService,
     ) {
     }
 
@@ -83,11 +85,19 @@ class AiSettingsController extends Controller
         $activeProvider = $this->providerRepository->findActive();
         $activeModel = $this->modelRepository->findActiveGlobal();
 
+        // Collect available siteaccess names for the frontend dropdown
+        $siteaccesses = [];
+        foreach ($this->siteAccessService->getAll() as $sa) {
+            $siteaccesses[] = $sa->name;
+        }
+        sort($siteaccesses);
+
         return new JsonResponse([
             'providers' => $providersData,
             'models' => $modelsData,
             'activeProviderId' => $activeProvider?->getId(),
             'activeModelId' => $activeModel?->getId(),
+            'siteaccesses' => $siteaccesses,
         ]);
     }
 

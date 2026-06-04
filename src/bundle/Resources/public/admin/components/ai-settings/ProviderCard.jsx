@@ -48,6 +48,9 @@ export default function ProviderCard({
                     <div className="ai-provider-card__name">{provider.name}</div>
                     <div className="ai-provider-card__meta">
                         <span className="ai-provider-card__type-badge">{getProviderLabel(provider.identifier)}</span>
+                        <span className={`ai-provider-card__scope-badge ${provider.siteaccess ? 'ai-provider-card__scope-badge--scoped' : ''}`}>
+                            {provider.siteaccess || 'Global'}
+                        </span>
                         <span>{provider.apiUrl || 'Default endpoint'}</span>
                         <span>{providerModels.length} model{providerModels.length !== 1 ? 's' : ''}</span>
                     </div>

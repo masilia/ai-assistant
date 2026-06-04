@@ -1,7 +1,7 @@
 import React from 'react';
 import { PROVIDER_TYPES } from './constants.js';
 
-export default function ProviderDrawer({ provider, onClose, onSave, submitting }) {
+export default function ProviderDrawer({ provider, siteaccesses = [], onClose, onSave, submitting }) {
     return (
         <div className="ai-drawer-overlay" onClick={onClose}>
             <div className="ai-drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Provider configuration">
@@ -32,6 +32,20 @@ export default function ProviderDrawer({ provider, onClose, onSave, submitting }
                                 <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
                         </select>
+                    </div>
+                    <div className="ai-drawer__field">
+                        <label htmlFor="provider-siteaccess">Siteaccess Scope</label>
+                        <select
+                            id="provider-siteaccess"
+                            name="siteaccess"
+                            defaultValue={provider !== 'new' ? (provider.siteaccess || '') : ''}
+                        >
+                            <option value="">All siteaccesses (global)</option>
+                            {siteaccesses.map(sa => (
+                                <option key={sa} value={sa}>{sa}</option>
+                            ))}
+                        </select>
+                        <small>Restrict this provider to a specific siteaccess, or leave as global.</small>
                     </div>
                     <div className="ai-drawer__field">
                         <label htmlFor="provider-key">API Key</label>

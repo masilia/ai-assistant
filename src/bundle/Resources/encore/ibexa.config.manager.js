@@ -13,7 +13,7 @@ module.exports = (eZConfig, eZConfigManager) => {
         eZConfig,
         entryName: 'ibexa-admin-ui-content-edit-parts-css',
         newItems: [
-            path.resolve(__dirname, '../public/admin/css/_ai-suggest.scss'),
+            path.resolve(__dirname, '../public/admin/scss/_ai-suggest.scss'),
         ],
     });
 };

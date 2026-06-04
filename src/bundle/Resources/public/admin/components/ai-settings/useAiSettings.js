@@ -7,7 +7,7 @@ import { notify, cleanErrorMessage } from './constants.js';
  * AiSettingsDashboard becomes a pure presentation component.
  */
 export function useAiSettings() {
-    const [data, setData]           = useState({ providers: [], models: [], activeProviderId: null, activeModelId: null });
+    const [data, setData]           = useState({ providers: [], models: [], activeProviderId: null, activeModelId: null, siteaccesses: [] });
     const [loading, setLoading]     = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [testingId, setTestingId] = useState(null);
@@ -40,6 +40,7 @@ export function useAiSettings() {
             id:         editingProvider && editingProvider !== 'new' ? editingProvider.id : null,
             name:       fd.get('name'),
             identifier: fd.get('identifier'),
+            siteaccess: fd.get('siteaccess') || null,
             apiKey:     fd.get('apiKey'),
             apiUrl:     fd.get('apiUrl'),
             isActive:   fd.get('isActive') === 'true',

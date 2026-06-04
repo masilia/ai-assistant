@@ -1,3 +1,0 @@
-masilia_ai_assistant_admin:
-  resource: "@MasiliaAiAssistantBundle/Controller/*"
-  type: annotation

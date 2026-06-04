@@ -43,7 +43,15 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
-        $this->processConfiguration($configuration, $configs);
+        $config = $this->processConfiguration($configuration, $configs);
+
+        // Wire openai fallback config → container parameters (overridable by env vars in default_parameters.yaml).
+        foreach ($config['openai'] as $key => $value) {
+            $paramName = 'masilia_ai_assistant.openai.' . $key;
+            if (!$container->hasParameter($paramName)) {
+                $container->setParameter($paramName, $value);
+            }
+        }
 
         $loader = new YamlFileLoader(
             $container,

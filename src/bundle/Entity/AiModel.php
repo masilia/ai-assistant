@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Masilia\Bundle\AiAssistant\Entity;
 
 use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
@@ -44,7 +46,7 @@ class AiModel
         return $this->provider;
     }
 
-    public function setProvider(?AiProvider $provider): self
+    public function setProvider(AiProvider $provider): self
     {
         $this->provider = $provider;
         return $this;

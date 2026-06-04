@@ -29,9 +29,9 @@ class AiClient implements AiClientInterface
         private readonly AiModelRepositoryInterface       $modelRepository,
         private readonly ProviderAdapterRegistry          $adapterRegistry,
         private readonly ?string                          $apiKey,
-        private readonly string                           $model = 'gpt-4o',
+        private readonly string                           $model = 'gpt-4o-mini',
         private readonly float                            $temperature = 0.7,
-        private readonly int                              $maxTokens = 2048,
+        private readonly int                              $maxTokens = 4096,
     ) {
     }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Masilia\Bundle\AiAssistant\Repository;
 
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
@@ -15,24 +17,6 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, AiProvider::class);
-    }
-
-    public function add(AiProvider $entity, bool $flush = false): void
-    {
-        $this->getEntityManager()->persist($entity);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
-    }
-
-    public function remove(AiProvider $entity, bool $flush = false): void
-    {
-        $this->getEntityManager()->remove($entity);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
     }
 
     public function findActive(): ?AiProvider

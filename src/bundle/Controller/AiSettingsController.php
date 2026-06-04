@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Controller;
 
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
+use Masilia\AiAssistant\DTO\AiError;
 use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
@@ -27,6 +28,7 @@ class AiSettingsController extends Controller
         private readonly AiProviderRepository $providerRepository,
         private readonly AiModelRepository $modelRepository,
         private readonly ProviderAdapterRegistry $adapterRegistry,
+        private readonly HttpClientInterface $httpClient,
     ) {
     }
 
@@ -95,46 +97,58 @@ class AiSettingsController extends Controller
 
         try {
             $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-            
-            $id = $data['id'] ?? null;
-            if ($id) {
-                $provider = $this->providerRepository->find($id);
-                if (!$provider) {
-                    return new JsonResponse(['error' => 'Provider not found.'], 404);
-                }
-            } else {
-                $provider = new AiProvider();
-            }
-
-            if (empty($data['name'])) {
-                return new JsonResponse(['error' => 'Name is required.'], 400);
-            }
-            if (empty($data['identifier'])) {
-                return new JsonResponse(['error' => 'Identifier is required.'], 400);
-            }
-
-            $provider->setName($data['name']);
-            $provider->setIdentifier($data['identifier']);
-            
-            // Only update API key if a new one is provided or changed
-            if (isset($data['apiKey']) && $data['apiKey'] !== '••••••••' && $data['apiKey'] !== '') {
-                $provider->setApiKey($data['apiKey']);
-            }
-            
-            $provider->setApiUrl($data['apiUrl'] ?? null);
-            $provider->setIsActive((bool)($data['isActive'] ?? false));
-
-            if ($provider->isActive()) {
-                $this->deactivateOtherProviders($provider);
-            }
-
-            $this->entityManager->persist($provider);
-            $this->entityManager->flush();
-
-            return new JsonResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], 400);
+        } catch (\JsonException) {
+            return new JsonResponse(
+                AiError::validationError('Invalid JSON payload')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
         }
+
+        $id = $data['id'] ?? null;
+        if ($id) {
+            $provider = $this->providerRepository->find($id);
+            if (!$provider) {
+                return new JsonResponse(
+                    AiError::validationError('Provider not found.')->toArray(),
+                    Response::HTTP_NOT_FOUND
+                );
+            }
+        } else {
+            $provider = new AiProvider();
+        }
+
+        if (empty($data['name'])) {
+            return new JsonResponse(
+                AiError::validationError('Name is required.')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+        if (empty($data['identifier'])) {
+            return new JsonResponse(
+                AiError::validationError('Identifier is required.')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $provider->setName($data['name']);
+        $provider->setIdentifier($data['identifier']);
+
+        // Only update API key if a new one is provided or changed
+        if (isset($data['apiKey']) && $data['apiKey'] !== '••••••••' && $data['apiKey'] !== '') {
+            $provider->setApiKey($data['apiKey']);
+        }
+
+        $provider->setApiUrl($data['apiUrl'] ?? null);
+        $provider->setIsActive((bool)($data['isActive'] ?? false));
+
+        if ($provider->isActive()) {
+            $this->deactivateOtherProviders($provider);
+        }
+
+        $this->entityManager->persist($provider);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true]);
     }
 
     #[Route('/api/provider/{id}', name: 'app.admin.ai_provider.api.delete', methods: ['DELETE'])]
@@ -144,7 +158,10 @@ class AiSettingsController extends Controller
 
         $provider = $this->providerRepository->find($id);
         if (!$provider) {
-            return new JsonResponse(['error' => 'Provider not found.'], 404);
+            return new JsonResponse(
+                AiError::validationError('Provider not found.')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $this->entityManager->remove($provider);
@@ -160,7 +177,10 @@ class AiSettingsController extends Controller
 
         $provider = $this->providerRepository->find($id);
         if (!$provider) {
-            return new JsonResponse(['error' => 'Provider not found.'], 404);
+            return new JsonResponse(
+                AiError::validationError('Provider not found.')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $provider->setIsActive(true);
@@ -177,50 +197,68 @@ class AiSettingsController extends Controller
 
         try {
             $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-            
-            $id = $data['id'] ?? null;
-            if ($id) {
-                $model = $this->modelRepository->find($id);
-                if (!$model) {
-                    return new JsonResponse(['error' => 'Model not found.'], 404);
-                }
-            } else {
-                $model = new AiModel();
-            }
-
-            if (empty($data['name'])) {
-                return new JsonResponse(['error' => 'Name is required.'], 400);
-            }
-            if (empty($data['identifier'])) {
-                return new JsonResponse(['error' => 'Identifier is required.'], 400);
-            }
-            if (empty($data['providerId'])) {
-                return new JsonResponse(['error' => 'Provider selection is required.'], 400);
-            }
-
-            $provider = $this->providerRepository->find($data['providerId']);
-            if (!$provider) {
-                return new JsonResponse(['error' => 'Selected provider does not exist.'], 400);
-            }
-
-            $model->setProvider($provider);
-            $model->setName($data['name']);
-            $model->setIdentifier($data['identifier']);
-            $model->setTemperature((float)($data['temperature'] ?? 0.7));
-            $model->setMaxTokens((int)($data['maxTokens'] ?? 2048));
-            $model->setIsActive((bool)($data['isActive'] ?? false));
-
-            if ($model->isActive()) {
-                $this->deactivateOtherModels($model);
-            }
-
-            $this->entityManager->persist($model);
-            $this->entityManager->flush();
-
-            return new JsonResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], 400);
+        } catch (\JsonException) {
+            return new JsonResponse(
+                AiError::validationError('Invalid JSON payload')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
         }
+
+        $id = $data['id'] ?? null;
+        if ($id) {
+            $model = $this->modelRepository->find($id);
+            if (!$model) {
+                return new JsonResponse(
+                    AiError::validationError('Model not found.')->toArray(),
+                    Response::HTTP_NOT_FOUND
+                );
+            }
+        } else {
+            $model = new AiModel();
+        }
+
+        if (empty($data['name'])) {
+            return new JsonResponse(
+                AiError::validationError('Name is required.')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+        if (empty($data['identifier'])) {
+            return new JsonResponse(
+                AiError::validationError('Identifier is required.')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+        if (empty($data['providerId'])) {
+            return new JsonResponse(
+                AiError::validationError('Provider selection is required.')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $provider = $this->providerRepository->find($data['providerId']);
+        if (!$provider) {
+            return new JsonResponse(
+                AiError::validationError('Selected provider does not exist.')->toArray(),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $model->setProvider($provider);
+        $model->setName($data['name']);
+        $model->setIdentifier($data['identifier']);
+        $model->setTemperature((float)($data['temperature'] ?? 0.7));
+        $model->setMaxTokens((int)($data['maxTokens'] ?? 2048));
+        $model->setIsActive((bool)($data['isActive'] ?? false));
+
+        if ($model->isActive()) {
+            $this->deactivateOtherModels($model);
+        }
+
+        $this->entityManager->persist($model);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true]);
     }
 
     #[Route('/api/model/{id}', name: 'app.admin.ai_model.api.delete', methods: ['DELETE'])]
@@ -230,7 +268,10 @@ class AiSettingsController extends Controller
 
         $model = $this->modelRepository->find($id);
         if (!$model) {
-            return new JsonResponse(['error' => 'Model not found.'], 404);
+            return new JsonResponse(
+                AiError::validationError('Model not found.')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $this->entityManager->remove($model);
@@ -246,7 +287,10 @@ class AiSettingsController extends Controller
 
         $model = $this->modelRepository->find($id);
         if (!$model) {
-            return new JsonResponse(['error' => 'Model not found.'], 404);
+            return new JsonResponse(
+                AiError::validationError('Model not found.')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $model->setIsActive(true);
@@ -257,13 +301,16 @@ class AiSettingsController extends Controller
     }
 
     #[Route('/api/provider/{id}/test', name: 'app.admin.ai_provider.api.test', methods: ['POST'])]
-    public function testProvider(int $id, HttpClientInterface $httpClient): JsonResponse
+    public function testProvider(int $id): JsonResponse
     {
         $this->checkAccess();
 
         $provider = $this->providerRepository->find($id);
         if (!$provider) {
-            return new JsonResponse(['error' => 'Provider not found.'], 404);
+            return new JsonResponse(
+                AiError::validationError('Provider not found.')->toArray(),
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         try {
@@ -276,7 +323,7 @@ class AiSettingsController extends Controller
             $url      = $adapter->buildEndpointUrl($provider->getApiUrl());
             $headers  = $adapter->buildHeaders($provider->getApiKey());
             $body     = $adapter->buildTestRequestBody($testModel);
-            $response = $httpClient->request('POST', $url, ['headers' => $headers, 'json' => $body]);
+            $response = $this->httpClient->request('POST', $url, ['headers' => $headers, 'json' => $body]);
 
             $statusCode = $response->getStatusCode();
             if ($statusCode === 200) {
@@ -286,13 +333,13 @@ class AiSettingsController extends Controller
             return new JsonResponse([
                 'success' => false,
                 'message' => sprintf('API returned HTTP %d: %s', $statusCode, $response->getContent(false)),
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
 
         } catch (\Exception $e) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Connection failed: ' . $e->getMessage(),
-            ], 500);
+            return new JsonResponse(
+                AiError::serviceUnavailable('Connection failed: ' . $e->getMessage())->toArray(),
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 

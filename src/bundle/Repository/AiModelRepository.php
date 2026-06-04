@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Masilia\Bundle\AiAssistant\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -16,24 +18,6 @@ class AiModelRepository extends ServiceEntityRepository implements AiModelReposi
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, AiModel::class);
-    }
-
-    public function add(AiModel $entity, bool $flush = false): void
-    {
-        $this->getEntityManager()->persist($entity);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
-    }
-
-    public function remove(AiModel $entity, bool $flush = false): void
-    {
-        $this->getEntityManager()->remove($entity);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
     }
 
     public function findActiveForProvider(AiProvider $provider): ?AiModel

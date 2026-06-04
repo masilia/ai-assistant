@@ -65,7 +65,7 @@ Add to `config/routes.yaml`:
 
 ```yaml
 masilia_ai_assistant_admin:
-    resource: "@MasiliaAiAssistantBundle/Resources/config/routing.yml"
+    resource: "@MasiliaAiAssistantBundle/Resources/config/routing.yaml"
 ```
 
 ### 4. Run the migration
@@ -169,7 +169,7 @@ The package follows a two-layer pattern:
 
 ```
 src/
-├── bundle/    Symfony/Ibexa integration (DI, controllers, entities, forms, views)
+├── bundle/    Symfony/Ibexa integration (DI, controllers, entities, views)
 └── lib/       Domain logic (client, adapters, DTOs, prompt builder, services)
 ```
 

@@ -24,6 +24,7 @@ services:
         resource: '../../../lib/*'
         exclude:
             - '../../../lib/Client/Adapter/ProviderAdapterInterface.php'
+            - '../../../lib/Client/Adapter/AbstractOpenAiCompatibleAdapter.php'
             - '../../../lib/Client/AiClientInterface.php'
             - '../../../lib/Client/AiTarget.php'
             - '../../../lib/Field/FieldValueStringifierInterface.php'
@@ -64,10 +65,6 @@ services:
     Masilia\Bundle\AiAssistant\Controller\:
         resource: '../../Controller/*'
         public: true
-
-    Masilia\Bundle\AiAssistant\Form\:
-        resource: '../../Form/*'
-        tags: ['form.type']
 
     Masilia\Bundle\AiAssistant\EventListener\:
         resource: '../../EventListener/*'

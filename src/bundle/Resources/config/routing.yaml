@@ -1,0 +1,3 @@
+masilia_ai_assistant_admin:
+  resource: "../../Controller/"
+  type: attribute

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Masilia\Bundle\AiAssistant\Entity;
 
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
@@ -122,11 +124,8 @@ class AiProvider
 
     public function removeModel(AiModel $model): self
     {
-        if ($this->models->removeElement($model)) {
-            if ($model->getProvider() === $this) {
-                $model->setProvider(null);
-            }
-        }
+        $this->models->removeElement($model);
+
         return $this;
     }
 }

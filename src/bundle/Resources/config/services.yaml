@@ -4,6 +4,10 @@ services:
         autoconfigure: true
         public: false
 
+    _instanceof:
+        Masilia\AiAssistant\Field\FieldValueStringifierInterface:
+            tags: ['masilia.ai.field_value_stringifier']
+
     Masilia\AiAssistant\Client\AiClientInterface:
         alias: Masilia\AiAssistant\Client\AiClient
 
@@ -22,6 +26,7 @@ services:
             - '../../../lib/Client/Adapter/ProviderAdapterInterface.php'
             - '../../../lib/Client/AiClientInterface.php'
             - '../../../lib/Client/AiTarget.php'
+            - '../../../lib/Field/FieldValueStringifierInterface.php'
             - '../../../lib/Repository/'
             - '../../../lib/DTO/'
             - '../../../lib/FieldFormat.php'
@@ -44,6 +49,10 @@ services:
     Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry:
         arguments:
             $adapters: !tagged_iterator masilia.ai.provider_adapter
+
+    Masilia\AiAssistant\Field\FieldValueStringifierRegistry:
+        arguments:
+            $stringifiers: !tagged_iterator masilia.ai.field_value_stringifier
 
     Masilia\AiAssistant\Client\AiClient:
         arguments:

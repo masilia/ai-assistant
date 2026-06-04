@@ -110,6 +110,22 @@ packages/masilia/ai-assistant/
 │       │   ├── MistralAdapter.php
 │       │   ├── OllamaAdapter.php
 │       │   └── MiniMaxAdapter.php
+│       ├── Field/
+│       │   ├── FieldValueStringifierInterface.php
+│       │   ├── FieldValueStringifierRegistry.php
+│       │   └── Stringifier/
+│       │       ├── RichTextStringifier.php      # ezrichtext → text
+│       │       ├── FileStringifier.php           # ezimage/ezbinaryfile/ezmedia → filename
+│       │       ├── RelationStringifier.php       # ezobjectrelation → name
+│       │       ├── RelationListStringifier.php    # ezobjectrelationlist → names (batch-loaded)
+│       │       ├── SelectionStringifier.php       # ezselection → labels
+│       │       ├── MatrixStringifier.php         # ezmatrix → rows
+│       │       ├── AuthorStringifier.php         # ezauthor → names
+│       │       ├── MapLocationStringifier.php   # ezgmaplocation → address/lat/lon
+│       │       ├── TagsStringifier.php           # eztags → keywords
+│       │       ├── CountryStringifier.php        # ezcountry → country names
+│       │       ├── KeywordStringifier.php        # ezkeyword → values
+│       │       └── GenericStringifier.php        # fallback → toHash / __toString
 │       ├── DTO/
 │       │   ├── AiSuggestRequest.php
 │       │   ├── AiSuggestResponse.php
@@ -212,7 +228,21 @@ Framework-agnostic domain logic. No Symfony or Ibexa dependencies except for Rep
 | `AiError` | Error envelope with named factories |
 | `SiblingField` | Value object for context field data |
 | `AiPromptBuilder` | Format-aware system prompt construction |
-| `FieldContextExtractor` | Extracts field context from Ibexa content for AI prompts |
+| `FieldContextExtractor` | Orchestrates field context extraction; delegates to `FieldValueStringifierRegistry` |
+| `FieldValueStringifierRegistry` | Dispatches field-type identifier to registered stringifier (tagged iterator, O(1) lookup) |
+| `FieldValueStringifierInterface` | Contract: `getSupportedFieldTypes()` + `toString()`. Each impl handles one or more field types |
+| `RichTextStringifier` | `ezrichtext` → plain text via `documentElement->textContent` |
+| `FileStringifier` | `ezimage`/`ezimageasset`/`ezbinaryfile`/`ezmedia` → filename |
+| `RelationStringifier` | `ezobjectrelation` → related content name (batch-loaded) |
+| `RelationListStringifier` | `ezobjectrelationlist` → related content names, capped at 5 (batch-loaded) |
+| `SelectionStringifier` | `ezselection` → option labels |
+| `MatrixStringifier` | `ezmatrix` → tab-separated rows, capped at 10 rows |
+| `AuthorStringifier` | `ezauthor` → author names |
+| `MapLocationStringifier` | `ezgmaplocation` → address / lat / lon |
+| `TagsStringifier` | `eztags` → tag keywords |
+| `CountryStringifier` | `ezcountry` → country names |
+| `KeywordStringifier` | `ezkeyword` → keyword values |
+| `GenericStringifier` | Fallback: tries `FieldTypeService::toHash()` then `__toString()` |
 | `FieldFormatResolver` | Maps Ibexa field types to AI output formats |
 | `FieldFormat` | Enum: PLAIN_TEXT, TEXT_BLOCK, HTML |
 | `LanguageNormalizer` | Normalizes locales to base language (eng-GB → en) |
@@ -315,6 +345,8 @@ Each adapter implements:
 
 **Adding a new provider:** Create one class implementing `ProviderAdapterInterface`. Tag it with `masilia.ai.provider_adapter`. It's auto-discovered.
 
+**Adding a new field-type stringifier:** Create a class implementing `FieldValueStringifierInterface`. Declare the field-type identifiers it handles via `getSupportedFieldTypes()` (e.g. `['ezmyspecial']`). Tag it with `masilia.ai.field_value_stringifier` (auto-applied via `_instanceof`). The `FieldValueStringifierRegistry` dispatches by field-type identifier with O(1) lookup; unknown types fall back to `GenericStringifier`.
+
 ## Configuration Tree
 
 ```yaml
@@ -343,6 +375,11 @@ Masilia\Bundle\AiAssistant\:
 Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry:
     arguments:
         $adapters: !tagged_iterator masilia.ai.provider_adapter
+
+# Tagged iterator for field-value stringifiers
+Masilia\AiAssistant\Field\FieldValueStringifierRegistry:
+    arguments:
+        $stringifiers: !tagged_iterator masilia.ai.field_value_stringifier
 
 # Twig global for field type support
 twig:
@@ -413,6 +450,7 @@ twig:
 | Mechanism | Tag/Event | Purpose |
 |-----------|-----------|---------|
 | Provider adapters | `masilia.ai.provider_adapter` | Add new LLM providers |
+| Field-value stringifiers | `masilia.ai.field_value_stringifier` | Add support for new field types (auto-discovered, keyed by field-type identifier) |
 | Twig global | `field_format_resolver` | Custom field type support |
 | Form types | `form.type` | Extend provider/model forms |
 | Doctrine events | `doctrine.event_listener` | React to entity changes |

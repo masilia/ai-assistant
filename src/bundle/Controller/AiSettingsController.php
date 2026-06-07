@@ -24,21 +24,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class AiSettingsController extends Controller
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly PermissionResolver $permissionResolver,
-        private readonly AiProviderRepository $providerRepository,
-        private readonly AiModelRepository $modelRepository,
-        private readonly ProviderAdapterRegistry $adapterRegistry,
-        private readonly HttpClientInterface $httpClient,
+        private readonly EntityManagerInterface     $entityManager,
+        private readonly PermissionResolver         $permissionResolver,
+        private readonly AiProviderRepository       $providerRepository,
+        private readonly AiModelRepository          $modelRepository,
+        private readonly ProviderAdapterRegistry    $adapterRegistry,
+        private readonly HttpClientInterface        $httpClient,
         private readonly SiteAccessServiceInterface $siteAccessService,
-    ) {
-    }
-
-    private function checkAccess(): void
+    )
     {
-        if (!$this->permissionResolver->hasAccess('setup', 'administrate')) {
-            throw $this->createAccessDeniedException('You do not have permission to access AI settings.');
-        }
     }
 
     #[Route('/', name: 'app.admin.ai_settings.index', methods: ['GET'])]
@@ -47,6 +41,13 @@ class AiSettingsController extends Controller
         $this->checkAccess();
 
         return $this->render('@ibexadesign/ai_settings/index.html.twig');
+    }
+
+    private function checkAccess(): void
+    {
+        if (!$this->permissionResolver->hasAccess('setup', 'administrate')) {
+            throw $this->createAccessDeniedException('You do not have permission to access AI settings.');
+        }
     }
 
     #[Route('/api/data', name: 'app.admin.ai_settings.api.data', methods: ['GET'])]
@@ -83,7 +84,9 @@ class AiSettingsController extends Controller
         }, $models);
 
         $activeProvider = $this->providerRepository->findActive();
-        $activeModel = $this->modelRepository->findActiveGlobal();
+        $activeModel = $activeProvider !== null
+            ? $this->modelRepository->findActiveForProvider($activeProvider)
+            : null;
 
         // Collect available siteaccess names for the frontend dropdown
         $siteaccesses = [];
@@ -164,6 +167,28 @@ class AiSettingsController extends Controller
         $this->entityManager->flush();
 
         return new JsonResponse(['success' => true]);
+    }
+
+    /**
+     * Deactivates other providers within the same siteaccess scope.
+     * A global provider (siteaccess = null) only deactivates other global providers.
+     * A scoped provider deactivates other providers for the same siteaccess.
+     */
+    private function deactivateOtherProviders(AiProvider $activeProvider): void
+    {
+        $siteaccess = $activeProvider->getSiteaccess();
+
+        if ($siteaccess === null) {
+            $this->entityManager->createQuery(
+                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess IS NULL', AiProvider::class)
+            )->setParameter('id', $activeProvider->getId())->execute();
+        } else {
+            $this->entityManager->createQuery(
+                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess = :sa', AiProvider::class)
+            )->setParameter('id', $activeProvider->getId())
+                ->setParameter('sa', $siteaccess)
+                ->execute();
+        }
     }
 
     #[Route('/api/provider/{id}', name: 'app.admin.ai_provider.api.delete', methods: ['DELETE'])]
@@ -276,6 +301,22 @@ class AiSettingsController extends Controller
         return new JsonResponse(['success' => true]);
     }
 
+    /**
+     * Deactivates other active models belonging to the same provider, so each
+     * provider retains its own active model. This keeps activation consistent
+     * with runtime resolution (AiClient resolves the active model scoped to the
+     * active provider).
+     */
+    private function deactivateOtherModels(AiModel $activeModel): void
+    {
+        $this->entityManager->createQuery(
+            sprintf('UPDATE %s m SET m.isActive = false WHERE m.id != :id AND m.provider = :provider', AiModel::class)
+        )
+            ->setParameter('id', $activeModel->getId())
+            ->setParameter('provider', $activeModel->getProvider())
+            ->execute();
+    }
+
     #[Route('/api/model/{id}', name: 'app.admin.ai_model.api.delete', methods: ['DELETE'])]
     public function deleteModel(int $id): JsonResponse
     {
@@ -329,15 +370,15 @@ class AiSettingsController extends Controller
         }
 
         try {
-            $adapter   = $this->adapterRegistry->getForProvider($provider->getIdentifier());
-            $models    = $provider->getModels();
+            $adapter = $this->adapterRegistry->getForProvider($provider->getIdentifier());
+            $models = $provider->getModels();
             $testModel = $models->count() > 0
                 ? $models->first()->getIdentifier()
                 : $adapter->getDefaultTestModel();
 
-            $url      = $adapter->buildEndpointUrl($provider->getApiUrl());
-            $headers  = $adapter->buildHeaders($provider->getApiKey());
-            $body     = $adapter->buildTestRequestBody($testModel);
+            $url = $adapter->buildEndpointUrl($provider->getApiUrl());
+            $headers = $adapter->buildHeaders($provider->getApiKey());
+            $body = $adapter->buildTestRequestBody($testModel);
             $response = $this->httpClient->request('POST', $url, ['headers' => $headers, 'json' => $body]);
 
             $statusCode = $response->getStatusCode();
@@ -356,34 +397,5 @@ class AiSettingsController extends Controller
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
-    }
-
-    /**
-     * Deactivates other providers within the same siteaccess scope.
-     * A global provider (siteaccess = null) only deactivates other global providers.
-     * A scoped provider deactivates other providers for the same siteaccess.
-     */
-    private function deactivateOtherProviders(AiProvider $activeProvider): void
-    {
-        $siteaccess = $activeProvider->getSiteaccess();
-
-        if ($siteaccess === null) {
-            $this->entityManager->createQuery(
-                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess IS NULL', AiProvider::class)
-            )->setParameter('id', $activeProvider->getId())->execute();
-        } else {
-            $this->entityManager->createQuery(
-                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess = :sa', AiProvider::class)
-            )->setParameter('id', $activeProvider->getId())
-             ->setParameter('sa', $siteaccess)
-             ->execute();
-        }
-    }
-
-    private function deactivateOtherModels(AiModel $activeModel): void
-    {
-        $this->entityManager->createQuery(
-            sprintf('UPDATE %s m SET m.isActive = false WHERE m.id != :id', AiModel::class)
-        )->setParameter('id', $activeModel->getId())->execute();
     }
 }

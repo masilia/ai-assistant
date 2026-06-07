@@ -9,9 +9,7 @@ use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\Field\FieldValueStringifierRegistry;
 use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
-use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
-use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Psr\Log\LoggerInterface;
 use Throwable;
 

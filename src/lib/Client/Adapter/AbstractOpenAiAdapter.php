@@ -11,7 +11,7 @@ namespace Masilia\AiAssistant\Client\Adapter;
  * Subclasses only need to define their provider identifier, default base URL,
  * and default test model. All request/response logic is shared.
  */
-abstract class AbstractOpenAiCompatibleAdapter implements ProviderAdapterInterface
+abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface
 {
     abstract protected function getProviderIdentifier(): string;
 
@@ -111,7 +111,7 @@ abstract class AbstractOpenAiCompatibleAdapter implements ProviderAdapterInterfa
             return null;
         }
 
-        $data = json_decode($json, true);
+        $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         if (!is_array($data)) {
             return null;

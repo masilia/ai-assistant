@@ -24,9 +24,4 @@ class AiModelRepository extends ServiceEntityRepository implements AiModelReposi
     {
         return $this->findOneBy(['provider' => $provider, 'isActive' => true]);
     }
-
-    public function findActiveGlobal(): ?AiModel
-    {
-        return $this->findOneBy(['isActive' => true]);
-    }
 }

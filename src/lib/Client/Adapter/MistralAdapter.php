@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
-class MistralAdapter extends AbstractOpenAiCompatibleAdapter
+class MistralAdapter extends AbstractOpenAiAdapter
 {
     protected function getProviderIdentifier(): string
     {

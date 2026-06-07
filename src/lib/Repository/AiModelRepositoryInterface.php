@@ -16,6 +16,4 @@ use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 interface AiModelRepositoryInterface
 {
     public function findActiveForProvider(AiProvider $provider): ?AiModel;
-
-    public function findActiveGlobal(): ?AiModel;
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
-class OpenAiAdapter extends AbstractOpenAiCompatibleAdapter
+class OpenAiAdapter extends AbstractOpenAiAdapter
 {
     protected function getProviderIdentifier(): string
     {

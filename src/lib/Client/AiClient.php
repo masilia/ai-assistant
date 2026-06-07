@@ -93,12 +93,11 @@ class AiClient implements AiClientInterface
         $activeProvider = $this->providerRepository->findActiveForSiteaccess($currentSiteaccess);
 
         if ($activeProvider !== null) {
-            $activeModel = $this->modelRepository->findActiveForProvider($activeProvider)
-                ?? $this->modelRepository->findActiveGlobal();
+            $activeModel = $this->modelRepository->findActiveForProvider($activeProvider);
 
             if ($activeModel === null) {
                 throw new \RuntimeException(
-                    sprintf('AI Provider "%s" is active, but no active model is configured.', $activeProvider->getName())
+                    sprintf('AI Provider "%s" is active, but no active model is configured for it.', $activeProvider->getName())
                 );
             }
 

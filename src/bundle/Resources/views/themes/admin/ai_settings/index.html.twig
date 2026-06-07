@@ -23,9 +23,6 @@
 
 {% block content %}
     <div id="ai-settings-react-root"></div>
-    <script>
-        window.AI_SUPPORTED_FIELDS = {{ field_format_resolver.getSupportedFieldTypes()|json_encode|raw }};
-    </script>
 {% endblock %}
 
 {% block javascripts %}

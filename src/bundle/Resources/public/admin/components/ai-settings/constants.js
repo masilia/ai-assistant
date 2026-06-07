@@ -1,4 +1,22 @@
 /**
+ * Apply-mode constants: how the AI response is distributed onto the DOM.
+ * - WHOLE_BLOCK: parse a JSON object and distribute values to all matching inputs.
+ * - SUB_FIELD:   extract one value for a single targeted input.
+ */
+export const APPLY_MODE = Object.freeze({
+    WHOLE_BLOCK: 'whole-block',
+    SUB_FIELD: 'sub-field',
+});
+
+/**
+ * Suggest-mode constants: how the generated text is merged with existing content.
+ */
+export const SUGGEST_MODE = Object.freeze({
+    REPLACE: 'replace',
+    APPEND: 'append',
+});
+
+/**
  * Shared constants for AI Settings dashboard.
  * Single source of truth for provider types — used in filters, drawers, and cards.
  */

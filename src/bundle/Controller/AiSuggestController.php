@@ -24,6 +24,13 @@ use Symfony\Component\Routing\Annotation\Route;
 
 readonly class AiSuggestController
 {
+    /**
+     * Generic, client-safe message returned when the AI backend fails. The
+     * detailed reason (which may include upstream provider response bodies,
+     * API keys hints, quota info, etc.) is only written to the logs.
+     */
+    private const GENERIC_SERVICE_ERROR = 'The AI service is currently unavailable. Please try again later or contact an administrator.';
+
     public function __construct(
         private AiClientInterface     $aiClient,
         private FieldFormatResolver   $formatResolver,
@@ -81,77 +88,10 @@ readonly class AiSuggestController
             ]);
 
             return new JsonResponse(
-                AiError::serviceUnavailable($e->getMessage())->toArray(),
+                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
                 Response::HTTP_SERVICE_UNAVAILABLE
             );
         }
-    }
-
-    #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]
-    public function suggestStream(Request $request): StreamedResponse
-    {
-        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
-            return $this->streamError(AiError::accessDenied(), Response::HTTP_FORBIDDEN);
-        }
-
-        try {
-            $payload = $this->decodePayload($request);
-        } catch (\JsonException) {
-            return $this->streamError(
-                AiError::validationError('Invalid JSON payload'),
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        $aiRequest = AiSuggestRequest::fromArray($payload);
-
-        $validationError = $this->validate($aiRequest);
-        if ($validationError !== null) {
-            return $this->streamError($validationError, Response::HTTP_BAD_REQUEST);
-        }
-
-        try {
-            $prepared = $this->prepareSuggestion($aiRequest);
-        } catch (\RuntimeException $e) {
-            $this->logger->error('[AI] Streaming preparation failed: {message}', [
-                'message' => $e->getMessage(),
-                'exception' => $e,
-            ]);
-
-            return $this->streamError(
-                AiError::serviceUnavailable($e->getMessage()),
-                Response::HTTP_SERVICE_UNAVAILABLE
-            );
-        }
-
-        $systemPrompt = $prepared['systemPrompt'];
-        $userPrompt = $prepared['userPrompt'];
-        $formatValue = $prepared['format']->value;
-
-        $response = new StreamedResponse(function () use ($systemPrompt, $userPrompt, $formatValue) {
-            try {
-                foreach ($this->aiClient->suggestStream($systemPrompt, $userPrompt) as $token) {
-                    echo 'data: ' . json_encode(['token' => $token, 'done' => false]) . "\n\n";
-                    flush();
-                }
-
-                echo 'data: ' . json_encode(['token' => '', 'done' => true, 'format' => $formatValue]) . "\n\n";
-                flush();
-            } catch (\RuntimeException $e) {
-                $this->logger->error('[AI] Streaming suggestion failed: {message}', [
-                    'message' => $e->getMessage(),
-                    'exception' => $e,
-                ]);
-
-                echo 'data: ' . json_encode(AiError::serviceUnavailable($e->getMessage())->toArray()) . "\n\n";
-                flush();
-            }
-        }, Response::HTTP_OK, ['Content-Type' => 'text/event-stream']);
-
-        $response->headers->set('Cache-Control', 'no-cache');
-        $response->headers->set('X-Accel-Buffering', 'no');
-
-        return $response;
     }
 
     /**
@@ -229,6 +169,9 @@ readonly class AiSuggestController
             $enriched['contentTitle'],
             $siblingFields,
             $this->languageNormalizer,
+            $aiRequest->fieldType,
+            $aiRequest->subFieldKey,
+            $aiRequest->metaKeys,
         );
 
         $userPrompt = $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
@@ -240,10 +183,77 @@ readonly class AiSuggestController
         ];
     }
 
+    #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]
+    public function suggestStream(Request $request): StreamedResponse
+    {
+        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
+            return $this->streamError(AiError::accessDenied(), Response::HTTP_FORBIDDEN);
+        }
+
+        try {
+            $payload = $this->decodePayload($request);
+        } catch (\JsonException) {
+            return $this->streamError(
+                AiError::validationError('Invalid JSON payload'),
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $aiRequest = AiSuggestRequest::fromArray($payload);
+
+        $validationError = $this->validate($aiRequest);
+        if ($validationError !== null) {
+            return $this->streamError($validationError, Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $prepared = $this->prepareSuggestion($aiRequest);
+        } catch (\RuntimeException $e) {
+            $this->logger->error('[AI] Streaming preparation failed: {message}', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return $this->streamError(
+                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR),
+                Response::HTTP_SERVICE_UNAVAILABLE
+            );
+        }
+
+        $systemPrompt = $prepared['systemPrompt'];
+        $userPrompt = $prepared['userPrompt'];
+        $formatValue = $prepared['format']->value;
+
+        $response = new StreamedResponse(function () use ($systemPrompt, $userPrompt, $formatValue) {
+            try {
+                foreach ($this->aiClient->suggestStream($systemPrompt, $userPrompt) as $token) {
+                    echo 'data: ' . json_encode(['token' => $token, 'done' => false]) . "\n\n";
+                    flush();
+                }
+
+                echo 'data: ' . json_encode(['token' => '', 'done' => true, 'format' => $formatValue]) . "\n\n";
+                flush();
+            } catch (\RuntimeException $e) {
+                $this->logger->error('[AI] Streaming suggestion failed: {message}', [
+                    'message' => $e->getMessage(),
+                    'exception' => $e,
+                ]);
+
+                echo 'data: ' . json_encode(AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray()) . "\n\n";
+                flush();
+            }
+        }, Response::HTTP_OK, ['Content-Type' => 'text/event-stream']);
+
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('X-Accel-Buffering', 'no');
+
+        return $response;
+    }
+
     private function streamError(AiError $error, int $status): StreamedResponse
     {
         return new StreamedResponse(static function () use ($error) {
-            echo 'data: ' . json_encode($error->toArray()) . "\n\n";
+            echo 'data: ' . json_encode($error->toArray(), JSON_THROW_ON_ERROR) . "\n\n";
             flush();
         }, $status, ['Content-Type' => 'text/event-stream']);
     }

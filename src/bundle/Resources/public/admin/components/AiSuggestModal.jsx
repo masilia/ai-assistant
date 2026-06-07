@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { AI_ROUTES } from './ai-settings/api-routes.js';
-import { QUICK_ACTIONS, applyQuickAction } from './ai-settings/constants.js';
+import { QUICK_ACTIONS, SUGGEST_MODE, applyQuickAction } from './ai-settings/constants.js';
 
 /**
  * AI Suggest Modal — React component for the AI content assistant prompt/preview UI.
@@ -16,7 +16,7 @@ function AiSuggestModal() {
     const [loading, setLoading] = useState(false);
     const [streaming, setStreaming] = useState(false);
     const [error, setError] = useState('');
-    const [mode, setMode] = useState('replace');
+    const [mode, setMode] = useState(SUGGEST_MODE.REPLACE);
     const [fieldContext, setFieldContext] = useState(null);
     const [selectedQuickAction, setSelectedQuickAction] = useState(null);
     const [sourceLanguage, setSourceLanguage] = useState('');
@@ -33,6 +33,8 @@ function AiSuggestModal() {
             setFieldContext({
                 fieldType: detail.fieldType,
                 fieldName: detail.fieldName,
+                subFieldKey: detail.subFieldKey || '',
+                metaKeys: detail.metaKeys || [],
                 currentValue: detail.currentValue,
                 contentTypeName: detail.contentTypeName,
                 language: detail.language,
@@ -47,7 +49,7 @@ function AiSuggestModal() {
             setError('');
             setLoading(false);
             setStreaming(false);
-            setMode('replace');
+            setMode(SUGGEST_MODE.REPLACE);
             setSelectedQuickAction(null);
             setSourceLanguage('');
             setShowSourceLangInput(false);
@@ -105,6 +107,8 @@ function AiSuggestModal() {
                     siblingFields: fieldContext.siblingFields,
                     contentId: fieldContext.contentId,
                     sourceLanguage: sourceLanguage,
+                    subFieldKey: fieldContext.subFieldKey,
+                    metaKeys: fieldContext.metaKeys,
                 }),
                 signal: abortControllerRef.current.signal,
             });
@@ -181,7 +185,11 @@ function AiSuggestModal() {
 
     const handleApply = useCallback(() => {
         if (!suggestion || !onApplyRef.current) return;
-        onApplyRef.current(suggestion, mode);
+        const result = onApplyRef.current(suggestion, mode);
+        if (result && result.success === false) {
+            setError(result.error || 'Failed to apply the suggestion.');
+            return;
+        }
         setOpen(false);
     }, [suggestion, mode]);
 
@@ -227,7 +235,10 @@ function AiSuggestModal() {
         ezstring: 'Text Line',
         eztext: 'Text Block',
         ezrichtext: 'Rich Text',
+        novaseometas: 'SEO Metas',
     };
+
+    const isNovaSeo = fieldContext?.fieldType === 'novaseometas';
 
     if (!open) return null;
 
@@ -286,8 +297,8 @@ function AiSuggestModal() {
                                 type="button"
                                 className={`ai-suggest-modal__quick-action ${selectedQuickAction === action.id ? 'ai-suggest-modal__quick-action--active' : ''}`}
                                 onClick={() => handleQuickAction(action)}
-                                disabled={loading}
-                                title={action.promptTemplate}
+                                disabled={loading || (isNovaSeo && action.isTranslation)}
+                                title={isNovaSeo && action.isTranslation ? 'Translation is not supported for SEO Metas' : action.promptTemplate}
                             >
                                 <span className="ai-suggest-modal__quick-action-icon">{action.icon}</span>
                                 <span className="ai-suggest-modal__quick-action-label">{action.label}</span>
@@ -335,23 +346,23 @@ function AiSuggestModal() {
 
                 {/* Mode selector */}
                 <div className="ai-suggest-modal__mode">
-                    <label className={`ai-suggest-modal__mode-option ${mode === 'replace' ? 'ai-suggest-modal__mode-option--active' : ''}`}>
+                    <label className={`ai-suggest-modal__mode-option ${mode === SUGGEST_MODE.REPLACE ? 'ai-suggest-modal__mode-option--active' : ''}`}>
                         <input
                             type="radio"
                             name="ai-mode"
-                            value="replace"
-                            checked={mode === 'replace'}
-                            onChange={() => setMode('replace')}
+                            value={SUGGEST_MODE.REPLACE}
+                            checked={mode === SUGGEST_MODE.REPLACE}
+                            onChange={() => setMode(SUGGEST_MODE.REPLACE)}
                         />
                         Replace content
                     </label>
-                    <label className={`ai-suggest-modal__mode-option ${mode === 'append' ? 'ai-suggest-modal__mode-option--active' : ''}`}>
+                    <label className={`ai-suggest-modal__mode-option ${mode === SUGGEST_MODE.APPEND ? 'ai-suggest-modal__mode-option--active' : ''}`}>
                         <input
                             type="radio"
                             name="ai-mode"
-                            value="append"
-                            checked={mode === 'append'}
-                            onChange={() => setMode('append')}
+                            value={SUGGEST_MODE.APPEND}
+                            checked={mode === SUGGEST_MODE.APPEND}
+                            onChange={() => setMode(SUGGEST_MODE.APPEND)}
                         />
                         Append to content
                     </label>

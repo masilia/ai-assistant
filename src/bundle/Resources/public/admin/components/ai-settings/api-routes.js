@@ -15,4 +15,5 @@ export const AI_ROUTES = {
     activateModel:    (id) => `${BASE}/api/model/${id}/activate`,
     suggest:          '/admin/api/ai/suggest',
     suggestStream:    '/admin/api/ai/suggest/stream',
+    fieldTypes:       '/admin/api/ai/field-types',
 };

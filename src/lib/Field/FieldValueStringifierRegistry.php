@@ -6,6 +6,9 @@ namespace Masilia\AiAssistant\Field;
 
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Throwable;
 
 /**
  * Dispatches {@see FieldValueStringifierInterface::toString()} by field-type
@@ -14,6 +17,10 @@ use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
  *
  * When no specific stringifier is registered for a field type, delegates to
  * the {@see GenericStringifier} (which must be registered with type `_fallback`).
+ *
+ * Stringifier exceptions are caught and logged (warning level) so a misbehaving
+ * custom stringifier cannot crash the whole AI prompt pipeline, but operators
+ * can still see what went wrong.
  */
 class FieldValueStringifierRegistry
 {
@@ -22,11 +29,15 @@ class FieldValueStringifierRegistry
 
     private ?FieldValueStringifierInterface $fallback = null;
 
+    private LoggerInterface $logger;
+
     /**
      * @param iterable<FieldValueStringifierInterface> $stringifiers
      */
-    public function __construct(iterable $stringifiers)
+    public function __construct(iterable $stringifiers, ?LoggerInterface $logger = null)
     {
+        $this->logger = $logger ?? new NullLogger();
+
         foreach ($stringifiers as $stringifier) {
             foreach ($stringifier::getSupportedFieldTypes() as $type) {
                 if ($type === '_fallback') {
@@ -42,7 +53,7 @@ class FieldValueStringifierRegistry
      * Converts a field value to a plain-text string for AI context.
      *
      * Returns '' when neither a specific nor a fallback stringifier can
-     * produce output.
+     * produce output. Failures are logged at warning level.
      */
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
@@ -53,7 +64,21 @@ class FieldValueStringifierRegistry
             return '';
         }
 
-        return $stringifier->toString($field, $fieldDefinition);
+        try {
+            return $stringifier->toString($field, $fieldDefinition);
+        } catch (Throwable $e) {
+            $this->logger->warning(
+                '[AI] Stringifier {stringifier} failed for field type {type}: {message}',
+                [
+                    'stringifier' => $stringifier::class,
+                    'type' => $type,
+                    'message' => $e->getMessage(),
+                    'exception' => $e,
+                ]
+            );
+
+            return '';
+        }
     }
 
     /**

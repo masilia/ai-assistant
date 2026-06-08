@@ -162,16 +162,18 @@ readonly class AiSuggestController
         $format = $this->formatResolver->resolve($aiRequest->fieldType);
 
         $systemPrompt = $this->promptBuilder->buildSystemPrompt(
-            $format,
-            $aiRequest->fieldName,
-            $enriched['contentType'],
-            $normalizedLanguage,
-            $enriched['contentTitle'],
-            $siblingFields,
+            new \Masilia\AiAssistant\SystemPromptContext(
+                format: $format,
+                fieldName: $aiRequest->fieldName,
+                contentType: $enriched['contentType'],
+                language: $normalizedLanguage,
+                contentTitle: $enriched['contentTitle'],
+                siblingFields: $siblingFields,
+                fieldType: $aiRequest->fieldType,
+                subFieldKey: $aiRequest->subFieldKey,
+                metaKeys: $aiRequest->metaKeys,
+            ),
             $this->languageNormalizer,
-            $aiRequest->fieldType,
-            $aiRequest->subFieldKey,
-            $aiRequest->metaKeys,
         );
 
         $userPrompt = $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);

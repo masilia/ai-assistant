@@ -15,57 +15,52 @@ class AiPromptBuilder
     }
 
     /**
-     * @param string[] $siblingFields
+     * Build the system prompt for an AI suggestion request.
+     *
+     * @param string[]|array<int,array{label: string, value: string}> $siblingFields
+     *        The shape is forgiving: either a list of SiblingField::toArray() arrays
+     *        (label + value) or a list of plain strings. Empty entries are skipped.
      * @param string[] $metaKeys     Explicit set of editable, AI-eligible meta
      *                               keys for a novaseometas whole-block request.
-     *                               When provided, the JSON schema is restricted
-     *                               to these keys so it matches the UI exactly.
      */
     public function buildSystemPrompt(
-        FieldFormat        $format,
-        string             $fieldName = '',
-        string             $contentType = '',
-        string             $language = 'en',
-        string             $contentTitle = '',
-        array              $siblingFields = [],
-        LanguageNormalizer $languageNormalizer = null,
-        string             $fieldType = '',
-        string             $subFieldKey = '',
-        array              $metaKeys = [],
-    ): string
-    {
+        SystemPromptContext $ctx,
+        ?LanguageNormalizer $languageNormalizer = null,
+    ): string {
         // Resolve the SEO meta key explicitly. Fall back to deriving it from the
         // legacy "Meta: <key>" display label only when no explicit key is given.
-        if ($subFieldKey === '' && $fieldName !== '' && str_starts_with(strtolower($fieldName), 'meta:')) {
-            $subFieldKey = trim(substr($fieldName, strlen('meta:')));
+        $subFieldKey = $ctx->subFieldKey;
+        if ($subFieldKey === '' && $ctx->fieldName !== '' && str_starts_with(strtolower($ctx->fieldName), 'meta:')) {
+            $subFieldKey = trim(substr($ctx->fieldName, strlen('meta:')));
         }
         $subFieldKey = strtolower($subFieldKey);
-        $normalizedLanguage = $language;
+
+        $normalizedLanguage = $ctx->language;
         if ($languageNormalizer !== null) {
-            $normalizedLanguage = $languageNormalizer->normalize($language);
+            $normalizedLanguage = $languageNormalizer->normalize($ctx->language);
         }
 
         $context = '';
 
-        if ($contentType) {
-            $context .= " The content type is \"$contentType\".";
+        if ($ctx->contentType) {
+            $context .= " The content type is \"{$ctx->contentType}\".";
         }
-        if ($fieldName) {
-            $context .= " You are writing for the field \"$fieldName\".";
+        if ($ctx->fieldName) {
+            $context .= " You are writing for the field \"{$ctx->fieldName}\".";
         }
         if ($normalizedLanguage && $normalizedLanguage !== 'en') {
-            $context .= " Write in language code: $normalizedLanguage.";
+            $context .= " Write in language code: {$normalizedLanguage}.";
         }
 
         $contentContext = '';
 
-        if ($contentTitle !== '') {
-            $contentContext .= "\nContent title: \"" . $this->escape($contentTitle) . "\".";
+        if ($ctx->contentTitle !== '') {
+            $contentContext .= "\nContent title: \"" . $this->escape($ctx->contentTitle) . "\".";
         }
 
-        if (!empty($siblingFields)) {
+        if (!empty($ctx->siblingFields)) {
             $contentContext .= "\nOther fields already filled in this content item (use for context, do not repeat):";
-            foreach ($siblingFields as $field) {
+            foreach ($ctx->siblingFields as $field) {
                 $label = $this->escape($field['label'] ?? '');
                 $value = $this->escape(mb_substr($field['value'] ?? '', 0, AiConstants::MAX_SIBLING_CHARS));
                 if ($label !== '' && $value !== '') {
@@ -80,15 +75,15 @@ class AiPromptBuilder
 
         $base = "You are a professional content writing assistant for a CMS.$context$contentContext";
 
-        if ($fieldType === NovaSeoPromptBuilder::FIELD_TYPE && $subFieldKey === '') {
-            return $this->novaSeo->wholeBlockPrompt($base, $metaKeys);
+        if ($ctx->fieldType === NovaSeoPromptBuilder::FIELD_TYPE && $subFieldKey === '') {
+            return $this->novaSeo->wholeBlockPrompt($base, $ctx->metaKeys);
         }
 
         if ($subFieldKey !== '') {
             return $this->novaSeo->subFieldPrompt($base, $subFieldKey);
         }
 
-        return match ($format) {
+        return match ($ctx->format) {
             FieldFormat::PLAIN_TEXT => "$base\n\nRules:\n- Output ONLY plain text, single line.\n- No HTML tags, no markdown formatting, no line breaks.\n- Be concise and direct.\n- Tailor the content specifically to the context provided above.",
 
             FieldFormat::TEXT_BLOCK => "$base\n\nRules:\n- Output ONLY plain text.\n- Line breaks are allowed for paragraphs.\n- No HTML tags, no markdown formatting.\n- Write in a clear, structured manner.\n- Tailor the content specifically to the context provided above.",

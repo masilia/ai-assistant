@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Tests;
 
 use Masilia\AiAssistant\AiPromptBuilder;
 use Masilia\AiAssistant\FieldFormat;
+use Masilia\AiAssistant\SystemPromptContext;
 use PHPUnit\Framework\TestCase;
 
 final class AiPromptBuilderTest extends TestCase
@@ -14,14 +15,14 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::JSON,
-            'SEO Metas',
-            'Article',
-            'en',
-            'My Article',
-            [],
-            null,
-            'novaseometas',
+            new SystemPromptContext(
+                format: FieldFormat::JSON,
+                fieldName: 'SEO Metas',
+                contentType: 'Article',
+                language: 'en',
+                contentTitle: 'My Article',
+                fieldType: 'novaseometas',
+            )
         );
 
         self::assertStringContainsString('"title"', $prompt);
@@ -39,14 +40,13 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::JSON,
-            'SEO Metas',
-            'Article',
-            'en',
-            '',
-            [],
-            null,
-            'novaseometas',
+            new SystemPromptContext(
+                format: FieldFormat::JSON,
+                fieldName: 'SEO Metas',
+                contentType: 'Article',
+                language: 'en',
+                fieldType: 'novaseometas',
+            )
         );
 
         self::assertStringContainsString('under 60 characters', $prompt);
@@ -57,15 +57,13 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::PLAIN_TEXT,
-            '',
-            'Article',
-            'en',
-            '',
-            [],
-            null,
-            'novaseometas',
-            'title',
+            new SystemPromptContext(
+                format: FieldFormat::PLAIN_TEXT,
+                contentType: 'Article',
+                language: 'en',
+                fieldType: 'novaseometas',
+                subFieldKey: 'title',
+            )
         );
 
         self::assertStringContainsString('Meta Title', $prompt);
@@ -76,14 +74,13 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::PLAIN_TEXT,
-            'Meta: title',
-            'Article',
-            'en',
-            '',
-            [],
-            null,
-            'novaseometas',
+            new SystemPromptContext(
+                format: FieldFormat::PLAIN_TEXT,
+                fieldName: 'Meta: title',
+                contentType: 'Article',
+                language: 'en',
+                fieldType: 'novaseometas',
+            )
         );
 
         self::assertStringContainsString('Meta Title', $prompt);
@@ -94,16 +91,14 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::JSON,
-            'SEO Metas',
-            'Article',
-            'en',
-            '',
-            [],
-            null,
-            'novaseometas',
-            '',
-            ['title', 'description'],
+            new SystemPromptContext(
+                format: FieldFormat::JSON,
+                fieldName: 'SEO Metas',
+                contentType: 'Article',
+                language: 'en',
+                fieldType: 'novaseometas',
+                metaKeys: ['title', 'description'],
+            )
         );
 
         self::assertStringContainsString('"title"', $prompt);
@@ -116,14 +111,13 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::PLAIN_TEXT,
-            'My Field',
-            'Article',
-            'en',
-            '',
-            [],
-            null,
-            'ezstring',
+            new SystemPromptContext(
+                format: FieldFormat::PLAIN_TEXT,
+                fieldName: 'My Field',
+                contentType: 'Article',
+                language: 'en',
+                fieldType: 'ezstring',
+            )
         );
 
         self::assertStringContainsString('Output ONLY plain text', $prompt);
@@ -134,14 +128,13 @@ final class AiPromptBuilderTest extends TestCase
     {
         $builder = new AiPromptBuilder(null);
         $prompt = $builder->buildSystemPrompt(
-            FieldFormat::JSON,
-            'My Field',
-            'Article',
-            'en',
-            '',
-            [],
-            null,
-            'ezstring',
+            new SystemPromptContext(
+                format: FieldFormat::JSON,
+                fieldName: 'My Field',
+                contentType: 'Article',
+                language: 'en',
+                fieldType: 'ezstring',
+            )
         );
 
         self::assertStringContainsString('Output ONLY a valid raw JSON object', $prompt);

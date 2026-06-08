@@ -25,7 +25,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class AiClient implements AiClientInterface
 {
     private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
-    private const FALLBACK_PROVIDER = 'openai';
+    private const FALLBACK_PROVIDER = ProviderId::OPENAI;
 
     public function __construct(
         private readonly HttpClientInterface           $httpClient,
@@ -134,7 +134,7 @@ class AiClient implements AiClientInterface
         $providerIdentifier = $provider ?: self::FALLBACK_PROVIDER;
 
         // Ollama typically runs locally without an API key
-        if (empty($apiKey) && $providerIdentifier !== 'ollama') {
+        if (empty($apiKey) && $providerIdentifier !== ProviderId::OLLAMA) {
             throw new \RuntimeException(
                 'No active AI provider is configured and no API key is set for the current siteaccess. '
                 . 'Configure a provider in the admin dashboard or set masilia_ai_assistant.system.{scope}.api_key in YAML.'
@@ -167,7 +167,7 @@ class AiClient implements AiClientInterface
             throw new \RuntimeException(
                 sprintf(
                     '%s API error (HTTP %d): %s',
-                    ucfirst($providerIdentifier),
+                    ProviderId::displayName($providerIdentifier),
                     $statusCode,
                     $response->getContent(false)
                 )

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant;
 
-use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
+use Masilia\AiAssistant\Seo\FallbackSeoMetaFieldsProvider;
+use Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface;
 
 /**
  * Builds NovaSEO (novaseometas) system prompts: the whole-block JSON-schema
@@ -12,6 +13,11 @@ use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
  *
  * Encapsulates all SEO-specific knowledge (meta field discovery, hints and
  * character limits) so the generic {@see AiPromptBuilder} stays format-agnostic.
+ *
+ * The actual list of available meta fields is supplied by a
+ * {@see SeoMetaFieldsProviderInterface}, allowing the host application to
+ * plug in any SEO bundle (e.g. novactive/ezseoscorebundle) without coupling
+ * the lib to that bundle.
  */
 class NovaSeoPromptBuilder
 {
@@ -26,32 +32,11 @@ class NovaSeoPromptBuilder
         'description' => 160,
     ];
 
-    /**
-     * Hardcoded default schema used when the config resolver is unavailable
-     * (e.g. unit tests) or the Novactive eZ SEO bundle is not installed.
-     *
-     * @var array<string, array{label: string, maxLength?: int|null}>
-     */
-    private const FALLBACK_META_FIELDS = [
-        'title' => ['label' => 'Title'],
-        'description' => ['label' => 'Description'],
-        'keywords' => ['label' => 'Keywords'],
-        'canonical' => ['label' => 'External Canonical URL'],
-        'type' => ['label' => 'Type'],
-        'og:title' => ['label' => 'Open Graph Title'],
-        'og:description' => ['label' => 'Open Graph Description'],
-        'og:image' => ['label' => 'Open Graph Image URL'],
-        'og:image:alt' => ['label' => 'Open Graph Image Alt'],
-        'twitter:title' => ['label' => 'Twitter Title'],
-        'twitter:description' => ['label' => 'Twitter Description'],
-        'twitter:image' => ['label' => 'Twitter Image URL'],
-    ];
+    private SeoMetaFieldsProviderInterface $fieldsProvider;
 
-    private ?ConfigResolverInterface $configResolver;
-
-    public function __construct(?ConfigResolverInterface $configResolver = null)
+    public function __construct(?SeoMetaFieldsProviderInterface $fieldsProvider = null)
     {
-        $this->configResolver = $configResolver;
+        $this->fieldsProvider = $fieldsProvider ?? new FallbackSeoMetaFieldsProvider();
     }
 
     /**
@@ -65,7 +50,7 @@ class NovaSeoPromptBuilder
      */
     public function wholeBlockPrompt(string $base, array $metaKeys = []): string
     {
-        $metaFields = $this->getTextMetaFields();
+        $metaFields = $this->fieldsProvider->getTextMetaFields();
 
         if ($metaKeys !== []) {
             $allowed = array_map('strtolower', $metaKeys);
@@ -95,7 +80,7 @@ class NovaSeoPromptBuilder
             {
             $schema
             }
-            
+
             Rules:
             - Output ONLY the raw JSON object.
             - Do NOT wrap the JSON in markdown code blocks (e.g. no ```json).
@@ -122,48 +107,6 @@ class NovaSeoPromptBuilder
         };
 
         return "$base\n\nRules:\n$seoRules\n- Output ONLY the generated metadata, nothing else.\n- Return plain text only — NO JSON, NO markdown code blocks, NO quotes around the value, NO \"value:\" or \"content:\" prefixes.\n- No HTML tags, no line breaks.";
-    }
-
-    /**
-     * Read the Novactive eZ SEO bundle's `fieldtype_metas` config and return
-     * only the free-text fields (i.e. not `select`/`boolean`/etc.). Falls back
-     * to {@see FALLBACK_META_FIELDS} when the config is unavailable.
-     *
-     * @return array<string, array{label: string, maxLength?: int|null, type?: string}>
-     */
-    private function getTextMetaFields(): array
-    {
-        if ($this->configResolver === null) {
-            return self::FALLBACK_META_FIELDS;
-        }
-
-        try {
-            $config = $this->configResolver->getParameter('fieldtype_metas', 'nova_ezseo');
-        } catch (\Throwable) {
-            return self::FALLBACK_META_FIELDS;
-        }
-
-        if (!is_array($config) || $config === []) {
-            return self::FALLBACK_META_FIELDS;
-        }
-
-        $textFields = [];
-        foreach ($config as $key => $meta) {
-            if (!is_array($meta)) {
-                continue;
-            }
-            $type = $meta['type'] ?? 'text';
-            if ($type !== 'text') {
-                continue;
-            }
-            $textFields[(string)$key] = [
-                'label' => (string)($meta['label'] ?? $key),
-                'maxLength' => isset($meta['maxLength']) ? (int)$meta['maxLength'] : null,
-                'type' => $type,
-            ];
-        }
-
-        return $textFields !== [] ? $textFields : self::FALLBACK_META_FIELDS;
     }
 
     private function fieldHint(string $key, ?int $maxLength): string

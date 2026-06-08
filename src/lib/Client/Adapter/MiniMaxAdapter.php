@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
+use Masilia\AiAssistant\Client\ProviderId;
+
 /**
  * MiniMax uses the Anthropic Messages API format but with its own auth header.
  * Extends AnthropicAdapter to reuse body building and response parsing logic.
@@ -15,7 +17,7 @@ class MiniMaxAdapter extends AnthropicAdapter
 
     public function supports(string $providerIdentifier): bool
     {
-        return $providerIdentifier === 'minimax';
+        return $providerIdentifier === ProviderId::MINIMAX;
     }
 
     public function buildEndpointUrl(?string $customApiUrl): string

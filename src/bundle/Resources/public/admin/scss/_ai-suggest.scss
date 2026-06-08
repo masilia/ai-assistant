@@ -369,3 +369,22 @@
     0%, 100% { opacity: 1;   transform: translate(-50%, -50%) scale(1);   }
     50%       { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
 }
+
+// ── Reduced motion ───────────────────────────────────────────
+// Respect users who have requested reduced motion at the OS level
+// (vestibular disorders, focus/concentration needs, etc.). All non-essential
+// animations and transitions are disabled; visual state is conveyed via
+// colors and content only.
+@media (prefers-reduced-motion: reduce) {
+    .ai-suggest-overlay,
+    .ai-suggest-modal,
+    .ai-suggest-modal__spinner,
+    .ai-suggest-modal__streaming-indicator,
+    .ai-suggest-modal__streaming-indicator::before,
+    .ai-suggest-modal__streaming-indicator::after,
+    .ai-suggest-modal__quick-action,
+    .ai-suggest-trigger--inline {
+        animation: none !important;
+        transition: none !important;
+    }
+}

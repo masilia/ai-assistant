@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
+use Masilia\AiAssistant\Client\ProviderId;
+
 /**
  * Base adapter for providers that follow the OpenAI-compatible chat completions API
  * (OpenAI, Mistral, Ollama, and any custom OpenAI-compatible endpoints).
@@ -69,7 +71,11 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface
 
         if ($text === '') {
             throw new \RuntimeException(
-                sprintf('%s API returned an empty response. Raw: %s', ucfirst($this->getProviderIdentifier()), json_encode($data))
+                sprintf(
+                    '%s API returned an empty response. Raw: %s',
+                    ProviderId::displayName($this->getProviderIdentifier()),
+                    json_encode($data)
+                )
             );
         }
 

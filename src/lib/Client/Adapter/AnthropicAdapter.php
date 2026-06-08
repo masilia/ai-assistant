@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
+use Masilia\AiAssistant\Client\ProviderId;
+
 class AnthropicAdapter implements ProviderAdapterInterface
 {
     private const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1';
@@ -11,7 +13,7 @@ class AnthropicAdapter implements ProviderAdapterInterface
 
     public function supports(string $providerIdentifier): bool
     {
-        return $providerIdentifier === 'anthropic';
+        return $providerIdentifier === ProviderId::ANTHROPIC;
     }
 
     public function buildEndpointUrl(?string $customApiUrl): string

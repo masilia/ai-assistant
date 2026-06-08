@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
+use Masilia\AiAssistant\Client\ProviderId;
+
 class MistralAdapter extends AbstractOpenAiAdapter
 {
     protected function getProviderIdentifier(): string
     {
-        return 'mistral';
+        return ProviderId::MISTRAL;
     }
 
     protected function getDefaultBaseUrl(): string

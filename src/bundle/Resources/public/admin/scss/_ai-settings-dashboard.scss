@@ -529,3 +529,25 @@
 @keyframes ai-spin {
     to { transform: rotate(360deg); }
 }
+
+// ── Reduced motion ───────────────────────────────────────────
+// Respect users who have requested reduced motion at the OS level
+// (vestibular disorders, focus/concentration needs, etc.). All non-essential
+// animations and transitions are disabled; visual state is conveyed via
+// colors and content only.
+@media (prefers-reduced-motion: reduce) {
+    .ai-loader__spinner,
+    .ai-drawer,
+    .ai-drawer-overlay,
+    .ai-confirm-modal,
+    .ai-confirm-overlay,
+    .ai-provider-card,
+    .ai-provider-card__body-wrapper,
+    .ai-provider-card__header,
+    .ai-provider-card__chevron,
+    .ai-banner__dot--active,
+    .ai-toggle__switcher {
+        animation: none !important;
+        transition: none !important;
+    }
+}

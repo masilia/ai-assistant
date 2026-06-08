@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\DTO;
 
-class AiSuggestRequest
+readonly class AiSuggestRequest
 {
     /**
      * @param string[] $siblingFields
@@ -14,18 +14,18 @@ class AiSuggestRequest
      *                                whole-block schema so it matches the UI.
      */
     public function __construct(
-        public readonly string $fieldType,
-        public readonly string $prompt,
-        public readonly string $currentValue = '',
-        public readonly string $fieldName = '',
-        public readonly string $language = 'en',
-        public readonly int $contentId = 0,
-        public readonly string $contentTitle = '',
-        public readonly string $contentType = '',
-        public readonly array $siblingFields = [],
-        public readonly string $sourceLanguage = '',
-        public readonly string $subFieldKey = '',
-        public readonly array $metaKeys = [],
+        public string $fieldType,
+        public string $prompt,
+        public string $currentValue = '',
+        public string $fieldName = '',
+        public string $language = 'en',
+        public int    $contentId = 0,
+        public string $contentTitle = '',
+        public string $contentType = '',
+        public array  $siblingFields = [],
+        public string $sourceLanguage = '',
+        public string $subFieldKey = '',
+        public array  $metaKeys = [],
     ) {}
 
     public static function fromArray(array $data): self
@@ -42,9 +42,10 @@ class AiSuggestRequest
             siblingFields: $data['siblingFields'] ?? [],
             sourceLanguage: $data['sourceLanguage'] ?? '',
             subFieldKey: trim((string)($data['subFieldKey'] ?? '')),
+            // Strip empty/non-string values so the AI schema is restricted to real keys.
             metaKeys: array_values(array_filter(
                 (array)($data['metaKeys'] ?? []),
-                static fn($k) => is_string($k) && $k !== ''
+                static fn($value) => is_string($value) && $value !== ''
             )),
         );
     }

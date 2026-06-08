@@ -127,17 +127,9 @@ function AiSuggestModal() {
             const decoder = new TextDecoder();
             let buffer = '';
 
-            let streamDone = false;
-
-            while (!streamDone) {
-                const { done, value } = await reader.read();
-
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
+            const processLines = (text) => {
+                if (!text) return;
+                const lines = text.split('\n');
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed.startsWith('data: ')) continue;
@@ -153,7 +145,7 @@ function AiSuggestModal() {
                             setError(errorMessage);
                             setStreaming(false);
                             streamDone = true;
-                            break;
+                            return;
                         }
 
                         if (data.token) {
@@ -163,12 +155,32 @@ function AiSuggestModal() {
                         if (data.done) {
                             setStreaming(false);
                             streamDone = true;
-                            break;
+                            return;
                         }
                     } catch (e) {
                         // Skip malformed JSON lines
                     }
                 }
+            };
+
+            let streamDone = false;
+
+            while (!streamDone) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                    // Flush any bytes still held by the decoder (e.g. a trailing
+                    // multi-byte UTF-8 sequence split across chunks) so the last
+                    // characters of non-ASCII content are not silently dropped.
+                    buffer += decoder.decode();
+                    processLines(buffer);
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                processLines(lines.join('\n'));
             }
         } catch (err) {
             if (err.name === 'AbortError') {

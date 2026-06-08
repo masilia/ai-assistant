@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
+use Masilia\AiAssistant\Client\ProviderId;
+
 class OllamaAdapter extends AbstractOpenAiAdapter
 {
     protected function getProviderIdentifier(): string
     {
-        return 'ollama';
+        return ProviderId::OLLAMA;
     }
 
     protected function getDefaultBaseUrl(): string

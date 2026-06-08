@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant;
 
-use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
-
 class AiPromptBuilder
 {
     private NovaSeoPromptBuilder $novaSeo;
 
     public function __construct(
-        ?ConfigResolverInterface $configResolver = null,
         ?NovaSeoPromptBuilder $novaSeo = null,
     ) {
-        $this->novaSeo = $novaSeo ?? new NovaSeoPromptBuilder($configResolver);
+        $this->novaSeo = $novaSeo ?? new NovaSeoPromptBuilder();
     }
 
     /**

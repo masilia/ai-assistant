@@ -27,9 +27,11 @@ services:
             - '../../../lib/Client/Adapter/AbstractOpenAiCompatibleAdapter.php'
             - '../../../lib/Client/AiClientInterface.php'
             - '../../../lib/Client/AiTarget.php'
+            - '../../../lib/Client/ProviderId.php'
             - '../../../lib/Field/FieldValueStringifierInterface.php'
             - '../../../lib/Repository/'
             - '../../../lib/DTO/'
+            - '../../../lib/Seo/'
             - '../../../lib/FieldFormat.php'
 
     Masilia\AiAssistant\Client\Adapter\OpenAiAdapter:
@@ -55,6 +57,19 @@ services:
         arguments:
             $stringifiers: !tagged_iterator masilia.ai.field_value_stringifier
 
+    # Lib-layer SEO meta field provider: reads from the Novactive eZ SEO bundle
+    # config (bundle-layer adapter) so the lib stays free of Novactive deps.
+    Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface:
+        alias: 'Masilia\Bundle\AiAssistant\Seo\NovaSeoMetaFieldsProvider'
+
+    Masilia\AiAssistant\NovaSeoPromptBuilder:
+        arguments:
+            $fieldsProvider: '@Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface'
+
+    Masilia\AiAssistant\AiPromptBuilder:
+        arguments:
+            $novaSeo: '@Masilia\AiAssistant\NovaSeoPromptBuilder'
+
     Masilia\AiAssistant\Client\AiClient: ~
 
     Masilia\Bundle\AiAssistant\Controller\:
@@ -66,3 +81,6 @@ services:
 
     Masilia\Bundle\AiAssistant\Repository\:
         resource: '../../Repository/*'
+
+    Masilia\Bundle\AiAssistant\Seo\:
+        resource: '../../Seo/*'

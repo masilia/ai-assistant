@@ -5,8 +5,8 @@ export default function ActiveBanner({ providers, models, activeProviderId, acti
     const activeModel = models.find(m => m.id === activeModelId);
 
     return (
-        <div className="ai-banner" role="status" aria-label="Active AI engine status">
-            <div>
+        <div className={`ibexa-alert ai-banner ${activeProvider ? 'ibexa-alert--info' : ''}`} role="status" aria-label="Active AI engine status">
+            <div className="ibexa-alert__content">
                 <span className="ai-banner__label">Currently Active LLM Engine</span>
                 <h4 className="ai-banner__title">
                     {activeProvider ? activeProvider.name : 'None'}

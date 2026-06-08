@@ -244,191 +244,212 @@ function AiSuggestModal() {
 
     return (
         <>
+            {/* Overlay */}
             <div className="ai-suggest-overlay" onClick={() => setOpen(false)} />
-            <div className="ai-suggest-modal" onKeyDown={handleKeyDown}>
-                {/* Header */}
-                <div className="ai-suggest-modal__header">
-                    <div className="ai-suggest-modal__title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
-                        </svg>
-                        <span>AI Content Assistant</span>
-                    </div>
-                    <button
-                        className="ai-suggest-modal__close"
-                        onClick={() => setOpen(false)}
-                        type="button"
-                        aria-label="Close"
-                    >×</button>
-                </div>
 
-                {/* Field info */}
-                <div className="ai-suggest-modal__field-info">
-                    <span className="ai-suggest-modal__field-name">{fieldContext?.fieldName || 'Field'}</span>
-                    <span className="ai-suggest-modal__field-type">
-                        {fieldTypeLabel[fieldContext?.fieldType] || fieldContext?.fieldType}
-                    </span>
-                </div>
+            {/* Modal — uses Ibexa modal structure */}
+            <div className="ibexa-modal ai-suggest-modal" onKeyDown={handleKeyDown}>
+                <div className="modal-dialog">
+                    <div className="modal-content">
 
-                {/* Prompt input */}
-                <div className="ai-suggest-modal__prompt-section">
-                    <label className="ai-suggest-modal__label" htmlFor="ai-prompt-input">
-                        What would you like to write?
-                    </label>
-                    <textarea
-                        ref={promptRef}
-                        id="ai-prompt-input"
-                        className="ai-suggest-modal__textarea"
-                        value={prompt}
-                        onChange={handlePromptChange}
-                        placeholder="e.g. Write a 2-paragraph introduction about renewable energy in the Mediterranean..."
-                        rows={3}
-                        disabled={loading}
-                    />
-                </div>
-
-                {/* Quick actions */}
-                <div className="ai-suggest-modal__quick-actions">
-                    <span className="ai-suggest-modal__quick-actions-label">Quick:</span>
-                    <div className="ai-suggest-modal__quick-actions-list">
-                        {QUICK_ACTIONS.map((action) => (
-                            <button
-                                key={action.id}
-                                type="button"
-                                className={`ai-suggest-modal__quick-action ${selectedQuickAction === action.id ? 'ai-suggest-modal__quick-action--active' : ''}`}
-                                onClick={() => handleQuickAction(action)}
-                                disabled={loading || (isNovaSeo && action.isTranslation)}
-                                title={isNovaSeo && action.isTranslation ? 'Translation is not supported for SEO Metas' : action.promptTemplate}
-                            >
-                                <span className="ai-suggest-modal__quick-action-icon">{action.icon}</span>
-                                <span className="ai-suggest-modal__quick-action-label">{action.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Source language input for translation */}
-                {showSourceLangInput && (
-                    <div className="ai-suggest-modal__source-lang">
-                        <label className="ai-suggest-modal__source-lang-label">
-                            Source language code (e.g., eng-GB, fre-FR):
-                        </label>
-                        <div className="ai-suggest-modal__source-lang-row">
-                            <input
-                                type="text"
-                                className="ai-suggest-modal__source-lang-input"
-                                value={sourceLanguage}
-                                onChange={(e) => setSourceLanguage(e.target.value)}
-                                placeholder="eng-GB"
-                                disabled={loading}
-                            />
-                            <button
-                                type="button"
-                                className="ai-suggest-modal__btn ai-suggest-modal__btn--primary"
-                                onClick={() => handleSourceLanguageSubmit(sourceLanguage)}
-                                disabled={!sourceLanguage.trim() || loading}
-                            >
-                                Use as Source
-                            </button>
-                            <button
-                                type="button"
-                                className="ai-suggest-modal__btn ai-suggest-modal__btn--ghost"
-                                onClick={() => {
-                                    setShowSourceLangInput(false);
-                                    setSelectedQuickAction(null);
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Mode selector */}
-                <div className="ai-suggest-modal__mode">
-                    <label className={`ai-suggest-modal__mode-option ${mode === SUGGEST_MODE.REPLACE ? 'ai-suggest-modal__mode-option--active' : ''}`}>
-                        <input
-                            type="radio"
-                            name="ai-mode"
-                            value={SUGGEST_MODE.REPLACE}
-                            checked={mode === SUGGEST_MODE.REPLACE}
-                            onChange={() => setMode(SUGGEST_MODE.REPLACE)}
-                        />
-                        Replace content
-                    </label>
-                    <label className={`ai-suggest-modal__mode-option ${mode === SUGGEST_MODE.APPEND ? 'ai-suggest-modal__mode-option--active' : ''}`}>
-                        <input
-                            type="radio"
-                            name="ai-mode"
-                            value={SUGGEST_MODE.APPEND}
-                            checked={mode === SUGGEST_MODE.APPEND}
-                            onChange={() => setMode(SUGGEST_MODE.APPEND)}
-                        />
-                        Append to content
-                    </label>
-                </div>
-
-                {/* Actions */}
-                <div className="ai-suggest-modal__actions">
-                    <button
-                        className="ai-suggest-modal__btn ai-suggest-modal__btn--secondary"
-                        onClick={() => setOpen(false)}
-                        type="button"
-                    >Cancel</button>
-                    <button
-                        className="ai-suggest-modal__btn ai-suggest-modal__btn--primary"
-                        onClick={handleGenerate}
-                        disabled={(!streaming && loading) || !prompt.trim()}
-                        type="button"
-                    >
-                        {streaming ? (
-                            <>
-                                <span className="ai-suggest-modal__streaming-indicator" />
-                                <span>Stop</span>
-                            </>
-                        ) : loading ? (
-                            <span className="ai-suggest-modal__spinner" />
-                        ) : (
-                            <>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        {/* Header */}
+                        <div className="modal-header">
+                            <h5 className="modal-title ai-suggest-modal__title">
+                                <svg className="ibexa-icon ibexa-icon--small-medium ai-suggest-modal__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
                                 </svg>
-                                {suggestion ? 'Regenerate' : 'Generate'}
-                            </>
-                        )}
-                    </button>
-                </div>
-
-                {/* Error */}
-                {error && (
-                    <div className="ai-suggest-modal__error">
-                        <strong>Error:</strong> {error}
-                    </div>
-                )}
-
-                {/* Preview */}
-                {suggestion && (
-                    <div className="ai-suggest-modal__preview-section">
-                        <div className="ai-suggest-modal__preview-header">
-                            <span>Preview</span>
+                                AI Content Assistant
+                            </h5>
                             <button
-                                className="ai-suggest-modal__btn ai-suggest-modal__btn--apply"
-                                onClick={handleApply}
+                                className="close ibexa-btn ibexa-btn--ghost ibexa-btn--no-text ibexa-btn--small"
+                                onClick={() => setOpen(false)}
                                 type="button"
+                                aria-label="Close"
                             >
-                                Apply
-                                <kbd>⌘↵</kbd>
+                                <svg className="ibexa-icon ibexa-icon--small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
                             </button>
                         </div>
-                        <div className="ai-suggest-modal__preview">
-                            {fieldContext?.fieldType === 'ezrichtext' ? (
-                                <div dangerouslySetInnerHTML={{ __html: suggestion }} />
-                            ) : (
-                                <pre>{suggestion}</pre>
+
+                        {/* Field info bar */}
+                        <div className="ai-suggest-modal__field-info">
+                            <span className="ai-suggest-modal__field-name">{fieldContext?.fieldName || 'Field'}</span>
+                            <span className="ai-suggest-modal__field-type">
+                                {fieldTypeLabel[fieldContext?.fieldType] || fieldContext?.fieldType}
+                            </span>
+                        </div>
+
+                        {/* Body */}
+                        <div className="modal-body">
+                            {/* Prompt input */}
+                            <div className="ai-suggest-modal__section">
+                                <label className="ibexa-label" htmlFor="ai-prompt-input">
+                                    What would you like to write?
+                                </label>
+                                <textarea
+                                    ref={promptRef}
+                                    id="ai-prompt-input"
+                                    className="ibexa-input ibexa-input--textarea form-control"
+                                    value={prompt}
+                                    onChange={handlePromptChange}
+                                    placeholder="e.g. Write a 2-paragraph introduction about renewable energy in the Mediterranean..."
+                                    rows={3}
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            {/* Quick actions */}
+                            <div className="ai-suggest-modal__quick-actions">
+                                <span className="ai-suggest-modal__quick-actions-label">Quick:</span>
+                                <div className="ai-suggest-modal__quick-actions-list">
+                                    {QUICK_ACTIONS.map((action) => (
+                                        <button
+                                            key={action.id}
+                                            type="button"
+                                            className={`ai-suggest-modal__quick-action ${selectedQuickAction === action.id ? 'ai-suggest-modal__quick-action--active' : ''}`}
+                                            onClick={() => handleQuickAction(action)}
+                                            disabled={loading || (isNovaSeo && action.isTranslation)}
+                                            title={isNovaSeo && action.isTranslation ? 'Translation is not supported for SEO Metas' : action.promptTemplate}
+                                        >
+                                            <span className="ai-suggest-modal__quick-action-icon">{action.icon}</span>
+                                            <span className="ai-suggest-modal__quick-action-label">{action.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Source language input for translation */}
+                            {showSourceLangInput && (
+                                <div className="ai-suggest-modal__source-lang">
+                                    <label className="ibexa-label">
+                                        Source language code (e.g., eng-GB, fre-FR):
+                                    </label>
+                                    <div className="ai-suggest-modal__source-lang-row">
+                                        <input
+                                            type="text"
+                                            className="ibexa-input ibexa-input--text form-control"
+                                            value={sourceLanguage}
+                                            onChange={(e) => setSourceLanguage(e.target.value)}
+                                            placeholder="eng-GB"
+                                            disabled={loading}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="ibexa-btn ibexa-btn--primary ibexa-btn--small"
+                                            onClick={() => handleSourceLanguageSubmit(sourceLanguage)}
+                                            disabled={!sourceLanguage.trim() || loading}
+                                        >
+                                            Use as Source
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="ibexa-btn ibexa-btn--ghost ibexa-btn--small"
+                                            onClick={() => {
+                                                setShowSourceLangInput(false);
+                                                setSelectedQuickAction(null);
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Mode selector */}
+                            <div className="ai-suggest-modal__mode">
+                                <label className="form-check-inline ai-suggest-modal__mode-option">
+                                    <input
+                                        className="ibexa-input ibexa-input--radio"
+                                        type="radio"
+                                        name="ai-mode"
+                                        value={SUGGEST_MODE.REPLACE}
+                                        checked={mode === SUGGEST_MODE.REPLACE}
+                                        onChange={() => setMode(SUGGEST_MODE.REPLACE)}
+                                    />
+                                    <span className="ibexa-label ibexa-label--checkbox-radio">Replace content</span>
+                                </label>
+                                <label className="form-check-inline ai-suggest-modal__mode-option">
+                                    <input
+                                        className="ibexa-input ibexa-input--radio"
+                                        type="radio"
+                                        name="ai-mode"
+                                        value={SUGGEST_MODE.APPEND}
+                                        checked={mode === SUGGEST_MODE.APPEND}
+                                        onChange={() => setMode(SUGGEST_MODE.APPEND)}
+                                    />
+                                    <span className="ibexa-label ibexa-label--checkbox-radio">Append to content</span>
+                                </label>
+                            </div>
+
+                            {/* Error */}
+                            {error && (
+                                <div className="ibexa-alert ibexa-alert--error ai-suggest-modal__error">
+                                    <div className="ibexa-alert__content">
+                                        <span className="ibexa-alert__title"><strong>Error:</strong> {error}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Preview */}
+                            {suggestion && (
+                                <div className="ai-suggest-modal__preview-section">
+                                    <div className="ai-suggest-modal__preview-header">
+                                        <span>Preview</span>
+                                        <button
+                                            className="ibexa-btn ibexa-btn--filled-info ibexa-btn--small"
+                                            onClick={handleApply}
+                                            type="button"
+                                        >
+                                            Apply
+                                            <kbd className="ai-suggest-modal__kbd">⌘↵</kbd>
+                                        </button>
+                                    </div>
+                                    <div className="ai-suggest-modal__preview">
+                                        {fieldContext?.fieldType === 'ezrichtext' ? (
+                                            <div dangerouslySetInnerHTML={{ __html: suggestion }} />
+                                        ) : (
+                                            <pre>{suggestion}</pre>
+                                        )}
+                                    </div>
+                                </div>
                             )}
                         </div>
+
+                        {/* Footer */}
+                        <div className="modal-footer">
+                            <button
+                                className="ibexa-btn ibexa-btn--tertiary"
+                                onClick={() => setOpen(false)}
+                                type="button"
+                            >Cancel</button>
+                            <button
+                                className="ibexa-btn ibexa-btn--primary"
+                                onClick={handleGenerate}
+                                disabled={(!streaming && loading) || !prompt.trim()}
+                                type="button"
+                            >
+                                {streaming ? (
+                                    <>
+                                        <span className="ai-suggest-modal__streaming-indicator" />
+                                        <span>Stop</span>
+                                    </>
+                                ) : loading ? (
+                                    <span className="ai-suggest-modal__spinner" />
+                                ) : (
+                                    <>
+                                        <svg className="ibexa-icon ibexa-icon--tiny-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
+                                        </svg>
+                                        <span className="ibexa-btn__label">{suggestion ? 'Regenerate' : 'Generate'}</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
                     </div>
-                )}
+                </div>
             </div>
         </>
     );

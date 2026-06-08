@@ -97,17 +97,20 @@ export default function AiSettingsDashboard() {
 
             <div className="ai-action-bar">
                 <div className="ai-action-bar__search">
-                    <span className="ai-action-bar__search-icon" aria-hidden="true">🔍</span>
+                    <svg className="ibexa-icon ibexa-icon--small ai-action-bar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
                     <input
                         type="text"
-                        className="ai-action-bar__input"
+                        className="ibexa-input ibexa-input--text form-control ai-action-bar__input"
                         placeholder="Search providers..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         aria-label="Search providers"
                     />
                 </div>
-                <button type="button" className="ai-btn-add" onClick={() => setEditingProvider('new')}>
+                <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
                     + Add Provider
                 </button>
             </div>
@@ -117,7 +120,7 @@ export default function AiSettingsDashboard() {
                     <div className="ai-empty-state__icon">🧠</div>
                     <p className="ai-empty-state__title">No providers configured</p>
                     <p className="ai-empty-state__desc">Add your first AI provider to start using AI-assisted content editing.</p>
-                    <button type="button" className="ai-btn-add" onClick={() => setEditingProvider('new')}>
+                    <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
                         + Add First Provider
                     </button>
                 </div>

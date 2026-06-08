@@ -1,636 +1,356 @@
 // ============================================================
-// AI Content Assistant — Styling
-// Aligned with Ibexa Admin UI design tokens.
+// AI Content Assistant — Glue styles
+// Uses native Ibexa design system classes for buttons, inputs,
+// labels, alerts, modals, radios. Only AI-specific layout here.
 // ============================================================
 
 @import './public/bundles/ibexaadminui/scss/functions/calculate.rem.scss';
 @import './public/bundles/ibexaadminui/scss/custom.scss';
 
-// ── Token aliases (map Ibexa vars to local names) ────────
-// Background / surface
-$_ai-bg:          $ibexa-color-white;
-$_ai-bg-card:     $ibexa-color-light-300;
-$_ai-bg-hover:    $ibexa-color-light-200;
-
-// Colour
-$_ai-accent:      $ibexa-color-primary;
-$_ai-accent-glow: rgba($ibexa-color-primary, 0.2);
-
-// Text
-$_ai-text:        $ibexa-color-dark;
-$_ai-muted:       $ibexa-color-dark-400;
-
-// Border / radius
-$_ai-border:      $ibexa-color-light-500;
-$_ai-radius:      $ibexa-border-radius;
-$_ai-radius-sm:   $ibexa-border-radius-small;
-
-// Typography
-$_ai-font:        $ibexa-font-family;
-$_ai-font-heads:  $ibexa-font-family-headings;
-
-// Motion — match Ibexa admin transitions
-$_ai-transition:  $ibexa-admin-transition-duration $ibexa-admin-transition;
-
-// Status
-$_ai-success:     $ibexa-color-success;
-$_ai-danger:      $ibexa-color-danger;
-
-// ── Trigger button (injected next to field labels) ───────
+// ── Trigger button (positioning only — styled by .ibexa-btn) ─
 .ai-suggest-trigger {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    margin-left: 8px !important;
-    padding: calculateRem(4px) calculateRem(10px) !important;
-    background-image: $ibexa-gradient-danger-primary !important;
-    color: $ibexa-color-white !important;
-    border: none !important;
-    border-radius: $ibexa-border-radius !important;
-    font-family: $_ai-font !important;
-    font-size: calculateRem(11px) !important;
-    font-weight: $ibexa-font-weight-bold !important;
-    letter-spacing: 0.02em !important;
-    cursor: pointer !important;
-    transition: all $_ai-transition !important;
-    line-height: calculateRem(16px) !important;
-    vertical-align: middle !important;
-    box-shadow: $ibexa-btn-focus-box-shadow !important;
-    white-space: nowrap !important;
+    margin-left: calculateRem(8px);
+    vertical-align: middle;
 
-    svg {
-        width: calculateRem(12px) !important;
-        height: calculateRem(12px) !important;
-        fill: none !important;
-        stroke: currentColor !important;
-    }
-
-    &:hover {
-        box-shadow: $ibexa-btn-hover-box-shadow !important;
-        transform: translateY(-1px) !important;
-        color: $ibexa-color-white !important;
-    }
-
-    &:focus {
-        outline: none !important;
-        box-shadow: $ibexa-btn-focus-box-shadow !important;
-    }
-
-    &:active {
-        transform: translateY(0) scale(0.97) !important;
-        box-shadow: none !important;
+    .ibexa-icon {
+        fill: none;
+        stroke: currentColor;
     }
 }
 
-// ── Inline trigger (inside novaseometas collection rows) ─
+// ── Inline trigger (inside novaseometas collection rows) ─────
 .ai-suggest-trigger--inline {
-    position: absolute !important;
-    top: 50% !important;
-    right: calculateRem(6px) !important;
-    transform: translateY(-50%) !important;
-    z-index: 10 !important;
-    padding: calculateRem(2px) calculateRem(7px) !important;
-    font-size: calculateRem(10px) !important;
-    box-shadow: none !important;
-
-    svg {
-        width: calculateRem(10px) !important;
-        height: calculateRem(10px) !important;
-    }
+    position: absolute;
+    top: 50%;
+    right: calculateRem(6px);
+    transform: translateY(-50%);
+    z-index: 10;
+    padding: calculateRem(2px) calculateRem(7px);
 
     &:hover {
-        transform: translateY(-50%) translateX(-1px) !important;
-        box-shadow: $ibexa-btn-focus-box-shadow !important;
+        transform: translateY(-50%) translateX(-1px);
     }
 
     &:active {
-        transform: translateY(-50%) scale(0.97) !important;
+        transform: translateY(-50%) scale(0.97);
     }
 }
 
-// ── Overlay ──────────────────────────────────────────────
+// ── Overlay ──────────────────────────────────────────────────
 .ai-suggest-overlay {
-    position: fixed !important;
-    inset: 0 !important;
-    background: rgba($ibexa-color-dark, 0.5) !important;
-    backdrop-filter: blur(4px) !important;
-    z-index: $ibexa-backdrop-zindex !important;
-    animation: ai-fade-in 0.15s ease !important;
+    position: fixed;
+    inset: 0;
+    background: rgba($ibexa-color-dark, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: $ibexa-backdrop-zindex;
+    animation: ai-fade-in 0.15s ease;
 }
 
-// ── Modal ────────────────────────────────────────────────
+// ── Modal (positioning + width — shell styled by .ibexa-modal) ─
 .ai-suggest-modal {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: calculateRem(580px) !important;
-    max-width: 90vw !important;
-    max-height: 85vh !important;
-    overflow-y: auto !important;
-    background: $_ai-bg !important;
-    border: none !important;
-    border-radius: $_ai-radius !important;
-    box-shadow: 0 0 calculateRem(30px) 0 rgba($ibexa-color-black, 0.35) !important;
-    font-family: $_ai-font !important;
-    font-size: calculateRem(14px) !important;
-    color: $_ai-text !important;
-    z-index: $ibexa-modal-zindex !important;
-    animation: ai-slide-up 0.2s ease !important;
-    display: flex !important;
-    flex-direction: column !important;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: $ibexa-modal-zindex;
+    animation: ai-slide-up 0.2s ease;
 
-    // Scrollbar — light theme
-    scrollbar-width: thin !important;
-    scrollbar-color: $ibexa-color-light $_ai-bg !important;
-    &::-webkit-scrollbar { width: calculateRem(5px) !important; }
-    &::-webkit-scrollbar-track { background: $_ai-bg !important; }
-    &::-webkit-scrollbar-thumb {
-        background: $ibexa-color-light !important;
-        border-radius: calculateRem(3px) !important;
+    .modal-dialog {
+        width: calculateRem(620px);
+        max-width: 90vw;
+        margin: 0;
     }
 
-    // ── Header ───────────────────────────────────────────
-    &__header {
-        padding: calculateRem(20px) calculateRem(32px) !important;
-        border-bottom: calculateRem(1px) solid $ibexa-color-light-500 !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        flex-shrink: 0 !important;
+    .modal-content {
+        max-height: 85vh;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: $ibexa-color-light $ibexa-color-white;
+
+        &::-webkit-scrollbar { width: calculateRem(5px); }
+        &::-webkit-scrollbar-track { background: $ibexa-color-white; }
+        &::-webkit-scrollbar-thumb {
+            background: $ibexa-color-light;
+            border-radius: calculateRem(3px);
+        }
     }
 
+    .modal-header {
+        position: relative;
+    }
+
+    .modal-footer {
+        gap: calculateRem(8px);
+    }
+
+    // ── Title icon accent ─────────────────────────────────────
     &__title {
-        display: flex !important;
-        align-items: center !important;
-        gap: calculateRem(8px) !important;
-        font-family: $_ai-font-heads !important;
-        font-size: calculateRem(18px) !important;
-        font-weight: 600 !important;
-        color: $_ai-text !important;
-
-        svg {
-            color: $_ai-accent !important;
-            stroke: $_ai-accent !important;
-        }
+        display: flex;
+        align-items: center;
+        gap: calculateRem(8px);
     }
 
-    &__close {
-        background: none !important;
-        border: none !important;
-        width: calculateRem(32px) !important;
-        height: calculateRem(32px) !important;
-        border-radius: $_ai-radius-sm !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        color: $_ai-muted !important;
-        font-size: calculateRem(20px) !important;
-        line-height: 1 !important;
-        transition: all $_ai-transition !important;
-
-        &:hover {
-            background: $_ai-bg-card !important;
-            color: $_ai-text !important;
-        }
-
-        &:focus {
-            outline: none !important;
-            box-shadow: $ibexa-btn-focus-box-shadow !important;
-        }
+    &__title-icon {
+        fill: none;
+        stroke: $ibexa-color-primary;
     }
 
-    // ── Field info bar ───────────────────────────────────
+    // ── Field info bar ────────────────────────────────────────
     &__field-info {
-        padding: calculateRem(10px) calculateRem(32px) !important;
-        background: $_ai-bg-card !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: calculateRem(10px) !important;
-        font-size: calculateRem(12px) !important;
-        border-bottom: calculateRem(1px) solid $ibexa-color-light-500 !important;
+        padding: calculateRem(10px) calculateRem(32px);
+        background: $ibexa-color-light-300;
+        display: flex;
+        align-items: center;
+        gap: calculateRem(10px);
+        font-size: $ibexa-text-font-size-small;
+        border-bottom: calculateRem(1px) solid $ibexa-color-light-500;
     }
 
     &__field-name {
-        color: $_ai-text !important;
-        font-weight: $ibexa-font-weight-bold !important;
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark;
     }
 
     &__field-type {
-        background: $ibexa-color-primary-100 !important;
-        color: $ibexa-color-primary !important;
-        padding: calculateRem(2px) calculateRem(8px) !important;
-        border-radius: $_ai-radius-sm !important;
-        font-size: calculateRem(10px) !important;
-        font-weight: $ibexa-font-weight-bold !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
+        display: inline-flex;
+        align-items: center;
+        min-height: calculateRem(24px);
+        padding: calculateRem(1px) calculateRem(8px);
+        background: $ibexa-color-primary-100;
+        border: calculateRem(1px) solid $ibexa-color-primary-100;
+        border-radius: $ibexa-border-radius;
+        color: $ibexa-color-primary;
+        font-size: calculateRem(10px);
+        font-weight: $ibexa-font-weight-bold;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
-    // ── Prompt section ───────────────────────────────────
-    &__prompt-section {
-        padding: calculateRem(20px) calculateRem(32px) calculateRem(8px) !important;
+    // ── Body sections spacing ─────────────────────────────────
+    &__section {
+        margin-bottom: calculateRem(16px);
     }
 
-    &__label {
-        display: block !important;
-        font-size: calculateRem(12px) !important;
-        font-weight: $ibexa-font-weight-bold !important;
-        color: $_ai-text !important;
-        margin-bottom: calculateRem(8px) !important;
-    }
-
-    &__textarea {
-        width: 100% !important;
-        background: transparent !important;
-        border: calculateRem(1px) solid $ibexa-color-dark-300 !important;
-        border-radius: $_ai-radius-sm !important;
-        color: $_ai-text !important;
-        font-family: $_ai-font !important;
-        font-size: calculateRem(14px) !important;
-        padding: calculateRem(10px) calculateRem(12px) !important;
-        resize: vertical !important;
-        min-height: calculateRem(72px) !important;
-        transition: border-color $_ai-transition, box-shadow $_ai-transition !important;
-        line-height: 1.5 !important;
-        box-sizing: border-box !important;
-
-        &::placeholder { color: $ibexa-color-dark-300 !important; }
-
-        &:focus {
-            outline: none !important;
-            border-color: $ibexa-color-primary !important;
-            box-shadow: 0 0 0 calculateRem(4px) rgba($ibexa-color-primary, 0.25) !important;
-        }
-
-        &:disabled {
-            color: $ibexa-color-dark-300 !important;
-            background-color: $ibexa-color-light-300 !important;
-        }
-    }
-
-    // ── Quick actions ────────────────────────────────────
+    // ── Quick actions ─────────────────────────────────────────
     &__quick-actions {
-        padding: 0 calculateRem(32px) calculateRem(12px) !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: calculateRem(8px) !important;
-        flex-wrap: wrap !important;
+        display: flex;
+        align-items: center;
+        gap: calculateRem(8px);
+        flex-wrap: wrap;
+        margin-bottom: calculateRem(12px);
     }
 
     &__quick-actions-label {
-        font-size: calculateRem(11px) !important;
-        font-weight: $ibexa-font-weight-bold !important;
-        color: $_ai-muted !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
-        flex-shrink: 0 !important;
+        font-size: calculateRem(11px);
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark-400;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        flex-shrink: 0;
     }
 
     &__quick-actions-list {
-        display: flex !important;
-        gap: calculateRem(6px) !important;
-        flex-wrap: wrap !important;
+        display: flex;
+        gap: calculateRem(6px);
+        flex-wrap: wrap;
     }
 
     &__quick-action {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: calculateRem(4px) !important;
-        padding: calculateRem(4px) calculateRem(10px) !important;
-        background: $_ai-bg-card !important;
-        border: calculateRem(1px) solid $_ai-border !important;
-        border-radius: calculateRem(20px) !important;
-        font-family: $_ai-font !important;
-        font-size: calculateRem(12px) !important;
-        font-weight: 500 !important;
-        color: $_ai-text !important;
-        cursor: pointer !important;
-        transition: all $_ai-transition !important;
+        display: inline-flex;
+        align-items: center;
+        gap: calculateRem(4px);
+        padding: calculateRem(4px) calculateRem(10px);
+        background: $ibexa-color-light-300;
+        border: calculateRem(1px) solid $ibexa-color-light-500;
+        border-radius: calculateRem(20px);
+        font-size: $ibexa-text-font-size-small;
+        font-weight: 500;
+        color: $ibexa-color-dark;
+        cursor: pointer;
+        transition: all $ibexa-admin-transition-duration $ibexa-admin-transition;
 
         &:hover {
-            background: $_ai-bg-hover !important;
-            border-color: $ibexa-color-primary-300 !important;
-            color: $_ai-text !important;
+            background: $ibexa-color-light-200;
+            border-color: $ibexa-color-primary-300;
         }
 
         &:focus {
-            outline: none !important;
-            box-shadow: $ibexa-btn-focus-box-shadow !important;
+            outline: none;
+            box-shadow: $ibexa-btn-focus-box-shadow;
         }
 
         &:disabled {
-            color: $ibexa-color-dark-300 !important;
-            border-color: $ibexa-color-dark-200 !important;
-            background-color: rgba($ibexa-color-light, 0.4) !important;
-            cursor: not-allowed !important;
+            color: $ibexa-color-dark-300;
+            border-color: $ibexa-color-dark-200;
+            background-color: rgba($ibexa-color-light, 0.4);
+            cursor: not-allowed;
         }
 
         &--active {
-            background: $ibexa-color-primary-100 !important;
-            border-color: $ibexa-color-primary !important;
-            color: $ibexa-color-primary !important;
+            background: $ibexa-color-primary-100;
+            border-color: $ibexa-color-primary;
+            color: $ibexa-color-primary;
         }
     }
 
     &__quick-action-icon {
-        font-size: calculateRem(13px) !important;
-        line-height: 1 !important;
+        font-size: calculateRem(13px);
+        line-height: 1;
     }
 
     &__quick-action-label {
-        line-height: 1 !important;
+        line-height: 1;
     }
 
-    // ── Source language input for translation ───────────
+    // ── Source language row ────────────────────────────────────
     &__source-lang {
-        padding: 0 calculateRem(32px) calculateRem(12px) !important;
-    }
-
-    &__source-lang-label {
-        display: block !important;
-        font-size: calculateRem(12px) !important;
-        font-weight: $ibexa-font-weight-bold !important;
-        color: $_ai-text !important;
-        margin-bottom: calculateRem(6px) !important;
+        margin-bottom: calculateRem(12px);
     }
 
     &__source-lang-row {
-        display: flex !important;
-        gap: calculateRem(8px) !important;
-        align-items: center !important;
-    }
+        display: flex;
+        gap: calculateRem(8px);
+        align-items: center;
 
-    &__source-lang-input {
-        flex: 1 !important;
-        background: transparent !important;
-        border: calculateRem(1px) solid $ibexa-color-dark-300 !important;
-        border-radius: $_ai-radius-sm !important;
-        color: $_ai-text !important;
-        font-family: $_ai-font !important;
-        font-size: calculateRem(14px) !important;
-        padding: calculateRem(8px) calculateRem(12px) !important;
-        transition: border-color $_ai-transition, box-shadow $_ai-transition !important;
-
-        &::placeholder { color: $ibexa-color-dark-300 !important; }
-
-        &:focus {
-            outline: none !important;
-            border-color: $ibexa-color-primary !important;
-            box-shadow: 0 0 0 calculateRem(4px) rgba($ibexa-color-primary, 0.25) !important;
-        }
-
-        &:disabled {
-            color: $ibexa-color-dark-300 !important;
-            background-color: $ibexa-color-light-300 !important;
+        .ibexa-input--text {
+            flex: 1;
         }
     }
 
-    // ── Mode selector ────────────────────────────────────
+    // ── Mode selector ─────────────────────────────────────────
     &__mode {
-        padding: calculateRem(8px) calculateRem(32px) calculateRem(12px) !important;
-        display: flex !important;
-        gap: calculateRem(16px) !important;
+        display: flex;
+        gap: calculateRem(16px);
+        margin-bottom: calculateRem(12px);
     }
 
     &__mode-option {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: calculateRem(6px) !important;
-        font-size: calculateRem(13px) !important;
-        color: $_ai-muted !important;
-        cursor: pointer !important;
-        transition: color $_ai-transition !important;
+        display: inline-flex;
+        align-items: center;
+        gap: calculateRem(6px);
+        cursor: pointer;
 
-        input[type="radio"] {
-            accent-color: $ibexa-color-primary !important;
-            cursor: pointer !important;
-        }
-
-        &--active { color: $_ai-text !important; }
-        &:hover { color: $_ai-text !important; }
-    }
-
-    // ── Action buttons ───────────────────────────────────
-    &__actions {
-        padding: 0 calculateRem(32px) calculateRem(20px) !important;
-        display: flex !important;
-        justify-content: flex-end !important;
-        gap: calculateRem(8px) !important;
-    }
-
-    &__btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: calculateRem(6px) !important;
-        padding: calculateRem(10px) calculateRem(16px) !important;
-        border-radius: $_ai-radius !important;
-        font-family: $_ai-font !important;
-        font-size: calculateRem(14px) !important;
-        font-weight: $ibexa-font-weight-bold !important;
-        line-height: calculateRem(16px) !important;
-        cursor: pointer !important;
-        transition: all $_ai-transition !important;
-        white-space: nowrap !important;
-
-        // Mirror .ibexa-btn--tertiary
-        &--secondary {
-            background: transparent !important;
-            color: $_ai-text !important;
-            border: calculateRem(1px) solid $ibexa-color-light !important;
-
-            &:hover {
-                border-color: $_ai-text !important;
-                color: $_ai-text !important;
-            }
-
-            &:focus {
-                outline: none !important;
-                box-shadow: $ibexa-btn-focus-box-shadow !important;
-            }
-        }
-
-        // Mirror .ibexa-btn--primary
-        &--primary {
-            background-image: $ibexa-gradient-danger-primary !important;
-            color: $ibexa-color-white !important;
-            border: none !important;
-
-            svg { fill: none !important; stroke: currentColor !important; }
-
-            &:hover {
-                box-shadow: $ibexa-btn-hover-box-shadow !important;
-                color: $ibexa-color-white !important;
-            }
-
-            &:focus {
-                outline: none !important;
-                box-shadow: $ibexa-btn-focus-box-shadow, $ibexa-btn-hover-box-shadow !important;
-            }
-
-            &:disabled {
-                color: $ibexa-color-dark-400 !important;
-                background-image: none !important;
-                background-color: $ibexa-color-light !important;
-                box-shadow: none !important;
-                cursor: not-allowed !important;
-            }
-        }
-
-        // Apply — success tint on primary pattern
-        &--apply {
-            background-image: none !important;
-            background-color: $ibexa-color-success !important;
-            color: $ibexa-color-white !important;
-            border: none !important;
-            padding: calculateRem(8px) calculateRem(14px) !important;
-
-            kbd {
-                background: rgba($ibexa-color-black, 0.15) !important;
-                padding: calculateRem(1px) calculateRem(5px) !important;
-                border-radius: calculateRem(3px) !important;
-                font-size: calculateRem(10px) !important;
-                font-family: inherit !important;
-                margin-left: calculateRem(4px) !important;
-            }
-
-            &:hover {
-                background-color: $ibexa-color-success-600 !important;
-                box-shadow: $ibexa-btn-hover-box-shadow-dark !important;
-            }
-
-            &:focus {
-                outline: none !important;
-                box-shadow: $ibexa-btn-focus-box-shadow !important;
-            }
-        }
-
-        // Ghost — for secondary actions inside source-lang row
-        &--ghost {
-            background: transparent !important;
-            color: $_ai-muted !important;
-            border: none !important;
-
-            &:hover { color: $_ai-text !important; }
+        .ibexa-label--checkbox-radio {
+            margin-bottom: 0;
         }
     }
 
-    // ── Spinner ──────────────────────────────────────────
+    // ── Error (layout only — colors from .ibexa-alert--error) ─
+    &__error {
+        margin-bottom: calculateRem(12px);
+    }
+
+    // ── Kbd shortcut badge ────────────────────────────────────
+    &__kbd {
+        background: rgba($ibexa-color-black, 0.15);
+        padding: calculateRem(1px) calculateRem(5px);
+        border-radius: calculateRem(3px);
+        font-size: calculateRem(10px);
+        font-family: inherit;
+        margin-left: calculateRem(4px);
+    }
+
+    // ── Spinner ───────────────────────────────────────────────
     &__spinner {
-        display: inline-block !important;
-        width: calculateRem(14px) !important;
-        height: calculateRem(14px) !important;
-        border: calculateRem(2px) solid rgba($ibexa-color-primary, 0.25) !important;
-        border-top-color: $ibexa-color-primary !important;
-        border-radius: 50% !important;
-        animation: ai-spin 0.6s linear infinite !important;
+        display: inline-block;
+        width: calculateRem(14px);
+        height: calculateRem(14px);
+        border: calculateRem(2px) solid rgba($ibexa-color-primary, 0.25);
+        border-top-color: $ibexa-color-primary;
+        border-radius: 50%;
+        animation: ai-spin 0.6s linear infinite;
     }
 
-    // ── Streaming indicator ──────────────────────────────
+    // ── Streaming indicator ───────────────────────────────────
     &__streaming-indicator {
-        display: inline-block !important;
-        width: calculateRem(14px) !important;
-        height: calculateRem(14px) !important;
-        position: relative !important;
+        display: inline-block;
+        width: calculateRem(14px);
+        height: calculateRem(14px);
+        position: relative;
 
         &::before,
         &::after {
-            content: '' !important;
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: calculateRem(6px) !important;
-            height: calculateRem(6px) !important;
-            border-radius: 50% !important;
-            background: $ibexa-color-white !important;
-            animation: ai-pulse 1s ease-in-out infinite !important;
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calculateRem(6px);
+            height: calculateRem(6px);
+            border-radius: 50%;
+            background: $ibexa-color-white;
+            animation: ai-pulse 1s ease-in-out infinite;
         }
 
-        &::after { animation-delay: 0.5s !important; }
+        &::after { animation-delay: 0.5s; }
     }
 
-    // ── Error ────────────────────────────────────────────
-    &__error {
-        margin: 0 calculateRem(32px) calculateRem(12px) !important;
-        padding: calculateRem(10px) calculateRem(14px) !important;
-        background: $ibexa-color-danger-100 !important;
-        border: calculateRem(1px) solid $ibexa-color-danger-300 !important;
-        border-radius: $_ai-radius-sm !important;
-        color: $ibexa-color-danger !important;
-        font-size: calculateRem(13px) !important;
-
-        strong { margin-right: calculateRem(4px) !important; }
-    }
-
-    // ── Preview section ──────────────────────────────────
+    // ── Preview section ───────────────────────────────────────
     &__preview-section {
-        margin: 0 calculateRem(32px) calculateRem(24px) !important;
-        border: calculateRem(1px) solid $_ai-border !important;
-        border-radius: $_ai-radius-sm !important;
-        overflow: hidden !important;
+        margin-top: calculateRem(16px);
+        border: calculateRem(1px) solid $ibexa-color-light-500;
+        border-radius: $ibexa-border-radius-small;
+        overflow: hidden;
     }
 
     &__preview-header {
-        padding: calculateRem(10px) calculateRem(14px) !important;
-        background: $_ai-bg-card !important;
-        border-bottom: calculateRem(1px) solid $_ai-border !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        font-size: calculateRem(11px) !important;
-        font-weight: $ibexa-font-weight-bold !important;
-        color: $_ai-muted !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.06em !important;
+        padding: calculateRem(10px) calculateRem(14px);
+        background: $ibexa-color-light-300;
+        border-bottom: calculateRem(1px) solid $ibexa-color-light-500;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: calculateRem(11px);
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark-400;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
     }
 
     &__preview {
-        padding: calculateRem(16px) !important;
-        background: $_ai-bg-hover !important;
-        color: $_ai-text !important;
-        font-size: calculateRem(14px) !important;
-        line-height: 1.6 !important;
-        max-height: calculateRem(300px) !important;
-        overflow-y: auto !important;
+        padding: calculateRem(16px);
+        background: $ibexa-color-light-200;
+        color: $ibexa-color-dark;
+        font-size: calculateRem(14px);
+        line-height: 1.6;
+        max-height: calculateRem(300px);
+        overflow-y: auto;
 
-        p { margin: 0 0 calculateRem(12px) !important; }
+        p { margin: 0 0 calculateRem(12px); }
 
         h2, h3, h4, h5, h6 {
-            font-family: $_ai-font-heads !important;
-            margin: calculateRem(16px) 0 calculateRem(8px) !important;
-            color: $_ai-text !important;
+            font-family: $ibexa-font-family-headings;
+            margin: calculateRem(16px) 0 calculateRem(8px);
+            color: $ibexa-color-dark;
         }
 
-        h2 { font-size: calculateRem(18px) !important; }
-        h3 { font-size: calculateRem(16px) !important; }
+        h2 { font-size: calculateRem(18px); }
+        h3 { font-size: calculateRem(16px); }
 
-        ul, ol { padding-left: calculateRem(20px) !important; margin: 0 0 calculateRem(12px) !important; }
-        li { margin-bottom: calculateRem(4px) !important; }
-        strong { font-weight: $ibexa-font-weight-bold !important; }
-        em { font-style: italic !important; }
+        ul, ol { padding-left: calculateRem(20px); margin: 0 0 calculateRem(12px); }
+        li { margin-bottom: calculateRem(4px); }
+        strong { font-weight: $ibexa-font-weight-bold; }
+        em { font-style: italic; }
 
         blockquote {
-            border-left: calculateRem(3px) solid $_ai-accent !important;
-            padding-left: calculateRem(12px) !important;
-            margin: calculateRem(8px) 0 !important;
-            color: $_ai-muted !important;
+            border-left: calculateRem(3px) solid $ibexa-color-primary;
+            padding-left: calculateRem(12px);
+            margin: calculateRem(8px) 0;
+            color: $ibexa-color-dark-400;
         }
 
-        a { color: $_ai-accent !important; text-decoration: underline !important; }
+        a { color: $ibexa-color-primary; text-decoration: underline; }
 
         pre {
-            white-space: pre-wrap !important;
-            word-break: break-word !important;
-            font-family: $_ai-font !important;
-            font-size: calculateRem(13px) !important;
-            margin: 0 !important;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: calculateRem(13px);
+            margin: 0;
         }
     }
 }
 
-// ── Animations ───────────────────────────────────────────
+// ── Animations ───────────────────────────────────────────────
 @keyframes ai-fade-in {
     from { opacity: 0; }
     to   { opacity: 1; }
@@ -649,5 +369,3 @@ $_ai-danger:      $ibexa-color-danger;
     0%, 100% { opacity: 1;   transform: translate(-50%, -50%) scale(1);   }
     50%       { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
 }
-
-

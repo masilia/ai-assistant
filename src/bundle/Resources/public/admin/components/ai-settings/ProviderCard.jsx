@@ -32,7 +32,7 @@ export default function ProviderCard({
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleExpand(); }}}
             >
                 <svg
-                    className={`ai-provider-card__chevron ${isExpanded ? 'ai-provider-card__chevron--open' : ''}`}
+                    className={`ibexa-icon ibexa-icon--small-medium ai-provider-card__chevron ${isExpanded ? 'ai-provider-card__chevron--open' : ''}`}
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -57,37 +57,49 @@ export default function ProviderCard({
                 </div>
 
                 <div className="ai-provider-card__actions" onClick={(e) => e.stopPropagation()}>
-                    <label className="ai-toggle" aria-label={`Toggle ${provider.name} active`}>
-                        <input
-                            type="checkbox"
-                            checked={provider.isActive}
-                            onChange={() => onActivateProvider(provider.id)}
-                        />
-                        <span className="ai-toggle__track" />
-                    </label>
+                    <div
+                        className={`ibexa-toggle ibexa-toggle--small ${provider.isActive ? 'ibexa-toggle--is-checked' : ''}`}
+                        onClick={() => onActivateProvider(provider.id)}
+                    >
+                        <label className="ibexa-toggle__switcher" aria-label={`Toggle ${provider.name} active`}>
+                            <input
+                                className="ibexa-toggle__input"
+                                type="checkbox"
+                                checked={provider.isActive}
+                                onChange={() => onActivateProvider(provider.id)}
+                            />
+                            <span className="ibexa-toggle__indicator" />
+                        </label>
+                    </div>
 
                     <button
                         type="button"
-                        className="ai-icon-btn ai-icon-btn--test"
+                        className="ibexa-btn ibexa-btn--secondary ibexa-btn--small"
                         disabled={testingId === provider.id}
                         onClick={() => onTestProvider(provider.id)}
                     >
-                        {testingId === provider.id ? '...' : '⚡ Test'}
+                        {testingId === provider.id ? '...' : 'Test'}
                     </button>
-                    <button type="button" className="ai-icon-btn" onClick={() => onEditProvider(provider)}>
-                        Edit
+                    <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text" onClick={() => onEditProvider(provider)} title="Edit">
+                        <svg className="ibexa-icon ibexa-icon--small">
+                            <use xlinkHref="/bundles/ibexaadminui/img/ibexa-icons.svg#edit" />
+                        </svg>
                     </button>
-                    <button type="button" className="ai-icon-btn ai-icon-btn--danger" onClick={() => onDeleteProvider(provider.id)}>
-                        Delete
+                    <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text ai-btn--danger" onClick={() => onDeleteProvider(provider.id)} title="Delete">
+                        <svg className="ibexa-icon ibexa-icon--small">
+                            <use xlinkHref="/bundles/ibexaadminui/img/ibexa-icons.svg#trash" />
+                        </svg>
                     </button>
                 </div>
             </div>
 
             {/* Test result toast */}
             {testResult && (
-                <div style={{ padding: '0 20px 8px' }}>
-                    <div className={`ai-test-toast ${testResult.success ? 'ai-test-toast--success' : 'ai-test-toast--error'}`}>
-                        {testResult.success ? '✓' : '✕'} {testResult.message}
+                <div className="ai-provider-card__toast-wrapper">
+                    <div className={`ibexa-alert ${testResult.success ? 'ibexa-alert--success' : 'ibexa-alert--error'} ai-test-toast`}>
+                        <div className="ibexa-alert__content">
+                            <span className="ibexa-alert__title">{testResult.success ? '✓' : '✕'} {testResult.message}</span>
+                        </div>
                     </div>
                 </div>
             )}
@@ -107,7 +119,7 @@ export default function ProviderCard({
                             <h6>Models ({providerModels.length})</h6>
                             <button
                                 type="button"
-                                className="ai-provider-card__add-model-btn"
+                                className="ibexa-btn ibexa-btn--secondary ibexa-btn--small"
                                 onClick={() => onAddModel(provider.id)}
                             >
                                 + Add Model
@@ -115,13 +127,13 @@ export default function ProviderCard({
                         </div>
 
                         {providerModels.length === 0 ? (
-                            <div className="ai-empty-state" style={{ padding: '24px 0' }}>
+                            <div className="ai-empty-state">
                                 <div className="ai-empty-state__icon">🤖</div>
                                 <p className="ai-empty-state__title">No models yet</p>
                                 <p className="ai-empty-state__desc">Add a model to start using this provider.</p>
                                 <button
                                     type="button"
-                                    className="ai-btn-add"
+                                    className="ibexa-btn ibexa-btn--secondary"
                                     onClick={() => onAddModel(provider.id)}
                                 >
                                     + Add First Model

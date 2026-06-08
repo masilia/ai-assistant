@@ -268,14 +268,14 @@ import { APPLY_MODE, SUGGEST_MODE } from '../components/ai-settings/constants.js
     function createAiButton() {
         const btn = doc.createElement('button');
         btn.type = 'button';
-        btn.className = 'ai-suggest-trigger';
+        btn.className = 'ibexa-btn ibexa-btn--primary ibexa-btn--small ai-suggest-trigger';
         btn.setAttribute('aria-label', 'AI content assistant');
         btn.title = 'Generate content with AI';
         btn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z"/>
+            <svg class="ibexa-icon ibexa-icon--tiny-small" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M9.937 3.314l1.563 3.186 3.186 1.563-3.186 1.563-1.563 3.186-1.563-3.186-3.186-1.563 3.186-1.563zM19 7l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM14 17l1.25 2.75L18 21l-2.75 1.25L14 25l-1.25-2.75L10 21l2.75-1.25z"/>
             </svg>
-            <span>AI</span>
+            <span class="ibexa-btn__label">AI</span>
         `;
         return btn;
     }

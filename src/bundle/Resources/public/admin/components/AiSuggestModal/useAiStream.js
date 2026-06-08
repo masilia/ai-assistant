@@ -1,5 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
-import { AI_ROUTES } from '../../ai-settings/api-routes.js';
+import { AI_ROUTES } from '../ai-settings/api-routes.js';
+
+/**
+ * @typedef {import('../ai-settings/types.js').FieldContext} FieldContext
+ */
 
 /**
  * Owns the SSE streaming lifecycle: fetch + ReadableStream reader +
@@ -9,9 +13,19 @@ import { AI_ROUTES } from '../../ai-settings/api-routes.js';
  * and imperative start()/stop()/clear() methods. The shell component
  * stays pure presentational.
  *
- * @param {object|null} fieldContext   Field context payload (null until modal opens)
- * @param {string}      prompt         The current prompt text
- * @param {string}      sourceLanguage Source language for translation, or ''
+ * @param {FieldContext|null} fieldContext   Field context payload (null until modal opens)
+ * @param {string}            prompt         The current prompt text
+ * @param {string}            sourceLanguage Source language for translation, or ''
+ * @returns {{
+ *   suggestion: string,
+ *   streaming: boolean,
+ *   loading: boolean,
+ *   error: string,
+ *   start: () => Promise<void>,
+ *   stop: () => void,
+ *   clear: () => void,
+ *   setError: (message: string) => void,
+ * }}
  */
 export function useAiStream(fieldContext, prompt, sourceLanguage) {
     const [suggestion, setSuggestion] = useState('');

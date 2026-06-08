@@ -3,15 +3,40 @@ import { AI_ROUTES } from './api-routes.js';
 import { notify, cleanErrorMessage } from './constants.js';
 
 /**
+ * @typedef {import('./types.js').Provider} Provider
+ * @typedef {import('./types.js').Model} Model
+ * @typedef {import('./types.js').TestResult} TestResult
+ * @typedef {import('./types.js').DashboardData} DashboardData
+ */
+
+/**
  * Custom hook — owns all AI settings state, data fetching, and CRUD logic.
  * AiSettingsDashboard becomes a pure presentation component.
+ *
+ * @returns {{
+ *   data: DashboardData,
+ *   loading: boolean,
+ *   submitting: boolean,
+ *   testingId: number|null,
+ *   testResults: Object<number, TestResult>,
+ *   fetchData: () => Promise<DashboardData|undefined>,
+ *   saveProvider: (e: Event, editing: Provider|'new'|null) => Promise<boolean>,
+ *   deleteProvider: (id: number) => Promise<void>,
+ *   activateProvider: (id: number) => Promise<void>,
+ *   testProvider: (id: number) => Promise<void>,
+ *   saveModel: (e: Event, editing: Model|'new'|null) => Promise<boolean>,
+ *   deleteModel: (id: number) => Promise<void>,
+ *   activateModel: (id: number) => Promise<void>,
+ * }}
  */
 export function useAiSettings() {
-    const [data, setData]           = useState({ providers: [], models: [], activeProviderId: null, activeModelId: null, siteaccesses: [] });
+    const [data, setData]           = useState(/** @type {DashboardData} */ ({
+        providers: [], models: [], activeProviderId: null, activeModelId: null, siteaccesses: [],
+    }));
     const [loading, setLoading]     = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [testingId, setTestingId] = useState(null);
-    const [testResults, setTestResults] = useState({});
+    const [testingId, setTestingId] = useState(/** @type {number|null} */ (null));
+    const [testResults, setTestResults] = useState(/** @type {Object<number, TestResult>} */ ({}));
 
     // ── Data fetching ──────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {

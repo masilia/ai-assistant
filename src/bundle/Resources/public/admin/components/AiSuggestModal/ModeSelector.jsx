@@ -1,5 +1,5 @@
 import React from 'react';
-import { SUGGEST_MODE } from '../../ai-settings/constants.js';
+import { SUGGEST_MODE } from '../ai-settings/constants.js';
 
 /**
  * Replace vs. Append radio selector. Stateless.

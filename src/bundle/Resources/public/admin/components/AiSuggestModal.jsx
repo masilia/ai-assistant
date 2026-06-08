@@ -9,6 +9,10 @@ import ModeSelector from './AiSuggestModal/ModeSelector.jsx';
 import ErrorBanner from './AiSuggestModal/ErrorBanner.jsx';
 import SuggestionPreview from './AiSuggestModal/SuggestionPreview.jsx';
 
+/**
+ * @typedef {import('./ai-settings/types.js').FieldContext} FieldContext
+ */
+
 const FIELD_TYPE_LABELS = {
     ezstring: 'Text Line',
     eztext: 'Text Block',
@@ -29,7 +33,7 @@ function AiSuggestModal() {
     const [open, setOpen] = useState(false);
     const [prompt, setPrompt] = useState('');
     const [mode, setMode] = useState(SUGGEST_MODE.REPLACE);
-    const [fieldContext, setFieldContext] = useState(null);
+    const [fieldContext, setFieldContext] = useState(/** @type {FieldContext|null} */ (null));
     const [selectedQuickAction, setSelectedQuickAction] = useState(null);
     const [sourceLanguage, setSourceLanguage] = useState('');
     const [showSourceLangInput, setShowSourceLangInput] = useState(false);

@@ -155,12 +155,19 @@ function AiSuggestModal() {
         <>
             <div className="ai-suggest-overlay" onClick={() => setOpen(false)} />
 
-            <div className="ibexa-modal ai-suggest-modal" onKeyDown={handleKeyDown}>
+            <div
+                className="ibexa-modal ai-suggest-modal"
+                onKeyDown={handleKeyDown}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ai-suggest-modal-title"
+                aria-busy={stream.streaming || stream.loading}
+            >
                 <div className="modal-dialog">
                     <div className="modal-content">
 
                         <div className="modal-header">
-                            <h5 className="modal-title ai-suggest-modal__title">
+                            <h5 className="modal-title ai-suggest-modal__title" id="ai-suggest-modal-title">
                                 <svg className="ibexa-icon ibexa-icon--small-medium ai-suggest-modal__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
                                 </svg>
@@ -239,11 +246,15 @@ function AiSuggestModal() {
                             >
                                 {stream.streaming ? (
                                     <>
-                                        <span className="ai-suggest-modal__streaming-indicator" />
+                                        <span className="ai-suggest-modal__streaming-indicator" aria-hidden="true" />
                                         <span>Stop</span>
+                                        <span className="visually-hidden">AI is generating content, please wait.</span>
                                     </>
                                 ) : stream.loading ? (
-                                    <span className="ai-suggest-modal__spinner" />
+                                    <>
+                                        <span className="ai-suggest-modal__spinner" aria-hidden="true" />
+                                        <span className="visually-hidden">Loading, please wait.</span>
+                                    </>
                                 ) : (
                                     <>
                                         <svg className="ibexa-icon ibexa-icon--tiny-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

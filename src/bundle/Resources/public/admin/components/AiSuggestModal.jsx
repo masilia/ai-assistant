@@ -71,6 +71,14 @@ function AiSuggestModal() {
             setShowSourceLangInput(false);
             stream.stop();
             stream.clear();
+
+            // Pre-fill hints sent by the injector (e.g. one-click
+            // 'Translate from {Language}' buttons on translated
+            // sibling fields). Non-translate hints are no-ops.
+            if (detail.hintAction === 'translate' && detail.hintSourceLanguage) {
+                setShowSourceLangInput(true);
+                setSourceLanguage(detail.hintSourceLanguage);
+            }
         };
 
         document.addEventListener('ai-suggest:open', handler);

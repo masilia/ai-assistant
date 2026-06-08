@@ -1,6 +1,6 @@
 import { SELECTORS } from './selectors.js';
 import { getFieldType, getFieldLabel, getCurrentValue, getContentTypeName, getContentTitle, getSiblingFields, getFieldIdentifier, getContentId } from './fieldInfo.js';
-import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton } from './novaseo.js';
+import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, injectTranslateButtonsForSiblings } from './novaseo.js';
 import { applyToField } from './apply.js';
 import { APPLY_MODE, SUGGEST_MODE } from '../../components/ai-settings/constants.js';
 
@@ -90,6 +90,31 @@ function injectButton(doc, fieldEdit) {
  */
 export function scanFields(doc) {
     doc.querySelectorAll(SELECTORS.fieldEdit).forEach((el) => injectButton(doc, el));
+    injectTranslateButtonsForSiblings(doc, (fieldEdit, fieldType, sourceLanguage) => {
+        // Translate from a sibling: open the modal with the translate
+        // action pre-selected and the source language pre-filled. The
+        // modal handles the actual translation flow.
+        const currentInput = fieldEdit.querySelector(SELECTORS.dataInput);
+        const fieldName = getFieldLabel(fieldEdit);
+        const detail = {
+            fieldEdit,
+            fieldType,
+            fieldName,
+            subFieldKey: '',
+            metaKeys: [],
+            currentValue: getCurrentValue(fieldEdit, fieldType, currentInput),
+            contentTypeName: undefined,
+            language: '',
+            contentTitle: '',
+            siblingFields: [],
+            contentId: '',
+            onApply: (suggestion, mode) => applyToField(fieldEdit, fieldType, currentInput, suggestion, mode, APPLY_MODE.SUB_FIELD),
+            // New: hint to the modal to pre-select translate + language.
+            hintAction: 'translate',
+            hintSourceLanguage: sourceLanguage,
+        };
+        doc.dispatchEvent(new CustomEvent('ai-suggest:open', { detail }));
+    });
 }
 
 /**

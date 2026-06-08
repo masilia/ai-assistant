@@ -101,15 +101,35 @@ export function useAiSettings() {
     }, [fetchData]);
 
     const activateProvider = useCallback(async (id) => {
+        // Optimistic update: flip the active flag locally and deactivate
+        // siblings within the same scope, before the network round-trip.
+        // On error, the catch path reverts by re-fetching from the server.
+        const previous = data;
+        setData((prev) => ({
+            ...prev,
+            activeProviderId: id,
+            providers: prev.providers.map((p) => {
+                if (p.id === id) return { ...p, isActive: true };
+                if (p.siteaccess === previous.providers.find((x) => x.id === id)?.siteaccess) {
+                    return { ...p, isActive: false };
+                }
+                return p;
+            }),
+        }));
+
         try {
             const res = await fetch(AI_ROUTES.activateProvider(id), { method: 'POST' });
             if (!res.ok) throw new Error('Failed to activate provider.');
             notify('success', 'Active provider routing updated.');
             await fetchData();
         } catch (err) {
+            // Revert to the pre-optimistic state, then re-sync from server
+            // to make sure any server-side state changes aren't lost.
+            setData(previous);
+            await fetchData();
             notify('error', cleanErrorMessage(err.message));
         }
-    }, [fetchData]);
+    }, [data, fetchData]);
 
     const testProvider = useCallback(async (id) => {
         setTestingId(id);
@@ -187,15 +207,34 @@ export function useAiSettings() {
     }, [fetchData]);
 
     const activateModel = useCallback(async (id) => {
+        // Same optimistic pattern as activateProvider: flip the local
+        // isActive flag and deactivate sibling models on the same provider,
+        // then reconcile with the server. Reverts on error.
+        const previous = data;
+        setData((prev) => ({
+            ...prev,
+            activeModelId: id,
+            models: prev.models.map((m) => {
+                if (m.id === id) return { ...m, isActive: true };
+                const target = previous.models.find((x) => x.id === id);
+                if (target && m.providerId === target.providerId) {
+                    return { ...m, isActive: false };
+                }
+                return m;
+            }),
+        }));
+
         try {
             const res = await fetch(AI_ROUTES.activateModel(id), { method: 'POST' });
             if (!res.ok) throw new Error('Failed to activate model.');
             notify('success', 'Active model routing updated.');
             await fetchData();
         } catch (err) {
+            setData(previous);
+            await fetchData();
             notify('error', cleanErrorMessage(err.message));
         }
-    }, [fetchData]);
+    }, [data, fetchData]);
 
     return {
         data,

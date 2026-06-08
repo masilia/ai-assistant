@@ -71,11 +71,48 @@ export default function AiSettingsDashboard() {
         });
     };
 
-    const filteredProviders = data.providers.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.identifier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.siteaccess || 'global').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Search matches:
+    //   - Provider name / identifier / siteaccess
+    //   - Model name / identifier belonging to that provider
+    // Providers with no match (and no matching model) are hidden.
+    // Providers with a matching model but not matching the search
+    // themselves are auto-expanded so the match is visible.
+    const query = searchQuery.trim().toLowerCase();
+    const matchingModelIdsByProvider = new Map();
+    if (query) {
+        for (const m of data.models) {
+            const haystack = `${m.name} ${m.identifier}`.toLowerCase();
+            if (haystack.includes(query)) {
+                if (!matchingModelIdsByProvider.has(m.providerId)) {
+                    matchingModelIdsByProvider.set(m.providerId, []);
+                }
+                matchingModelIdsByProvider.get(m.providerId).push(m.id);
+            }
+        }
+    }
+    const totalMatchingModels = Array.from(matchingModelIdsByProvider.values())
+        .reduce((sum, arr) => sum + arr.length, 0);
+
+    const filteredProviders = query
+        ? data.providers.filter((p) => {
+            const providerHaystack = `${p.name} ${p.identifier} ${p.siteaccess || 'global'}`.toLowerCase();
+            return providerHaystack.includes(query) || matchingModelIdsByProvider.has(p.id);
+        })
+        : data.providers;
+
+    // Auto-expand any provider card whose model matched the search
+    // (so the user actually sees the hit). Additive with the user's
+    // manual expansion state.
+    useEffect(() => {
+        if (!query || matchingModelIdsByProvider.size === 0) return;
+        setExpandedIds((prev) => {
+            const next = new Set(prev);
+            for (const pid of matchingModelIdsByProvider.keys()) {
+                next.add(pid);
+            }
+            return next;
+        });
+    }, [query, matchingModelIdsByProvider]);
 
     // ── Render ─────────────────────────────────────────────────────────────
     if (loading) {
@@ -130,10 +167,10 @@ export default function AiSettingsDashboard() {
                             <input
                                 type="text"
                                 className="ibexa-input ibexa-input--text form-control ai-action-bar__input"
-                                placeholder="Search providers..."
+                                placeholder="Search providers and models..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                aria-label="Search providers"
+                                aria-label="Search providers and models"
                             />
                         </div>
                         <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
@@ -142,14 +179,25 @@ export default function AiSettingsDashboard() {
                     </div>
 
                     {filteredProviders.length === 0 ? (
-                        <div className="ai-empty-state">
-                            <div className="ai-empty-state__icon">🧠</div>
-                            <p className="ai-empty-state__title">No providers configured</p>
-                            <p className="ai-empty-state__desc">Add your first AI provider to start using AI-assisted content editing.</p>
-                            <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
-                                + Add First Provider
-                            </button>
-                        </div>
+                        query ? (
+                            <div className="ai-empty-state">
+                                <div className="ai-empty-state__icon">🔍</div>
+                                <p className="ai-empty-state__title">No matches</p>
+                                <p className="ai-empty-state__desc">No provider or model matches "{searchQuery}".</p>
+                                <button type="button" className="ibexa-btn ibexa-btn--tertiary" onClick={() => setSearchQuery('')}>
+                                    Clear search
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="ai-empty-state">
+                                <div className="ai-empty-state__icon">🧠</div>
+                                <p className="ai-empty-state__title">No providers configured</p>
+                                <p className="ai-empty-state__desc">Add your first AI provider to start using AI-assisted content editing.</p>
+                                <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
+                                    + Add First Provider
+                                </button>
+                            </div>
+                        )
                     ) : (
                         <div className="ai-providers-stack">
                             {filteredProviders.map(p => (

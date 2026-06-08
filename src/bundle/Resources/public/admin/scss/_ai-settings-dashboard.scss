@@ -300,6 +300,13 @@
         padding-left: calculateRem(38px);
     }
 
+    &__match-hint {
+        margin: calculateRem(8px) 0 0;
+        font-size: $ibexa-text-font-size-small;
+        color: $ibexa-color-dark-400;
+        font-style: italic;
+    }
+
     &__search-icon {
         position: absolute;
         left: calculateRem(12px);

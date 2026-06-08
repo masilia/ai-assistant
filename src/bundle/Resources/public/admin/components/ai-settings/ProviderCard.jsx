@@ -5,6 +5,7 @@ import ModelCard from './ModelCard.jsx';
 export default function ProviderCard({
     provider,
     models,
+    currentSiteaccess = '',
     isExpanded,
     onToggleExpand,
     onActivateProvider,
@@ -20,8 +21,19 @@ export default function ProviderCard({
 }) {
     const providerModels = models.filter(m => m.providerId === provider.id);
 
+    // The row whose siteaccess matches the admin's current siteaccess
+    // is the one actually driving requests. Highlight it; flag others
+    // as 'not in your scope' so a misconfig is visually obvious.
+    const matchesCurrentScope = provider.siteaccess === currentSiteaccess
+        || (!provider.siteaccess && currentSiteaccess && false); // global never matches "your" scope as primary
+
     return (
-        <div className={`ai-provider-card ${provider.isActive ? 'ai-provider-card--active' : ''}`}>
+        <div
+            className={`ai-provider-card ${provider.isActive ? 'ai-provider-card--active' : ''} ${
+                matchesCurrentScope ? 'ai-provider-card--your-scope' : ''
+            }`}
+            data-scope={provider.siteaccess || 'global'}
+        >
             {/* Clickable header */}
             <div
                 className="ai-provider-card__header"

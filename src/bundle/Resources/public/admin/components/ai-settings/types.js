@@ -46,6 +46,7 @@
  * @property {?number}    activeProviderId  Currently active provider, if any
  * @property {?number}    activeModelId     Currently active model, if any
  * @property {string[]}   siteaccesses      All available siteaccess names (for the form dropdown)
+ * @property {string}     currentSiteaccess Name of the siteaccess the admin is currently in
  */
 
 /**

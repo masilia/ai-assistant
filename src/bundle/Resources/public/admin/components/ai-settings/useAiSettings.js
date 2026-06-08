@@ -31,7 +31,7 @@ import { notify, cleanErrorMessage } from './constants.js';
  */
 export function useAiSettings() {
     const [data, setData]           = useState(/** @type {DashboardData} */ ({
-        providers: [], models: [], activeProviderId: null, activeModelId: null, siteaccesses: [],
+        providers: [], models: [], activeProviderId: null, activeModelId: null, siteaccesses: [], currentSiteaccess: '',
     }));
     const [loading, setLoading]     = useState(true);
     const [submitting, setSubmitting] = useState(false);

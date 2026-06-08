@@ -25,7 +25,7 @@ const STATE_DESCRIPTIONS = {
  * The banner fetches /api/health on mount and exposes an imperative
  * refresh() so the parent can re-check after activating a provider.
  */
-export default function ActiveBanner({ providers, models, activeProviderId, activeModelId, onRefresh }) {
+export default function ActiveBanner({ providers, models, activeProviderId, activeModelId, currentSiteaccess = 'default', onRefresh }) {
     const [health, setHealth] = useState(null);
 
     useEffect(() => {
@@ -61,7 +61,12 @@ export default function ActiveBanner({ providers, models, activeProviderId, acti
             aria-label="Active AI engine status"
         >
             <div className="ibexa-alert__content">
-                <span className="ai-banner__label">Currently Active LLM Engine</span>
+                <span className="ai-banner__label">
+                    Currently Active LLM Engine
+                    {currentSiteaccess && (
+                        <small className="ai-banner__siteaccess">For siteaccess: <code>{currentSiteaccess}</code></small>
+                    )}
+                </span>
                 <h4 className="ai-banner__title">
                     {health?.providerName ?? providers.find((p) => p.id === activeProviderId)?.name ?? 'None'}
                     <span className="ai-banner__divider">/</span>

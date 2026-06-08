@@ -78,12 +78,15 @@ class AiProviderApiController extends Controller
         }
         sort($siteaccesses);
 
+        $currentSiteaccess = $this->siteAccessService->getCurrent()?->name ?? 'default';
+
         return new JsonResponse([
             'providers' => $providersData,
             'models' => $modelsData,
             'activeProviderId' => $activeProvider?->getId(),
             'activeModelId' => $activeModel?->getId(),
             'siteaccesses' => $siteaccesses,
+            'currentSiteaccess' => $currentSiteaccess,
         ]);
     }
 

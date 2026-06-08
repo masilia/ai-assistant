@@ -93,6 +93,7 @@ export default function AiSettingsDashboard() {
                 models={data.models}
                 activeProviderId={data.activeProviderId}
                 activeModelId={data.activeModelId}
+                currentSiteaccess={data.currentSiteaccess}
             />
 
             <div className="ai-action-bar">
@@ -131,6 +132,7 @@ export default function AiSettingsDashboard() {
                             key={p.id}
                             provider={p}
                             models={data.models}
+                            currentSiteaccess={data.currentSiteaccess}
                             isExpanded={expandedIds.has(p.id)}
                             onToggleExpand={() => toggleExpand(p.id)}
                             onActivateProvider={activateProvider}

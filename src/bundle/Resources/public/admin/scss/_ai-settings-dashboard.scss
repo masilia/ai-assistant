@@ -182,6 +182,16 @@
         border-color: $ibexa-color-primary;
     }
 
+    // Visually flags the row that matches the admin's current siteaccess
+    // (or the global provider if no scoped one matches). Sits inside the
+    // primary border with a subtle inner glow so it reads as 'this is
+    // the one actually serving your requests'.
+    &--your-scope {
+        box-shadow:
+            calculateRem(4px) calculateRem(22px) calculateRem(47px) 0 rgba($ibexa-color-info, 0.05),
+            inset 0 0 0 calculateRem(2px) rgba($ibexa-color-primary, 0.15);
+    }
+
     &__header {
         display: flex;
         align-items: center;

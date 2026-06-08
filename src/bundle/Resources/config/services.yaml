@@ -14,9 +14,6 @@ services:
     Masilia\AiAssistant\Repository\AiProviderRepositoryInterface:
         alias: Masilia\Bundle\AiAssistant\Repository\AiProviderRepository
 
-    Masilia\AiAssistant\Repository\AiModelRepositoryInterface:
-        alias: Masilia\Bundle\AiAssistant\Repository\AiModelRepository
-
     Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface:
         abstract: true
 

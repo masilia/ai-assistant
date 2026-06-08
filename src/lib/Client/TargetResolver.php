@@ -7,7 +7,6 @@ namespace Masilia\AiAssistant\Client;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
-use Masilia\AiAssistant\Repository\AiModelRepositoryInterface;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 
 /**
@@ -28,7 +27,6 @@ class TargetResolver
 
     public function __construct(
         private readonly AiProviderRepositoryInterface $providerRepository,
-        private readonly AiModelRepositoryInterface    $modelRepository,
         private readonly ProviderAdapterRegistry       $adapterRegistry,
         private readonly ConfigResolverInterface       $configResolver,
         private readonly SiteAccessServiceInterface    $siteAccessService,
@@ -38,36 +36,28 @@ class TargetResolver
     public function resolve(): AiTarget
     {
         // 1) Try DB-configured providers (siteaccess-scoped → global)
-        $activeProvider = $this->providerRepository->findActiveForSiteaccess($this->getCurrentSiteaccess());
+        $resolved = $this->providerRepository->findActiveForSiteaccess($this->getCurrentSiteaccess());
 
-        if ($activeProvider !== null) {
-            return $this->buildDbTarget($activeProvider);
+        if ($resolved !== null) {
+            return $this->buildTargetFromResolved($resolved);
         }
 
         // 2) Fall back to siteaccess-aware YAML config
         return $this->buildConfigTarget();
     }
 
-    private function buildDbTarget(\Masilia\Bundle\AiAssistant\Entity\AiProvider $activeProvider): AiTarget
+    private function buildTargetFromResolved(\Masilia\AiAssistant\Client\Resolved\ResolvedProvider $resolved): AiTarget
     {
-        $activeModel = $this->modelRepository->findActiveForProvider($activeProvider);
-
-        if ($activeModel === null) {
-            throw new \RuntimeException(
-                sprintf('AI Provider "%s" is active, but no active model is configured for it.', $activeProvider->getName())
-            );
-        }
-
-        $adapter = $this->adapterRegistry->getForProvider($activeProvider->getIdentifier());
+        $adapter = $this->adapterRegistry->getForProvider($resolved->providerIdentifier);
 
         return new AiTarget(
             adapter: $adapter,
-            providerIdentifier: $activeProvider->getIdentifier(),
-            modelIdentifier: $activeModel->getIdentifier(),
-            temperature: $activeModel->getTemperature(),
-            maxTokens: $activeModel->getMaxTokens(),
-            url: $adapter->buildEndpointUrl($activeProvider->getApiUrl()),
-            headers: $adapter->buildHeaders($activeProvider->getApiKey()),
+            providerIdentifier: $resolved->providerIdentifier,
+            modelIdentifier: $resolved->modelIdentifier,
+            temperature: $resolved->temperature,
+            maxTokens: $resolved->maxTokens,
+            url: $adapter->buildEndpointUrl($resolved->apiUrl),
+            headers: $adapter->buildHeaders($resolved->apiKey),
         );
     }
 

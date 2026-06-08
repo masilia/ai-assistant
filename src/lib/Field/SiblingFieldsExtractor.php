@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Field;
 
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
+use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\DTO\SiblingField;
 
 /**

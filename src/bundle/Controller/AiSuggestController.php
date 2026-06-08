@@ -14,8 +14,8 @@ use Masilia\AiAssistant\FieldContextExtractor;
 use Masilia\AiAssistant\FieldFormat;
 use Masilia\AiAssistant\FieldFormatResolver;
 use Masilia\AiAssistant\LanguageNormalizer;
+use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
-use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,7 +40,7 @@ readonly class AiSuggestController
         private FieldContextExtractor $contextExtractor,
         private LanguageNormalizer    $languageNormalizer,
         private LoggerInterface       $aiLogger,
-        private ConfigResolverInterface $configResolver,
+        private ContentService        $contentService,
     )
     {
     }
@@ -54,25 +54,57 @@ readonly class AiSuggestController
     }
 
     #[Route('/admin/api/ai/languages', name: 'app.ai.languages', methods: ['GET'])]
-    public function getLanguages(): JsonResponse
+    public function getLanguages(Request $request): JsonResponse
     {
         if (!$this->permissionResolver->hasAccess('content', 'edit')) {
             return new JsonResponse(AiError::accessDenied()->toArray(), Response::HTTP_FORBIDDEN);
         }
 
-        // Siteaccess-aware: the host app declares available languages via
-        // siteaccess config (parameter 'languages' under 'ibexa.site_access').
-        // The response shape is [{code, name}] where 'name' is derived from
-        // the locale code (e.g. 'eng-GB' -> 'English (United Kingdom)').
-        $rawLanguages = $this->configResolver->getParameter('languages', 'ibexa.site_access');
+        // Source: the existing content's language list.
+        //
+        // We read the languages the current content already has
+        // translations in, NOT the siteaccess-config parameter. Two
+        // reasons:
+        //  1. The siteaccess config lists every language configured
+        //     for the siteaccess — including ones with no content
+        //     translations yet. For a "Translate from {language}"
+        //     dropdown, the user can only translate FROM a language
+        //     that has actual content, so the un-translated entries
+        //     are noise.
+        //  2. Multi-repo installs can declare different per-repo
+        //     language lists. The content's own fields are the only
+        //     ground truth that works across repos.
+        //
+        // If the request supplies a contentId, we load it. Otherwise
+        // we return an empty list (the modal falls back to a free-text
+        // input).
+        $contentId = (int) $request->query->get('contentId', 0);
+        if ($contentId <= 0) {
+            return new JsonResponse(['languages' => []]);
+        }
+
+        try {
+            $content = $this->contentService->loadContent($contentId);
+        } catch (\Throwable) {
+            // Content not found, not accessible, or deleted. The modal
+            // can fall back to a free-text input; return [] rather
+            // than a 500.
+            return new JsonResponse(['languages' => []]);
+        }
+
+        // VersionInfo::getLanguageCodes() returns the canonical list
+        // of languages this content version has translations in.
+        // Pre-deduplicated and pre-sorted by the framework, derived
+        // from the actual loaded fields (not from siteaccess config
+        // or any external parameter).
+        $codes = $content->versionInfo->languageCodes;
+        $defaultLocale = \Locale::getDefault();
         $languages = array_map(
-            static function (string $code): array {
-                return [
-                    'code' => $code,
-                    'name' => \Locale::getDisplayName($code, \Locale::getDefault()) ?: $code,
-                ];
-            },
-            is_array($rawLanguages) ? $rawLanguages : []
+            static fn(string $code): array => [
+                'code' => $code,
+                'name' => \Locale::getDisplayName($code, $defaultLocale) ?: $code,
+            ],
+            $codes
         );
 
         return new JsonResponse(['languages' => $languages]);

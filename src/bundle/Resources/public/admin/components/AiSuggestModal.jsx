@@ -85,13 +85,26 @@ function AiSuggestModal() {
         return () => document.removeEventListener('ai-suggest:open', handler);
     }, [stream]);
 
-    // Fetch available languages lazily when the source-language picker is
-    // first shown. Cached in state so we don't re-hit the endpoint on
-    // every modal open.
+    // Fetch available languages lazily when the source-language picker
+    // is first shown. Cached in state so we don't re-hit the endpoint
+    // on every modal open.
+    //
+    // The endpoint returns the language list of the current content
+    // (the canonical "Translate from {language}" choices), so we
+    // pass the contentId from the fieldContext.
     useEffect(() => {
         if (!showSourceLangInput || availableLanguages.length > 0) return;
 
-        fetch(AI_ROUTES.languages, { headers: { Accept: 'application/json' } })
+        const params = new URLSearchParams();
+        const contentId = fieldContext?.contentId;
+        if (contentId) {
+            params.set('contentId', String(contentId));
+        }
+        const url = params.toString()
+            ? `${AI_ROUTES.languages}?${params.toString()}`
+            : AI_ROUTES.languages;
+
+        fetch(url, { headers: { Accept: 'application/json' } })
             .then((res) => (res.ok ? res.json() : null))
             .then((data) => {
                 if (data && Array.isArray(data.languages)) {
@@ -99,7 +112,7 @@ function AiSuggestModal() {
                 }
             })
             .catch(() => { /* fallback to free-text input */ });
-    }, [showSourceLangInput, availableLanguages.length]);
+    }, [showSourceLangInput, availableLanguages.length, fieldContext?.contentId]);
 
     // Auto-focus prompt input when modal opens
     useEffect(() => {

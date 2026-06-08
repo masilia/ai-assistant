@@ -36,28 +36,34 @@ function openAiModal(doc, fieldEdit, fieldType, targetElement, subFieldName, app
 
 /**
  * Find the input-actions wrapper for a field. In Ibexa, text inputs
- * live inside `.ibexa-input-text-wrapper` which has a
- * `.ibexa-input-text-wrapper__actions` child for action buttons.
- * Falls back to the input's parent if the wrapper isn't found.
+ * live inside `.ibexa-input-text-wrapper__input-wrapper` with a
+ * sibling `.ibexa-input-text-wrapper__actions` for action buttons.
+ * Both are children of `.ibexa-input-text-wrapper`.
+ *
+ * DOM structure:
+ *   .ibexa-input-text-wrapper
+ *     ├── .ibexa-input-text-wrapper__input-wrapper
+ *     │   └── input.ibexa-data-source__input
+ *     └── .ibexa-input-text-wrapper__actions
+ *         └── button (clear, etc.)
+ *
+ * Falls back to creating the actions div if the wrapper exists but
+ * has no actions container yet. Returns null when no wrapper is found.
  */
-function findInputActionsWrapper(fieldEdit, targetElement) {
+function findInputActionsWrapper(doc, fieldEdit, targetElement) {
     const input = targetElement || fieldEdit.querySelector(SELECTORS.dataInput);
     if (!input) return null;
 
-    // Walk up from the input to find the actions wrapper
     const wrapper = input.closest('.ibexa-input-text-wrapper');
-    if (wrapper) {
-        let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
-        if (!actions) {
-            actions = doc.createElement('div');
-            actions.className = 'ibexa-input-text-wrapper__actions';
-            wrapper.appendChild(actions);
-        }
-        return actions;
-    }
+    if (!wrapper) return null;
 
-    // Fallback: use the input's parent element
-    return input.parentElement;
+    let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
+    if (!actions) {
+        actions = doc.createElement('div');
+        actions.className = 'ibexa-input-text-wrapper__actions';
+        wrapper.appendChild(actions);
+    }
+    return actions;
 }
 
 /**

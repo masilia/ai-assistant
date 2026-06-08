@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { SUGGEST_MODE, applyQuickAction } from './ai-settings/constants.js';
+import { AI_ROUTES } from './ai-settings/api-routes.js';
 import { useAiStream } from './AiSuggestModal/useAiStream.js';
 import PromptSection from './AiSuggestModal/PromptSection.jsx';
 import QuickActions from './AiSuggestModal/QuickActions.jsx';
@@ -37,6 +38,7 @@ function AiSuggestModal() {
     const [selectedQuickAction, setSelectedQuickAction] = useState(null);
     const [sourceLanguage, setSourceLanguage] = useState('');
     const [showSourceLangInput, setShowSourceLangInput] = useState(false);
+    const [availableLanguages, setAvailableLanguages] = useState(/** @type {Array<{code: string, name: string}>} */ ([]));
 
     const promptRef = useRef(null);
     const onApplyRef = useRef(null);
@@ -73,6 +75,22 @@ function AiSuggestModal() {
         document.addEventListener('ai-suggest:open', handler);
         return () => document.removeEventListener('ai-suggest:open', handler);
     }, [stream]);
+
+    // Fetch available languages lazily when the source-language picker is
+    // first shown. Cached in state so we don't re-hit the endpoint on
+    // every modal open.
+    useEffect(() => {
+        if (!showSourceLangInput || availableLanguages.length > 0) return;
+
+        fetch(AI_ROUTES.languages, { headers: { Accept: 'application/json' } })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data && Array.isArray(data.languages)) {
+                    setAvailableLanguages(data.languages);
+                }
+            })
+            .catch(() => { /* fallback to free-text input */ });
+    }, [showSourceLangInput, availableLanguages.length]);
 
     // Auto-focus prompt input when modal opens
     useEffect(() => {
@@ -218,6 +236,7 @@ function AiSuggestModal() {
                                         setSelectedQuickAction(null);
                                     }}
                                     disabled={stream.loading}
+                                    languages={availableLanguages}
                                 />
                             )}
 

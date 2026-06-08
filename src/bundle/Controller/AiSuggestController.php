@@ -15,6 +15,7 @@ use Masilia\AiAssistant\FieldFormat;
 use Masilia\AiAssistant\FieldFormatResolver;
 use Masilia\AiAssistant\LanguageNormalizer;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
+use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -39,6 +40,7 @@ readonly class AiSuggestController
         private FieldContextExtractor $contextExtractor,
         private LanguageNormalizer    $languageNormalizer,
         private LoggerInterface       $aiLogger,
+        private ConfigResolverInterface $configResolver,
     )
     {
     }
@@ -49,6 +51,31 @@ readonly class AiSuggestController
         return new JsonResponse([
             'fieldTypes' => $this->formatResolver->getSupportedFieldTypes(),
         ]);
+    }
+
+    #[Route('/admin/api/ai/languages', name: 'app.ai.languages', methods: ['GET'])]
+    public function getLanguages(): JsonResponse
+    {
+        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
+            return new JsonResponse(AiError::accessDenied()->toArray(), Response::HTTP_FORBIDDEN);
+        }
+
+        // Siteaccess-aware: the host app declares available languages via
+        // siteaccess config (parameter 'languages' under 'ibexa.site_access').
+        // The response shape is [{code, name}] where 'name' is derived from
+        // the locale code (e.g. 'eng-GB' -> 'English (United Kingdom)').
+        $rawLanguages = $this->configResolver->getParameter('languages', 'ibexa.site_access');
+        $languages = array_map(
+            static function (string $code): array {
+                return [
+                    'code' => $code,
+                    'name' => \Locale::getDisplayName($code, \Locale::getDefault()) ?: $code,
+                ];
+            },
+            is_array($rawLanguages) ? $rawLanguages : []
+        );
+
+        return new JsonResponse(['languages' => $languages]);
     }
 
     #[Route('/admin/api/ai/suggest', name: 'app.ai.suggest', methods: ['POST'])]

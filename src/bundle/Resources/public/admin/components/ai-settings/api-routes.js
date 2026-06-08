@@ -13,7 +13,9 @@ export const AI_ROUTES = {
     saveModel:        `${BASE}/api/model`,
     deleteModel:      (id) => `${BASE}/api/model/${id}`,
     activateModel:    (id) => `${BASE}/api/model/${id}/activate`,
+    health:           `${BASE}/api/health`,
     suggest:          '/admin/api/ai/suggest',
     suggestStream:    '/admin/api/ai/suggest/stream',
     fieldTypes:       '/admin/api/ai/field-types',
+    languages:        '/admin/api/ai/languages',
 };

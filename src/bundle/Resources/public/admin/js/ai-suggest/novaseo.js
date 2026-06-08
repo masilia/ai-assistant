@@ -30,7 +30,7 @@ export function collectNovaseoMetaKeys(fieldEdit) {
 export function createAiButton(doc, extraClass = '') {
     const btn = doc.createElement('button');
     btn.type = 'button';
-    btn.className = `ibexa-btn ibexa-btn--ghost ibexa-btn--no-text ibexa-btn--small ai-suggest-trigger ${extraClass}`.trim();
+    btn.className = `btn ibexa-btn ibexa-btn--ghost ibexa-btn--no-text ibexa-input-text-wrapper__action-btn ai-suggest-trigger ${extraClass}`.trim();
     btn.setAttribute('aria-label', 'AI content assistant');
     btn.title = 'Generate content with AI';
     btn.innerHTML = `

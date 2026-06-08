@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\Controller;
 
+use Locale;
 use Masilia\AiAssistant\DTO\AiError;
 use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\AiSuggestResponse;
@@ -53,8 +54,13 @@ readonly class AiSuggestController
         ]);
     }
 
-    #[Route('/admin/api/ai/languages', name: 'app.ai.languages', methods: ['GET'])]
-    public function getLanguages(Request $request): JsonResponse
+    #[Route(
+        '/admin/api/ai/languages/{contentId}',
+        name: 'app.ai.languages',
+        requirements: ['contentId' => '\d+'],
+        methods: ['GET'],
+    )]
+    public function getLanguages(int $contentId): JsonResponse
     {
         if (!$this->permissionResolver->hasAccess('content', 'edit')) {
             return new JsonResponse(AiError::accessDenied()->toArray(), Response::HTTP_FORBIDDEN);
@@ -75,14 +81,10 @@ readonly class AiSuggestController
         //     language lists. The content's own fields are the only
         //     ground truth that works across repos.
         //
-        // If the request supplies a contentId, we load it. Otherwise
-        // we return an empty list (the modal falls back to a free-text
-        // input).
-        $contentId = (int) $request->query->get('contentId', 0);
-        if ($contentId <= 0) {
-            return new JsonResponse(['languages' => []]);
-        }
-
+        // The contentId is a required routing-pattern parameter
+        // (see the #[Route] above). The pattern requires \d+ so
+        // the parameter is guaranteed to be a positive integer by
+        // the time we get here.
         try {
             $content = $this->contentService->loadContent($contentId);
         } catch (\Throwable) {
@@ -98,11 +100,11 @@ readonly class AiSuggestController
         // from the actual loaded fields (not from siteaccess config
         // or any external parameter).
         $codes = $content->versionInfo->languageCodes;
-        $defaultLocale = \Locale::getDefault();
+        $defaultLocale = Locale::getDefault();
         $languages = array_map(
             static fn(string $code): array => [
                 'code' => $code,
-                'name' => \Locale::getDisplayName($code, $defaultLocale) ?: $code,
+                'name' => Locale::getDisplayName($code, $defaultLocale) ?: $code,
             ],
             $codes
         );

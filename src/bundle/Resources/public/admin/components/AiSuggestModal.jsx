@@ -89,20 +89,18 @@ function AiSuggestModal() {
     // is first shown. Cached in state so we don't re-hit the endpoint
     // on every modal open.
     //
-    // The endpoint returns the language list of the current content
-    // (the canonical "Translate from {language}" choices), so we
-    // pass the contentId from the fieldContext.
+    // The endpoint path includes the contentId (Symfony routing
+    // pattern param: /admin/api/ai/languages/{contentId}). When no
+    // contentId is available yet (e.g. a new unsaved draft), the
+    // fetch is skipped and the modal falls back to its free-text
+    // input.
     useEffect(() => {
         if (!showSourceLangInput || availableLanguages.length > 0) return;
 
-        const params = new URLSearchParams();
         const contentId = fieldContext?.contentId;
-        if (contentId) {
-            params.set('contentId', String(contentId));
-        }
-        const url = params.toString()
-            ? `${AI_ROUTES.languages}?${params.toString()}`
-            : AI_ROUTES.languages;
+        if (!contentId) return;
+
+        const url = AI_ROUTES.languages(contentId);
 
         fetch(url, { headers: { Accept: 'application/json' } })
             .then((res) => (res.ok ? res.json() : null))

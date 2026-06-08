@@ -37,54 +37,72 @@ export function getProviderLabel(identifier) {
  * Quick action presets for AI content suggestions.
  * Each action has a label (display) and a promptTemplate (sent to the AI).
  * Templates can use {fieldName} and {contentType} placeholders.
+ *
+ * The `icon` field is a React component reference (Lucide-style
+ * SVG component from ./icons.jsx), not a string. Consumers MUST
+ * render <action.icon /> rather than the raw value. Importing
+ * ./icons.jsx here would create a circular dependency between
+ * constants.js and icons.jsx (icons.jsx re-exports the
+ * components but is also imported by consumers).
  */
+import {
+    WandIcon,
+    MinimizeIcon,
+    MaximizeIcon,
+    SpellCheckIcon,
+    BriefcaseIcon,
+    SmileIcon,
+    FileTextIcon,
+    LanguagesIcon,
+} from './icons.jsx';
+
 export const QUICK_ACTIONS = [
     {
         id: 'improve',
         label: 'Improve',
-        icon: '✨',
+        icon: WandIcon,
         promptTemplate: 'Improve the clarity, engagement, and professional tone of this text.',
     },
     {
         id: 'shorten',
         label: 'Shorten',
-        icon: '↗',
+        icon: MinimizeIcon,
         promptTemplate: 'Make this text more concise while preserving all key information and meaning.',
     },
     {
         id: 'lengthen',
         label: 'Lengthen',
-        icon: '↔',
+        icon: MaximizeIcon,
         promptTemplate: 'Expand this text with more detail, examples, and thorough explanations.',
     },
     {
         id: 'fix_grammar',
         label: 'Fix Grammar',
-        icon: '✏️',
+        icon: SpellCheckIcon,
         promptTemplate: 'Fix all grammar, spelling, and punctuation errors in this text.',
     },
     {
         id: 'formal',
         label: 'Formal',
-        icon: '👔',
+        icon: BriefcaseIcon,
         promptTemplate: 'Rephrase this text in a formal, professional tone.',
     },
     {
         id: 'casual',
         label: 'Casual',
-        icon: '😊',
+        icon: SmileIcon,
         promptTemplate: 'Rephrase this text in a casual, conversational tone.',
     },
     {
         id: 'summarize',
         label: 'Summarize',
-        icon: '📝',
+        icon: FileTextIcon,
         promptTemplate: 'Provide a concise summary of this text in 2-3 sentences.',
     },
     {
         id: 'translate',
         label: 'Translate',
-        icon: '🌐',
+        icon: LanguagesIcon,
         promptTemplate: 'TRANSLATE', // Special: replaced by modal with source language
         isTranslation: true,
     },
@@ -128,7 +146,7 @@ export function cleanErrorMessage(message) {
     if (!message) return 'Unknown error occurred.';
 
     // Handle structured error envelope from BE: { error: { code, message } }
-    if (typeof message === 'object' && message !== null) {
+    if (typeof message === 'object') {
         if (message.error?.message) return message.error.message;
         if (message.message) return message.message;
         return JSON.stringify(message);

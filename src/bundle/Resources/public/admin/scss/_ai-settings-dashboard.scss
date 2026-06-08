@@ -578,11 +578,14 @@
         height: calculateRem(56px);
         border-radius: 50%;
         background: $ibexa-color-primary-100;
+        color: $ibexa-color-primary;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: calculateRem(16px);
-        font-size: calculateRem(24px);
+        // The <IconComponent> is rendered at iconSize=48 (default);
+        // the inner SVG scales to fill the circle.
+        svg { width: 100%; height: 100%; }
     }
 
     &__title {

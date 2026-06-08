@@ -207,8 +207,15 @@
     }
 
     &__quick-action-icon {
-        font-size: calculateRem(13px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         line-height: 1;
+        // The <IconComponent> is rendered at size=16 (1rem). The
+        // container needs to reserve that space so the label text
+        // doesn't shift when the icon swaps.
+        min-width: calculateRem(16px);
+        min-height: calculateRem(16px);
     }
 
     &__quick-action-label {

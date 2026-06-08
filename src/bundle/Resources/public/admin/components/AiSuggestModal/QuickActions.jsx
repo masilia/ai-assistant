@@ -71,6 +71,7 @@ export default function QuickActions({
                     const title = isTranslationDisabled && action.isTranslation
                         ? 'Translation is not supported for SEO Metas'
                         : action.promptTemplate;
+                    const IconComponent = action.icon;
 
                     return (
                         <button
@@ -83,7 +84,9 @@ export default function QuickActions({
                             disabled={isDisabled}
                             title={title}
                         >
-                            <span className="ai-suggest-modal__quick-action-icon">{action.icon}</span>
+                            <span className="ai-suggest-modal__quick-action-icon" aria-hidden="true">
+                                {IconComponent && <IconComponent size={16} className={`ibexa-icon--small`}/>}
+                            </span>
                             <span className="ai-suggest-modal__quick-action-label">{action.label}</span>
                         </button>
                     );

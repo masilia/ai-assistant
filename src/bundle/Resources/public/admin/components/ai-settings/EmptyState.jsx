@@ -3,26 +3,25 @@ import React from 'react';
 /**
  * EmptyState — shared empty-state block for the AI dashboard.
  *
- * Two call sites previously duplicated this markup with different
- * icons, different emoji, and different wording — the inconsistency
- * was visible in the no-providers vs no-matches vs no-models
- * states. This component centralises the structure (icon + title +
- * description + optional CTA) and uses a single CSS class
- * (.ai-empty-state) so the SCSS lives in one place.
+ * The `icon` prop is a React component (Lucide-style SVG from
+ * ./icons.jsx), not a string. Callers should pass e.g.
+ * <EmptyState icon={BrainIcon} ... />.
+ *
+ * Default size for the rendered icon is 48 (visible-but-secondary).
+ * Pass `iconSize` to override.
  *
  * @param {object}  props
- * @param {string}  [props.icon]     Single emoji or short text rendered above the title.
- * @param {string}  props.title      Bold heading (e.g. 'No providers configured').
- * @param {string}  [props.description] One-line grey description below the title.
- * @param {string}  [props.ctaLabel] Optional CTA button label.
- * @param {() => void} [props.onCta] Optional CTA click handler.
- * @param {'primary'|'tertiary'} [props.ctaVariant='primary']
- *                                  CTA visual variant. 'tertiary' for utility actions
- *                                  (e.g. 'Clear search'), 'primary' for the main
- *                                  setup action (e.g. '+ Add First Provider').
+ * @param {React.ComponentType} [props.icon]   Lucide icon component.
+ * @param {number}  [props.iconSize=48]      Rendered icon size in px.
+ * @param {string}  props.title              Bold heading.
+ * @param {string}  [props.description]      One-line grey description.
+ * @param {string}  [props.ctaLabel]         Optional CTA button label.
+ * @param {() => void} [props.onCta]         Optional CTA click handler.
+ * @param {'primary'|'secondary'|'tertiary'} [props.ctaVariant='primary']
  */
 export default function EmptyState({
-    icon = '🧠',
+    icon: IconComponent,
+    iconSize = 48,
     title,
     description,
     ctaLabel,
@@ -31,7 +30,11 @@ export default function EmptyState({
 }) {
     return (
         <div className="ai-empty-state">
-            <div className="ai-empty-state__icon" aria-hidden="true">{icon}</div>
+            {IconComponent && (
+                <div className="ai-empty-state__icon" aria-hidden="true">
+                    <IconComponent size={iconSize} />
+                </div>
+            )}
             <p className="ai-empty-state__title">{title}</p>
             {description && <p className="ai-empty-state__desc">{description}</p>}
             {ctaLabel && onCta && (

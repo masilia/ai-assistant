@@ -6,6 +6,7 @@ import ModelDrawer from './ModelDrawer.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import UsagePanel from './UsagePanel.jsx';
 import EmptyState from './EmptyState.jsx';
+import { BrainIcon, SearchXIcon } from './icons.jsx';
 import { useAiSettings } from './useAiSettings.js';
 
 export default function AiSettingsDashboard() {
@@ -182,7 +183,7 @@ export default function AiSettingsDashboard() {
                     {filteredProviders.length === 0 ? (
                         query ? (
                             <EmptyState
-                                icon="🔍"
+                                icon={SearchXIcon}
                                 title="No matches"
                                 description={`No provider or model matches "${searchQuery}".`}
                                 ctaLabel="Clear search"
@@ -191,7 +192,7 @@ export default function AiSettingsDashboard() {
                             />
                         ) : (
                             <EmptyState
-                                icon="🧠"
+                                icon={BrainIcon}
                                 title="No providers configured"
                                 description="Add your first AI provider to start using AI-assisted content editing."
                                 ctaLabel="+ Add First Provider"

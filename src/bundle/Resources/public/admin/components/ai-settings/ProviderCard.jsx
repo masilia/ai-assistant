@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { getProviderLabel } from './constants.js';
-import { ChevronIcon } from './icons.jsx';
+import { ChevronIcon, BotIcon } from './icons.jsx';
 import EmptyState from './EmptyState.jsx';
 import ModelCard from './ModelCard.jsx';
 
@@ -134,7 +134,7 @@ export default function ProviderCard({
 
                         {providerModels.length === 0 ? (
                             <EmptyState
-                                icon="🤖"
+                                icon={BotIcon}
                                 title="No models yet"
                                 description="Add a model to start using this provider."
                                 ctaLabel="+ Add First Model"

@@ -112,8 +112,23 @@ export function injectTranslateButtonsForSiblings(doc, onTrigger) {
         const btn = doc.createElement('button');
         btn.type = 'button';
         btn.className = 'ai-suggest-translate-sibling ibexa-btn ibexa-btn--tertiary ibexa-btn--small';
-        btn.textContent = `🌐 Translate from ${detection.sourceLanguage}`;
         btn.setAttribute('aria-label', `Translate to current language from ${detection.sourceLanguage}`);
+        // Inline Lucide-style "Languages" icon + label. Built via
+        // DOM API to avoid the JSX runtime in this vanilla-JS module.
+        btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false"
+                 style="vertical-align: -2px; margin-right: 4px;">
+                <path d="m5 8 6 6" />
+                <path d="m4 14 6-6 3-3" />
+                <path d="M2 5h12" />
+                <path d="M7 2h1" />
+                <path d="m22 22-5-10-5 10" />
+                <path d="M14 18h6" />
+            </svg>
+            Translate from ${detection.sourceLanguage}
+        `;
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();

@@ -9,6 +9,7 @@ import SourceLanguageInput from './AiSuggestModal/SourceLanguageInput.jsx';
 import ModeSelector from './AiSuggestModal/ModeSelector.jsx';
 import ErrorBanner from './AiSuggestModal/ErrorBanner.jsx';
 import SuggestionPreview from './AiSuggestModal/SuggestionPreview.jsx';
+import { SparklesIcon, CloseIcon } from './ai-settings/icons.jsx';
 
 /**
  * @typedef {import('./ai-settings/types.js').FieldContext} FieldContext
@@ -186,9 +187,7 @@ function AiSuggestModal() {
 
                         <div className="modal-header">
                             <h5 className="modal-title ai-suggest-modal__title" id="ai-suggest-modal-title">
-                                <svg className="ibexa-icon ibexa-icon--small-medium ai-suggest-modal__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
-                                </svg>
+                                <SparklesIcon size="small-medium" className="ai-suggest-modal__title-icon" />
                                 AI Content Assistant
                             </h5>
                             <button
@@ -197,10 +196,7 @@ function AiSuggestModal() {
                                 type="button"
                                 aria-label="Close"
                             >
-                                <svg className="ibexa-icon ibexa-icon--small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
+                                <CloseIcon size="small" />
                             </button>
                         </div>
 
@@ -276,9 +272,7 @@ function AiSuggestModal() {
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="ibexa-icon ibexa-icon--tiny-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
-                                        </svg>
+                                        <SparklesIcon size="tiny-small" />
                                         <span className="ibexa-btn__label">{stream.suggestion ? 'Regenerate' : 'Generate'}</span>
                                     </>
                                 )}

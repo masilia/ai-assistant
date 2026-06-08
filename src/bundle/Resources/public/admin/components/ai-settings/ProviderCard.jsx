@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getProviderLabel } from './constants.js';
+import { ChevronIcon } from './icons.jsx';
 import ModelCard from './ModelCard.jsx';
 
 export default function ProviderCard({
@@ -43,18 +44,10 @@ export default function ProviderCard({
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleExpand(); }}}
             >
-                <svg
-                    className={`ibexa-icon ibexa-icon--small-medium ai-provider-card__chevron ${isExpanded ? 'ai-provider-card__chevron--open' : ''}`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                >
-                    <polyline points="9 6 15 12 9 18" />
-                </svg>
+                <ChevronIcon
+                    size="small-medium"
+                    className={`ai-provider-card__chevron ${isExpanded ? 'ai-provider-card__chevron--open' : ''}`}
+                />
 
                 <div className="ai-provider-card__info">
                     <div className="ai-provider-card__name">{provider.name}</div>

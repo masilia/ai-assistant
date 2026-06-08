@@ -141,7 +141,9 @@ KnpMenu. The concrete Doctrine repositories live in `src/bundle/Repository/`
 and implement the lib-layer interfaces above.
 │
 ├── migrations/
-│   └── Version20260602000000.php
+│   ├── Version20260602000000.php
+│   ├── Version20260604000000.php
+│   └── Version20260608000000.php
 │
 └── tests/
 ```
@@ -389,16 +391,26 @@ twig:
 
 ## Database Schema
 
+The schema evolves over three migration files. Run them in order
+when upgrading a host app that already has the package installed.
+
+| Version                  | Adds / changes                                                  |
+|--------------------------|-----------------------------------------------------------------|
+| `Version20260602000000`  | Initial: `app_ai_provider`, `app_ai_model` tables               |
+| `Version20260604000000`  | Adds `siteaccess VARCHAR(100) NULL` to `app_ai_provider`       |
+| `Version20260608000000`  | Adds `app_ai_request_log` table (AI usage telemetry)            |
+
 ### `app_ai_provider`
 
-| Column    | Type         | Notes |
-|-----------|--------------|-------|
-| id        | INTEGER (PK) | Auto-increment |
-| name      | VARCHAR(100) | Display name |
-| identifier | VARCHAR(100) | Unique: openai, anthropic, etc. |
-| api_key   | VARCHAR(255) | Nullable. Stored as-is; masked in the admin API responses |
-| api_url   | VARCHAR(255) | Nullable, custom endpoint |
-| is_active | BOOLEAN      | Only one active at a time |
+| Column     | Type           | Notes |
+|------------|----------------|-------|
+| id         | INTEGER (PK)   | Auto-increment |
+| name       | VARCHAR(100)   | Display name |
+| identifier | VARCHAR(100)   | Provider identifier: `openai`, `anthropic`, etc. (combined unique with `siteaccess`) |
+| siteaccess | VARCHAR(100)   | Nullable. `null` = global; otherwise scoped to this siteaccess. (Added in `Version20260604000000`.) |
+| api_key    | VARCHAR(255)   | Nullable. Stored as-is; masked in the admin API responses |
+| api_url    | VARCHAR(255)   | Nullable, custom endpoint |
+| is_active  | BOOLEAN        | Only one active per siteaccess scope (global or specific) |
 
 ### `app_ai_model`
 
@@ -409,8 +421,32 @@ twig:
 | name        | VARCHAR(100) | Display name |
 | identifier  | VARCHAR(100) | API model name (gpt-4o, claude-3-5-sonnet) |
 | is_active   | BOOLEAN      | Only one active per provider |
-| temperature | FLOAT        | 0.0 – 2.0, default 0.7 |
+| temperature | FLOAT        | 0.0 – 2.0 (Anthropic clamps to 0.01), default 0.7 |
 | max_tokens  | INTEGER      | Default 2048 |
+
+### `app_ai_request_log` (added in `Version20260608000000`)
+
+One row per AI API call. Used by the Usage tab in the admin
+dashboard. No PII is ever stored (no field content, no API key,
+no user prompt).
+
+| Column             | Type          | Notes |
+|--------------------|---------------|-------|
+| id                 | INTEGER (PK)  | Auto-increment |
+| providerIdentifier | VARCHAR(32)   | e.g. `openai`, `anthropic` (indexed) |
+| modelIdentifier    | VARCHAR(100)  | e.g. `gpt-4o`, `claude-3-5-sonnet` |
+| siteaccess         | VARCHAR(100)  | Nullable, current siteaccess name |
+| success            | BOOLEAN       | True if the request returned 200 + parseable body |
+| latencyMs          | INTEGER       | End-to-end HTTP round-trip, milliseconds |
+| errorCode          | VARCHAR(64)   | Nullable. `HTTP_401` style for HTTP errors, exception class short name otherwise |
+| tokensIn           | INTEGER       | Nullable. Input tokens if the adapter exposes them |
+| tokensOut          | INTEGER       | Nullable. Output tokens if the adapter exposes them |
+| createdAt          | DATETIME      | Immutable. Indexed (used by all aggregation queries). |
+
+Indexes: `idx_ai_log_created (createdAt)`, `idx_ai_log_provider (providerIdentifier)`.
+
+Old rows are not auto-pruned. Hosts that need retention should add a
+housekeeping command (not provided by this package).
 
 ## Frontend Architecture
 

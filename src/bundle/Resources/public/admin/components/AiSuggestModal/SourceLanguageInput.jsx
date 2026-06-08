@@ -7,17 +7,30 @@ import React from 'react';
  * prop is non-empty, renders a <select>; otherwise falls back to a free-text
  * <input> for backwards compatibility (e.g. when the backend endpoint
  * isn't reachable or returns nothing).
+ *
+ * The current modification language (the target of the translation) is
+ * filtered out from the dropdown so the user cannot pick the same
+ * language as source and target.
  */
-export default function SourceLanguageInput({ value, onChange, onSubmit, onCancel, disabled, languages = [] }) {
+export default function SourceLanguageInput({ value, onChange, onSubmit, onCancel, disabled, languages = [], currentLanguage = '' }) {
     const hasOptions = Array.isArray(languages) && languages.length > 0;
+
+    const filteredLanguages = hasOptions
+        ? languages.filter((lang) => lang.code !== currentLanguage)
+        : [];
 
     return (
         <div className="ai-suggest-modal__source-lang">
             <label className="ibexa-label" htmlFor="ai-source-lang-input">
-                Source language:
+                Translate from:
             </label>
+            {currentLanguage && (
+                <span className="ai-suggest-modal__source-lang-hint">
+                    Target: {currentLanguage}
+                </span>
+            )}
             <div className="ai-suggest-modal__source-lang-row">
-                {hasOptions ? (
+                {filteredLanguages.length > 0 ? (
                     <select
                         id="ai-source-lang-input"
                         className="ibexa-input form-control"
@@ -26,7 +39,7 @@ export default function SourceLanguageInput({ value, onChange, onSubmit, onCance
                         disabled={disabled}
                     >
                         <option value="" disabled>— Select a language —</option>
-                        {languages.map((lang) => (
+                        {filteredLanguages.map((lang) => (
                             <option key={lang.code} value={lang.code}>
                                 {lang.name} ({lang.code})
                             </option>
@@ -39,7 +52,7 @@ export default function SourceLanguageInput({ value, onChange, onSubmit, onCance
                         className="ibexa-input ibexa-input--text form-control"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
-                        placeholder="eng-GB"
+                        placeholder="e.g. fre-FR"
                         disabled={disabled}
                     />
                 )}

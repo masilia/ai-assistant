@@ -227,6 +227,13 @@
         margin-bottom: calculateRem(12px);
     }
 
+    &__source-lang-hint {
+        display: block;
+        font-size: calculateRem(12px);
+        color: var(--ibexa-color-gray-500, #6c757d);
+        margin-bottom: calculateRem(4px);
+    }
+
     &__source-lang-row {
         display: flex;
         gap: calculateRem(8px);

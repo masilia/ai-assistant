@@ -174,10 +174,14 @@ function AiSuggestModal() {
 
     const handleSourceLanguageSubmit = useCallback((lang) => {
         if (!lang || !fieldContext) return;
+        if (lang === fieldContext.language) {
+            stream.setError('Source language cannot be the same as the target language.');
+            return;
+        }
         setSourceLanguage(lang);
         setShowSourceLangInput(false);
         setPrompt(`Translate from ${lang} to ${fieldContext.language}`);
-    }, [fieldContext]);
+    }, [fieldContext, stream]);
 
     const handlePromptChange = useCallback((e) => {
         setPrompt(e.target.value);
@@ -252,6 +256,7 @@ function AiSuggestModal() {
                                     }}
                                     disabled={stream.loading}
                                     languages={availableLanguages}
+                                    currentLanguage={fieldContext?.language || ''}
                                 />
                             )}
 

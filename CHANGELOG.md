@@ -118,6 +118,17 @@ Types of changes:
   time.
 
 ### Fixed
+- **`AiProviderApiController::getData()` TypeError** — the
+  controller passed a `ResolvedProvider` (returned by
+  `AiProviderRepository::findActive()` after the Sprint 3 P1-B5
+  refactor) to `AiModelRepository::findActiveForProvider()` which
+  expects an `AiProvider` entity. Resolved by adding a new
+  `AiProviderRepository::findActiveEntity()` method that returns
+  the raw `AiProvider` (not the `ResolvedProvider`) for the
+  dashboard data path. Runtime resolution (TargetResolver,
+  HealthChecker) still uses `findActive()` → `ResolvedProvider`.
+  Regression test added.
+
 - **SSE UTF-8 truncation** — the reader previously dropped the
   final multi-byte characters of a non-ASCII response. Now calls
   `decoder.decode()` (no args) on `done` to flush held bytes.

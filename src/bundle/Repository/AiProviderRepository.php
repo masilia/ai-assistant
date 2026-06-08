@@ -39,6 +39,20 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
         return $provider !== null ? $this->toResolved($provider) : null;
     }
 
+    /**
+     * Returns the raw AiProvider entity for the active row (any
+     * siteaccess scope). Used by the admin dashboard controller
+     * which needs the DB primary keys of the provider and its
+     * active model to highlight them in the response payload.
+     *
+     * Do not use this from runtime code (TargetResolver). The lib
+     * interface is the only public contract for that path.
+     */
+    public function findActiveEntity(): ?AiProvider
+    {
+        return $this->findOneBy(['isActive' => true]);
+    }
+
     private function toResolved(AiProvider $provider): ?ResolvedProvider
     {
         $activeModel = $provider->getModels()->filter(

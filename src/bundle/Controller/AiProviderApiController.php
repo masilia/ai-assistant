@@ -67,7 +67,7 @@ class AiProviderApiController extends Controller
             ];
         }, $models);
 
-        $activeProvider = $this->providerRepository->findActive();
+        $activeProvider = $this->providerRepository->findActiveEntity();
         $activeModel = $activeProvider !== null
             ? $this->modelRepository->findActiveForProvider($activeProvider)
             : null;

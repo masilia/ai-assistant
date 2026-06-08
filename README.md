@@ -98,6 +98,23 @@ The bundle registers Webpack Encore entry points automatically via
 
 These are only used when no provider is configured in the admin dashboard.
 
+### Configuration reference
+
+The bundle is siteaccess-aware. Each leaf setting is declared in
+`Configuration.php` with the following defaults:
+
+| Setting      | Type    | Default      | Range / Notes              |
+|--------------|---------|--------------|----------------------------|
+| `provider`   | string  | _(none)_     | `openai`, `anthropic`, `mistral`, `ollama`, `minimax` |
+| `api_key`    | string  | _(none)_     | Required for non-Ollama    |
+| `api_url`    | string  | _(none)_     | Custom endpoint URL        |
+| `model`      | string  | `gpt-4o-mini`| Per-provider model name    |
+| `temperature`| float   | `0.7`        | 0.0 – 2.0 (Anthropic clamps to 0.01) |
+| `max_tokens` | integer | `4096`       | ≥ 1                        |
+
+A DB-configured active provider (per siteaccess) takes priority
+over the YAML config, which takes priority over the env fallback.
+
 ### Symfony parameters
 
 The bundle registers defaults in `default_parameters.yaml`. Override them in your
@@ -105,11 +122,15 @@ application config if needed:
 
 ```yaml
 # config/packages/masilia_ai_assistant.yaml
-parameters:
-    masilia_ai_assistant.openai.api_key: '%env(AI_OPENAI_API_KEY)%'
-    masilia_ai_assistant.openai.model: 'gpt-4o'
-    masilia_ai_assistant.openai.temperature: 0.7
-    masilia_ai_assistant.openai.max_tokens: 4096
+masilia_ai_assistant:
+    system:
+        <siteaccess_name>:
+            provider:     'openai'        # openai|anthropic|mistral|ollama|minimax
+            api_key:      '%env(AI_OPENAI_API_KEY)%'
+            api_url:      'https://api.openai.com/v1'   # optional, defaults per provider
+            model:        'gpt-4o'
+            temperature:  0.7
+            max_tokens:   4096
 ```
 
 ### Admin dashboard

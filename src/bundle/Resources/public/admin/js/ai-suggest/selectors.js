@@ -1,0 +1,38 @@
+/**
+ * Centralized DOM contracts for the AI suggest injector. All CSS selectors
+ * and name patterns live here so a DOM change in Ibexa can be adapted
+ * without grepping through 500+ lines of injector code.
+ */
+
+export const SELECTORS = {
+    fieldEdit:        '.ibexa-field-edit',
+    fieldLabel:       '.ibexa-field-edit__label',
+    dataInput:        '.ibexa-data-source__input',
+    trigger:          '.ai-suggest-trigger',
+    editHeaderAction: '.ibexa-edit-header__action-name',
+    form:             'form.ibexa-form-validate',
+    languageMeta:     'meta[name="LanguageCode"]',
+    richTextContainer:'.ibexa-field-edit--ezrichtext',
+};
+
+// Ibexa input name pattern: ...[fieldsData][<identifier>][value]
+export const FIELD_NAME_RE = /\[fieldsData\]\[([^\]]+)\]\[value\]/;
+
+// Ibexa edit URL: /content/edit/{contentId}/{versionNo}/{language}
+export const CONTENT_EDIT_RE = /\/content\/edit\/(\d+)\//;
+
+export const TITLE_IDENTIFIERS = new Set(['title', 'name']);
+
+// Meta keys where AI generation does not make sense (URLs, images, enums).
+export const SKIP_META_KEYS = new Set(['og:image', 'twitter:image', 'canonical', 'type', 'robots']);
+
+// novaseometas DOM contract. Each meta is a `row` containing a hidden
+// `nameInput` (whose value is the meta key) and a `contentInput`
+// (the editable value).
+export const NOVASEO = {
+    container:      '.ibexa-field-edit--novaseometas',
+    row:            '.ibexa-data-source__input-wrapper',
+    nameInput:      'input[type="hidden"][name$="[name]"]',
+    contentInput:   '.ibexa-data-source__field--content input, .ibexa-data-source__field--content textarea',
+    contentWrapper: '.ibexa-data-source__field--content',
+};

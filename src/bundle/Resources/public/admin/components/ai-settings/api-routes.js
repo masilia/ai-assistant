@@ -10,6 +10,7 @@ export const AI_ROUTES = {
     deleteProvider:   (id) => `${BASE}/api/provider/${id}`,
     activateProvider: (id) => `${BASE}/api/provider/${id}/activate`,
     testProvider:     (id) => `${BASE}/api/provider/${id}/test`,
+    testProviderStream: (id) => `${BASE}/api/provider/${id}/test?stream=1`,
     saveModel:        `${BASE}/api/model`,
     deleteModel:      (id) => `${BASE}/api/model/${id}`,
     activateModel:    (id) => `${BASE}/api/model/${id}/activate`,

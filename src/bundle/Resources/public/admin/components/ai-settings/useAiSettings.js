@@ -115,13 +115,22 @@ export function useAiSettings() {
         setTestingId(id);
         setTestResults(prev => ({ ...prev, [id]: null }));
         try {
-            const res = await fetch(AI_ROUTES.testProvider(id), { method: 'POST' });
+            // Always exercise the streaming path too — catches the
+            // "non-streaming works but streaming is misconfigured" case
+            // (wrong endpoint suffix, missing stream flag, etc.).
+            const res = await fetch(AI_ROUTES.testProviderStream(id), { method: 'POST' });
             const result = await res.json();
             const success = res.ok && result.success;
-            const message = cleanErrorMessage(result.message || result.error || 'Connection failed.');
-            setTestResults(prev => ({ ...prev, [id]: { success, message } }));
+            const baseMessage = cleanErrorMessage(result.message || result.error || 'Connection failed.');
+            const streamNote = result.streamTested && result.streamOk === false
+                ? ' (streaming path also failed)'
+                : (result.streamTested && result.streamOk ? ' (streaming path OK)' : '');
+            const message = baseMessage + streamNote;
+            setTestResults(prev => ({ ...prev, [id]: { success, message, streamOk: result.streamOk } }));
             if (success) {
-                notify('success', 'Connection test succeeded: Endpoint is reachable.');
+                notify('success', result.streamOk
+                    ? 'Connection test succeeded: sync + streaming both OK.'
+                    : 'Connection test succeeded: endpoint reachable.');
             } else {
                 notify('error', `Connection test failed: ${message}`);
             }

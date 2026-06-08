@@ -136,12 +136,17 @@ class AiProviderApiController extends Controller
     }
 
     #[Route('/provider/{id}/test', name: 'app.admin.ai_provider.api.test', methods: ['POST'])]
-    public function testProvider(int $id): JsonResponse
+    public function testProvider(int $id, Request $request): JsonResponse
     {
         $this->checkAccess();
 
+        // ?stream=1 also exercises the SSE path. Useful for catching the
+        // "non-streaming works but streaming is misconfigured" failure
+        // mode (wrong endpoint suffix, missing stream flag, etc.).
+        $testStream = $request->query->getBoolean('stream');
+
         try {
-            $result = $this->connectionTester->test($id);
+            $result = $this->connectionTester->test($id, $testStream);
 
             return new JsonResponse($result, $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
         } catch (\InvalidArgumentException $e) {

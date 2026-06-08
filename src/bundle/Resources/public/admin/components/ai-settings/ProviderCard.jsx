@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getProviderLabel } from './constants.js';
 import { ChevronIcon } from './icons.jsx';
+import EmptyState from './EmptyState.jsx';
 import ModelCard from './ModelCard.jsx';
 
 export default function ProviderCard({
@@ -132,18 +133,14 @@ export default function ProviderCard({
                         </div>
 
                         {providerModels.length === 0 ? (
-                            <div className="ai-empty-state">
-                                <div className="ai-empty-state__icon">🤖</div>
-                                <p className="ai-empty-state__title">No models yet</p>
-                                <p className="ai-empty-state__desc">Add a model to start using this provider.</p>
-                                <button
-                                    type="button"
-                                    className="ibexa-btn ibexa-btn--secondary"
-                                    onClick={() => onAddModel(provider.id)}
-                                >
-                                    + Add First Model
-                                </button>
-                            </div>
+                            <EmptyState
+                                icon="🤖"
+                                title="No models yet"
+                                description="Add a model to start using this provider."
+                                ctaLabel="+ Add First Model"
+                                ctaVariant="secondary"
+                                onCta={() => onAddModel(provider.id)}
+                            />
                         ) : (
                             <div className="ai-provider-card__models-list">
                                 {providerModels.map(m => (

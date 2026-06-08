@@ -5,6 +5,7 @@ import ProviderDrawer from './ProviderDrawer.jsx';
 import ModelDrawer from './ModelDrawer.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import UsagePanel from './UsagePanel.jsx';
+import EmptyState from './EmptyState.jsx';
 import { useAiSettings } from './useAiSettings.js';
 
 export default function AiSettingsDashboard() {
@@ -180,23 +181,23 @@ export default function AiSettingsDashboard() {
 
                     {filteredProviders.length === 0 ? (
                         query ? (
-                            <div className="ai-empty-state">
-                                <div className="ai-empty-state__icon">🔍</div>
-                                <p className="ai-empty-state__title">No matches</p>
-                                <p className="ai-empty-state__desc">No provider or model matches "{searchQuery}".</p>
-                                <button type="button" className="ibexa-btn ibexa-btn--tertiary" onClick={() => setSearchQuery('')}>
-                                    Clear search
-                                </button>
-                            </div>
+                            <EmptyState
+                                icon="🔍"
+                                title="No matches"
+                                description={`No provider or model matches "${searchQuery}".`}
+                                ctaLabel="Clear search"
+                                ctaVariant="tertiary"
+                                onCta={() => setSearchQuery('')}
+                            />
                         ) : (
-                            <div className="ai-empty-state">
-                                <div className="ai-empty-state__icon">🧠</div>
-                                <p className="ai-empty-state__title">No providers configured</p>
-                                <p className="ai-empty-state__desc">Add your first AI provider to start using AI-assisted content editing.</p>
-                                <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
-                                    + Add First Provider
-                                </button>
-                            </div>
+                            <EmptyState
+                                icon="🧠"
+                                title="No providers configured"
+                                description="Add your first AI provider to start using AI-assisted content editing."
+                                ctaLabel="+ Add First Provider"
+                                ctaVariant="primary"
+                                onCta={() => setEditingProvider('new')}
+                            />
                         )
                     ) : (
                         <div className="ai-providers-stack">

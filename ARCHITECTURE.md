@@ -152,6 +152,51 @@ and implement the lib-layer interfaces above.
 
 All frontend assets live in `src/bundle/Resources/public/` following the Ibexa bundle convention (same pattern as `ibexa/automated-translation`, `novactive/ezrssfeedbundle`).
 
+### Frontend build story
+
+The package is **JS-asset-only**. The frontend code (React modal,
+dashboard, vanilla-JS field scanner, SCSS) lives under
+`src/bundle/Resources/public/admin/` and is **built by the host
+app's Webpack Encore pipeline**, not by this package.
+
+Rationale:
+- The host app already owns the JS build (one Encore config for
+  the whole Ibexa admin, including this package's entries).
+- A separate build pipeline for a sub-folder of an admin UI would
+  require the host to wire yet another Webpack config, with no
+  benefit (no shared node_modules, no shared cache, no test runner).
+- The package ships **only** the source files; the host compiles
+  them.
+
+Required Encore entries (added automatically when this bundle is
+registered — see `Resources/encore/`):
+
+| Entry name                                          | Files                                                                                       |
+|----------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `ibexa-admin-ui-ai-settings-react-js`              | `js/ai-settings.js`                                                                         |
+| `ibexa-admin-ui-ai-settings-react-css`             | `scss/_ai-settings-dashboard.scss`                                                         |
+| `ibexa-admin-ui-content-edit-parts-js` *(merged)*  | `js/ai-suggest.js` (which imports the field scanner + the modal)                            |
+| `ibexa-admin-ui-content-edit-parts-css` *(merged)* | `scss/_ai-suggest.scss`                                                                    |
+
+The two `content-edit-parts-*` entries are merged with whatever
+the host app already provides for content edit pages (the Encore
+manager config supports an additive `newItems` API for this).
+
+### Maintenance scripts (composer)
+
+| Script              | Effect                                         |
+|---------------------|------------------------------------------------|
+| `composer phpstan`  | `phpstan analyse` (level 6, see `phpstan.neon.dist`) |
+| `composer phpunit`  | `phpunit`                                      |
+| `composer test`     | runs phpunit then phpstan                       |
+
+Run from the package root or from the host app after
+`composer install`.
+
+## Asset Management
+
+All frontend assets live in `src/bundle/Resources/public/` following the Ibexa bundle convention (same pattern as `ibexa/automated-translation`, `novactive/ezrssfeedbundle`).
+
 ```
 Resources/public/admin/
 ├── js/

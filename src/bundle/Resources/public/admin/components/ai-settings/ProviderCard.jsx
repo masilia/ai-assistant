@@ -85,13 +85,13 @@ export default function ProviderCard({
                     >
                         {testingId === provider.id ? '...' : 'Test'}
                     </button>
-                    <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text" onClick={() => onEditProvider(provider)} title="Edit">
-                        <svg className="ibexa-icon ibexa-icon--small">
+                    <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text" onClick={() => onEditProvider(provider)} title={`Edit ${provider.name}`} aria-label={`Edit ${provider.name}`}>
+                        <svg className="ibexa-icon ibexa-icon--small" aria-hidden="true">
                             <use xlinkHref="/bundles/ibexaadminui/img/ibexa-icons.svg#edit" />
                         </svg>
                     </button>
-                    <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text ai-btn--danger" onClick={() => onDeleteProvider(provider.id)} title="Delete">
-                        <svg className="ibexa-icon ibexa-icon--small">
+                    <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text ai-btn--danger" onClick={() => onDeleteProvider(provider.id)} title={`Delete ${provider.name}`} aria-label={`Delete ${provider.name}`}>
+                        <svg className="ibexa-icon ibexa-icon--small" aria-hidden="true">
                             <use xlinkHref="/bundles/ibexaadminui/img/ibexa-icons.svg#trash" />
                         </svg>
                     </button>

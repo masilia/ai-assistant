@@ -28,13 +28,13 @@ export default function ModelCard({ model, onActivate, onEdit, onDelete }) {
             </div>
 
             <div className="ai-model-row__actions">
-                <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text" onClick={() => onEdit(model)} title="Edit">
-                    <svg className="ibexa-icon ibexa-icon--small">
+                <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text" onClick={() => onEdit(model)} title={`Edit ${model.name}`} aria-label={`Edit ${model.name}`}>
+                    <svg className="ibexa-icon ibexa-icon--small" aria-hidden="true">
                         <use xlinkHref="/bundles/ibexaadminui/img/ibexa-icons.svg#edit" />
                     </svg>
                 </button>
-                <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text ai-btn--danger" onClick={() => onDelete(model.id)} title="Delete">
-                    <svg className="ibexa-icon ibexa-icon--small">
+                <button type="button" className="ibexa-btn ibexa-btn--ghost ibexa-btn--small ibexa-btn--no-text ai-btn--danger" onClick={() => onDelete(model.id)} title={`Delete ${model.name}`} aria-label={`Delete ${model.name}`}>
+                    <svg className="ibexa-icon ibexa-icon--small" aria-hidden="true">
                         <use xlinkHref="/bundles/ibexaadminui/img/ibexa-icons.svg#trash" />
                     </svg>
                 </button>

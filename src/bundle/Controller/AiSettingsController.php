@@ -21,7 +21,7 @@ class AiSettingsController extends Controller
     ) {
     }
 
-    #[Route('/', name: 'app.admin.ai_settings.index', methods: ['GET'])]
+    #[Route('/admin/ai/settings', name: 'app.admin.ai_settings.index', methods: ['GET'])]
     public function index(): Response
     {
         $this->checkAccess();

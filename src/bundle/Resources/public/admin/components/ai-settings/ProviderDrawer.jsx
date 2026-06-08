@@ -1,5 +1,6 @@
 import React from 'react';
 import { PROVIDER_TYPES } from './constants.js';
+import { CloseIcon } from './icons.jsx';
 
 export default function ProviderDrawer({ provider, siteaccesses = [], onClose, onSave, submitting }) {
     return (
@@ -13,10 +14,7 @@ export default function ProviderDrawer({ provider, siteaccesses = [], onClose, o
                         onClick={onClose}
                         aria-label="Close"
                     >
-                        <svg className="ibexa-icon ibexa-icon--small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
+                        <CloseIcon size="small" />
                     </button>
                 </div>
                 <div className="ibexa-side-panel__content">

@@ -1,4 +1,5 @@
 import React from 'react';
+import { CloseIcon } from './icons.jsx';
 
 /**
  * ModelDrawer — slide-over form for creating/editing model configs.
@@ -21,10 +22,7 @@ export default function ModelDrawer({ model, providers, preselectedProviderId, o
                         onClick={onClose}
                         aria-label="Close"
                     >
-                        <svg className="ibexa-icon ibexa-icon--small" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
+                        <CloseIcon size="small" />
                     </button>
                 </div>
                 <div className="ibexa-side-panel__content">

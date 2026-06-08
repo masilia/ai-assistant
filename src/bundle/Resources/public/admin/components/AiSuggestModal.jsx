@@ -280,7 +280,7 @@ function AiSuggestModal() {
                                     </>
                                 ) : (
                                     <>
-                                        <SparklesIcon size="tiny-small" />
+                                        <SparklesIcon size="small" className="ibexa-icon--small" />
                                         <span className="ibexa-btn__label">{stream.suggestion ? 'Regenerate' : 'Generate'}</span>
                                     </>
                                 )}

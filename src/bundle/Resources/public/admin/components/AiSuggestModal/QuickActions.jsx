@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { QUICK_ACTIONS } from '../../ai-settings/constants.js';
+import { QUICK_ACTIONS } from '../ai-settings/constants.js';
 
 /**
  * Quick action chips row. Each chip pre-fills the prompt or triggers

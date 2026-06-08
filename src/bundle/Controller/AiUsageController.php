@@ -7,6 +7,7 @@ namespace Masilia\Bundle\AiAssistant\Controller;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Masilia\Bundle\AiAssistant\Repository\AiRequestLogRepository;
+use Symfony\Component\Routing\Annotation\Route;
 
 /**
  * Read-only API for the AI Usage tab in the admin dashboard.

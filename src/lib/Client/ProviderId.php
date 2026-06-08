@@ -11,6 +11,7 @@ final class ProviderId
     public const MISTRAL   = 'mistral';
     public const OLLAMA    = 'ollama';
     public const MINIMAX   = 'minimax';
+    public const QWEN      = 'qwen';
 
     public const ALL = [
         self::OPENAI,
@@ -18,6 +19,7 @@ final class ProviderId
         self::MISTRAL,
         self::OLLAMA,
         self::MINIMAX,
+        self::QWEN,
     ];
 
     public static function isValid(string $identifier): bool
@@ -33,6 +35,7 @@ final class ProviderId
             self::MISTRAL   => 'Mistral',
             self::OLLAMA    => 'Ollama',
             self::MINIMAX   => 'MiniMax',
+            self::QWEN      => 'Qwen',
             default         => ucfirst($identifier),
         };
     }

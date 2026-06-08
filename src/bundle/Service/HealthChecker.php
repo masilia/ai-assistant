@@ -20,12 +20,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * ProviderConnectionTester). The result is cheap enough to call on
  * every dashboard load.
  */
-class HealthChecker
+readonly class HealthChecker
 {
     public function __construct(
-        private readonly AiProviderRepositoryInterface $providerRepository,
-        private readonly ProviderAdapterRegistry       $adapterRegistry,
-        private readonly HttpClientInterface           $httpClient,
+        private AiProviderRepositoryInterface $providerRepository,
+        private ProviderAdapterRegistry       $adapterRegistry,
+        private HttpClientInterface           $httpClient,
     ) {
     }
 

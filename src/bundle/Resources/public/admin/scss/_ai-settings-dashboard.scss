@@ -133,6 +133,153 @@
     }
 }
 
+// ── Top-level tabs (Providers / Usage) ───────────────────────
+.ai-tabs {
+    display: flex;
+    gap: calculateRem(4px);
+    border-bottom: calculateRem(1px) solid $ibexa-color-light;
+    margin-bottom: calculateRem(24px);
+
+    &__tab {
+        background: transparent;
+        border: 0;
+        border-bottom: calculateRem(2px) solid transparent;
+        padding: calculateRem(10px) calculateRem(16px);
+        font-size: $ibexa-text-font-size;
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark-400;
+        cursor: pointer;
+        transition: color $ibexa-admin-transition-duration $ibexa-admin-transition, border-color $ibexa-admin-transition-duration $ibexa-admin-transition;
+        margin-bottom: calculateRem(-1px);
+
+        &:hover {
+            color: $ibexa-color-dark;
+        }
+
+        &--active {
+            color: $ibexa-color-primary;
+            border-bottom-color: $ibexa-color-primary;
+        }
+
+        &:focus {
+            outline: none;
+            box-shadow: $ibexa-btn-focus-box-shadow;
+        }
+    }
+}
+
+// ── Usage panel ──────────────────────────────────────────────
+.ai-usage {
+    &__toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: calculateRem(24px);
+        gap: calculateRem(12px);
+        flex-wrap: wrap;
+    }
+
+    &__tabs {
+        display: inline-flex;
+        background: $ibexa-color-light-200;
+        border-radius: $ibexa-border-radius;
+        padding: calculateRem(2px);
+    }
+
+    &__tab {
+        background: transparent;
+        border: 0;
+        padding: calculateRem(6px) calculateRem(14px);
+        font-size: $ibexa-text-font-size-small;
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark-400;
+        border-radius: $ibexa-border-radius-small;
+        cursor: pointer;
+        transition: background-color $ibexa-admin-transition-duration $ibexa-admin-transition, color $ibexa-admin-transition-duration $ibexa-admin-transition;
+
+        &:hover {
+            color: $ibexa-color-dark;
+        }
+
+        &--active {
+            background: $ibexa-color-white;
+            color: $ibexa-color-primary;
+        }
+    }
+
+    &__totals {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(calculateRem(160px), 1fr));
+        gap: calculateRem(12px);
+        margin-bottom: calculateRem(24px);
+    }
+
+    &__stat {
+        background: $ibexa-color-white;
+        border: calculateRem(1px) solid $ibexa-color-light;
+        border-radius: $ibexa-border-radius;
+        padding: calculateRem(12px) calculateRem(16px);
+        display: flex;
+        flex-direction: column;
+        gap: calculateRem(4px);
+    }
+
+    &__stat-label {
+        font-size: $ibexa-text-font-size-small;
+        color: $ibexa-color-dark-400;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    &__stat-value {
+        font-size: calculateRem(20px);
+        font-weight: 800;
+        color: $ibexa-color-dark;
+        font-family: $ibexa-font-family-headings;
+    }
+
+    &__section-title {
+        font-size: $ibexa-text-font-size;
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark;
+        margin: 0 0 calculateRem(8px);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    &__empty {
+        color: $ibexa-color-dark-400;
+        font-style: italic;
+    }
+
+    &__table {
+        width: 100%;
+        border-collapse: collapse;
+        background: $ibexa-color-white;
+        border: calculateRem(1px) solid $ibexa-color-light;
+        border-radius: $ibexa-border-radius;
+        overflow: hidden;
+
+        th, td {
+            text-align: left;
+            padding: calculateRem(10px) calculateRem(16px);
+            border-bottom: calculateRem(1px) solid $ibexa-color-light;
+        }
+
+        th {
+            font-size: $ibexa-text-font-size-small;
+            color: $ibexa-color-dark-400;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: $ibexa-color-light-200;
+        }
+
+        tr:last-child td {
+            border-bottom: 0;
+        }
+    }
+}
+
 // ── Action Bar ────────────────────────────────────────────────
 .ai-action-bar {
     display: flex;

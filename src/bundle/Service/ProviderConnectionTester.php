@@ -21,12 +21,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * catches the common "non-streaming works but streaming is broken"
  * failure mode (wrong endpoint suffix, missing stream flag, etc.).
  */
-class ProviderConnectionTester
+readonly class ProviderConnectionTester
 {
     public function __construct(
-        private readonly AiProviderRepository  $providerRepository,
-        private readonly ProviderAdapterRegistry $adapterRegistry,
-        private readonly HttpClientInterface    $httpClient,
+        private AiProviderRepository    $providerRepository,
+        private ProviderAdapterRegistry $adapterRegistry,
+        private HttpClientInterface     $httpClient,
     ) {
     }
 

@@ -17,12 +17,12 @@ use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
  * deactivates sibling models belonging to the same provider (matches
  * runtime resolution in {@see \\Masilia\\AiAssistant\\Client\\TargetResolver}).
  */
-class ModelManager
+readonly class ModelManager
 {
     public function __construct(
-        private readonly EntityManagerInterface   $entityManager,
-        private readonly AiModelRepository        $modelRepository,
-        private readonly AiProviderRepository     $providerRepository,
+        private EntityManagerInterface $entityManager,
+        private AiModelRepository      $modelRepository,
+        private AiProviderRepository   $providerRepository,
     ) {
     }
 

@@ -78,7 +78,14 @@ services:
         arguments:
             $novaSeo: '@Masilia\AiAssistant\NovaSeoPromptBuilder'
 
-    Masilia\AiAssistant\Client\AiClient: ~
+    Masilia\AiAssistant\Client\RequestLoggerInterface:
+        alias: 'Masilia\Bundle\AiAssistant\Service\DoctrineRequestLogger'
+
+    Masilia\Bundle\AiAssistant\Service\DoctrineRequestLogger: ~
+
+    Masilia\AiAssistant\Client\AiClient:
+        arguments:
+            $requestLogger: '@Masilia\AiAssistant\Client\RequestLoggerInterface'
 
     Masilia\Bundle\AiAssistant\Controller\:
         resource: '../../Controller/*'

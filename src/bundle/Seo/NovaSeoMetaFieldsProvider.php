@@ -17,10 +17,10 @@ use Throwable;
  * installed or the config is unavailable. This is the only place in the package
  * that knows about Novactive's config namespace.
  */
-final class NovaSeoMetaFieldsProvider implements SeoMetaFieldsProviderInterface
+final readonly class NovaSeoMetaFieldsProvider implements SeoMetaFieldsProviderInterface
 {
     public function __construct(
-        private readonly ConfigResolverInterface $configResolver,
+        private ConfigResolverInterface $configResolver,
     ) {
     }
 

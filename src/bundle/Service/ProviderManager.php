@@ -15,11 +15,11 @@ use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
  * provider only deactivates other global providers; a scoped provider
  * only deactivates other providers for the same siteaccess.
  */
-class ProviderManager
+readonly class ProviderManager
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly AiProviderRepository   $providerRepository,
+        private EntityManagerInterface $entityManager,
+        private AiProviderRepository   $providerRepository,
     ) {
     }
 

@@ -4,6 +4,7 @@ import ProviderCard from './ProviderCard.jsx';
 import ProviderDrawer from './ProviderDrawer.jsx';
 import ModelDrawer from './ModelDrawer.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import UsagePanel from './UsagePanel.jsx';
 import { useAiSettings } from './useAiSettings.js';
 
 export default function AiSettingsDashboard() {
@@ -19,6 +20,7 @@ export default function AiSettingsDashboard() {
     const [editingModel, setEditingModel] = useState(null);
     const [modelPreselectedProviderId, setModelPreselectedProviderId] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
+    const [activeTab, setActiveTab] = useState('providers');
 
     // Auto-expand the active provider on first successful load
     useEffect(() => {
@@ -96,58 +98,85 @@ export default function AiSettingsDashboard() {
                 currentSiteaccess={data.currentSiteaccess}
             />
 
-            <div className="ai-action-bar">
-                <div className="ai-action-bar__search">
-                    <svg className="ibexa-icon ibexa-icon--small ai-action-bar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    <input
-                        type="text"
-                        className="ibexa-input ibexa-input--text form-control ai-action-bar__input"
-                        placeholder="Search providers..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        aria-label="Search providers"
-                    />
-                </div>
-                <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
-                    + Add Provider
+            <div className="ai-tabs" role="tablist" aria-label="AI settings views">
+                <button
+                    role="tab"
+                    type="button"
+                    aria-selected={activeTab === 'providers'}
+                    className={`ai-tabs__tab ${activeTab === 'providers' ? 'ai-tabs__tab--active' : ''}`}
+                    onClick={() => setActiveTab('providers')}
+                >
+                    Providers
+                </button>
+                <button
+                    role="tab"
+                    type="button"
+                    aria-selected={activeTab === 'usage'}
+                    className={`ai-tabs__tab ${activeTab === 'usage' ? 'ai-tabs__tab--active' : ''}`}
+                    onClick={() => setActiveTab('usage')}
+                >
+                    Usage
                 </button>
             </div>
 
-            {filteredProviders.length === 0 ? (
-                <div className="ai-empty-state">
-                    <div className="ai-empty-state__icon">🧠</div>
-                    <p className="ai-empty-state__title">No providers configured</p>
-                    <p className="ai-empty-state__desc">Add your first AI provider to start using AI-assisted content editing.</p>
-                    <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
-                        + Add First Provider
-                    </button>
-                </div>
+            {activeTab === 'providers' ? (
+                <>
+                    <div className="ai-action-bar">
+                        <div className="ai-action-bar__search">
+                            <svg className="ibexa-icon ibexa-icon--small ai-action-bar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input
+                                type="text"
+                                className="ibexa-input ibexa-input--text form-control ai-action-bar__input"
+                                placeholder="Search providers..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                aria-label="Search providers"
+                            />
+                        </div>
+                        <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
+                            + Add Provider
+                        </button>
+                    </div>
+
+                    {filteredProviders.length === 0 ? (
+                        <div className="ai-empty-state">
+                            <div className="ai-empty-state__icon">🧠</div>
+                            <p className="ai-empty-state__title">No providers configured</p>
+                            <p className="ai-empty-state__desc">Add your first AI provider to start using AI-assisted content editing.</p>
+                            <button type="button" className="ibexa-btn ibexa-btn--primary" onClick={() => setEditingProvider('new')}>
+                                + Add First Provider
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="ai-providers-stack">
+                            {filteredProviders.map(p => (
+                                <ProviderCard
+                                    key={p.id}
+                                    provider={p}
+                                    models={data.models}
+                                    currentSiteaccess={data.currentSiteaccess}
+                                    isExpanded={expandedIds.has(p.id)}
+                                    onToggleExpand={() => toggleExpand(p.id)}
+                                    onActivateProvider={activateProvider}
+                                    onEditProvider={setEditingProvider}
+                                    onDeleteProvider={handleDeleteProvider}
+                                    onTestProvider={testProvider}
+                                    testingId={testingId}
+                                    testResult={testResults[p.id] || null}
+                                    onActivateModel={activateModel}
+                                    onEditModel={(m) => { setModelPreselectedProviderId(null); setEditingModel(m); }}
+                                    onDeleteModel={handleDeleteModel}
+                                    onAddModel={openAddModel}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </>
             ) : (
-                <div className="ai-providers-stack">
-                    {filteredProviders.map(p => (
-                        <ProviderCard
-                            key={p.id}
-                            provider={p}
-                            models={data.models}
-                            currentSiteaccess={data.currentSiteaccess}
-                            isExpanded={expandedIds.has(p.id)}
-                            onToggleExpand={() => toggleExpand(p.id)}
-                            onActivateProvider={activateProvider}
-                            onEditProvider={setEditingProvider}
-                            onDeleteProvider={handleDeleteProvider}
-                            onTestProvider={testProvider}
-                            testingId={testingId}
-                            testResult={testResults[p.id] || null}
-                            onActivateModel={activateModel}
-                            onEditModel={(m) => { setModelPreselectedProviderId(null); setEditingModel(m); }}
-                            onDeleteModel={handleDeleteModel}
-                            onAddModel={openAddModel}
-                        />
-                    ))}
-                </div>
+                <UsagePanel />
             )}
 
             {editingProvider && (

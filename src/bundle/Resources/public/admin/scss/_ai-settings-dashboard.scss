@@ -60,6 +60,16 @@
             background: $ibexa-color-success-100;
             color: $ibexa-color-success;
         }
+
+        &--offline {
+            background: $ibexa-color-danger-100;
+            color: $ibexa-color-danger;
+        }
+
+        &--not_configured {
+            background: $ibexa-color-light-300;
+            color: $ibexa-color-dark-400;
+        }
     }
 
     &__dot {
@@ -69,9 +79,50 @@
         background: $ibexa-color-dark-300;
         flex-shrink: 0;
 
-        &--active {
+        &--active,
+        &--online {
             background: $ibexa-color-success;
             animation: ai-pulse 2s ease-in-out infinite;
+        }
+
+        &--offline {
+            background: $ibexa-color-danger;
+        }
+
+        &--not_configured {
+            background: $ibexa-color-dark-300;
+        }
+    }
+
+    &__desc {
+        margin: calculateRem(4px) 0 0;
+        font-size: $ibexa-text-font-size-small;
+        color: $ibexa-color-dark-400;
+    }
+
+    &__refresh {
+        margin-left: calculateRem(8px);
+        background: transparent;
+        border: calculateRem(1px) solid currentColor;
+        color: inherit;
+        border-radius: calculateRem(4px);
+        width: calculateRem(24px);
+        height: calculateRem(24px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: calculateRem(14px);
+        line-height: 1;
+        padding: 0;
+
+        &:hover {
+            background: rgba($ibexa-color-dark, 0.05);
+        }
+
+        &:focus {
+            outline: none;
+            box-shadow: $ibexa-btn-focus-box-shadow;
         }
     }
 

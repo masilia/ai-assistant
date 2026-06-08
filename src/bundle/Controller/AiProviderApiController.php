@@ -11,6 +11,7 @@ use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
+use Masilia\Bundle\AiAssistant\Service\HealthChecker;
 use Masilia\Bundle\AiAssistant\Service\ProviderConnectionTester;
 use Masilia\Bundle\AiAssistant\Service\ProviderManager;
 use Masilia\AiAssistant\DTO\AiError;
@@ -28,6 +29,7 @@ class AiProviderApiController extends Controller
         private readonly AiModelRepository          $modelRepository,
         private readonly ProviderManager            $providerManager,
         private readonly ProviderConnectionTester   $connectionTester,
+        private readonly HealthChecker              $healthChecker,
         private readonly SiteAccessServiceInterface $siteAccessService,
     ) {
     }
@@ -147,6 +149,14 @@ class AiProviderApiController extends Controller
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    #[Route('/health', name: 'app.admin.ai_settings.api.health', methods: ['GET'])]
+    public function health(): JsonResponse
+    {
+        $this->checkAccess();
+
+        return new JsonResponse($this->healthChecker->check());
     }
 
     private function checkAccess(): void

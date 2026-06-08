@@ -35,6 +35,32 @@ function openAiModal(doc, fieldEdit, fieldType, targetElement, subFieldName, app
 }
 
 /**
+ * Find the input-actions wrapper for a field. In Ibexa, text inputs
+ * live inside `.ibexa-input-text-wrapper` which has a
+ * `.ibexa-input-text-wrapper__actions` child for action buttons.
+ * Falls back to the input's parent if the wrapper isn't found.
+ */
+function findInputActionsWrapper(fieldEdit, targetElement) {
+    const input = targetElement || fieldEdit.querySelector(SELECTORS.dataInput);
+    if (!input) return null;
+
+    // Walk up from the input to find the actions wrapper
+    const wrapper = input.closest('.ibexa-input-text-wrapper');
+    if (wrapper) {
+        let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
+        if (!actions) {
+            actions = doc.createElement('div');
+            actions.className = 'ibexa-input-text-wrapper__actions';
+            wrapper.appendChild(actions);
+        }
+        return actions;
+    }
+
+    // Fallback: use the input's parent element
+    return input.parentElement;
+}
+
+/**
  * Inject an AI button into a single field-edit element (if eligible).
  */
 function injectButton(doc, fieldEdit) {
@@ -69,10 +95,8 @@ function injectButton(doc, fieldEdit) {
     // Don't inject twice
     if (fieldEdit.querySelector(SELECTORS.trigger)) return;
 
-    const label = fieldEdit.querySelector(SELECTORS.fieldLabel)
-        || fieldEdit.querySelector('.ibexa-field-edit__label-wrapper label')
-        || fieldEdit.querySelector('legend');
-    if (!label) return;
+    const actionsWrapper = findInputActionsWrapper(doc, fieldEdit);
+    if (!actionsWrapper) return;
 
     const btn = createAiButton(doc);
     btn.addEventListener('click', (e) => {
@@ -81,8 +105,7 @@ function injectButton(doc, fieldEdit) {
         openAiModal(doc, fieldEdit, fieldType);
     });
 
-    label.style.position = 'relative';
-    label.appendChild(btn);
+    actionsWrapper.appendChild(btn);
 }
 
 /**

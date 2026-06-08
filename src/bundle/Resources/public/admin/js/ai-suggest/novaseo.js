@@ -24,20 +24,21 @@ export function collectNovaseoMetaKeys(fieldEdit) {
 }
 
 /**
- * Create the ✨ AI button element used as a field-level trigger.
- * Centralised so styling/aria changes happen in one place.
+ * Create the AI button element used as a field-level trigger.
+ * Ghost button with Sparkles icon — lives inside .ibexa-input-text-wrapper__actions.
  */
 export function createAiButton(doc, extraClass = '') {
     const btn = doc.createElement('button');
     btn.type = 'button';
-    btn.className = `ibexa-btn ibexa-btn--primary ibexa-btn--small ai-suggest-trigger ${extraClass}`.trim();
+    btn.className = `ibexa-btn ibexa-btn--ghost ibexa-btn--no-text ibexa-btn--small ai-suggest-trigger ${extraClass}`.trim();
     btn.setAttribute('aria-label', 'AI content assistant');
     btn.title = 'Generate content with AI';
     btn.innerHTML = `
-        <svg class="ibexa-icon ibexa-icon--tiny-small" viewBox="0 0 32 32">
-            <path fill="currentColor" d="M25.833 7.333c-0.217-0.001-0.423-0.053-0.605-0.144l0.008 0.004c-0.441-0.224-0.738-0.674-0.738-1.193 0-0.218 0.052-0.423 0.145-0.605l-0.003 0.008 2-4c0.224-0.441 0.674-0.738 1.193-0.738 0.737 0 1.334 0.597 1.334 1.334 0 0.217-0.052 0.423-0.144 0.604l0.003-0.008-2 4c-0.224 0.44-0.674 0.737-1.192 0.737h0zM18.11 16.293l5.333-5.333c0.241-0.241 0.391-0.575 0.391-0.943 0-0.737-0.597-1.334-1.334-1.334-0.368 0-0.702 0.149-0.943 0.391l-5.333 5.333c-0.241 0.241-0.391 0.575-0.391 0.943 0 0.737 0.597 1.334 1.334 1.334 0.368 0 0.702-0.149 0.943-0.391zM2.777 31.627l12.667-12.667c0.241-0.241 0.391-0.575 0.391-0.943 0-0.737-0.597-1.334-1.334-1.334-0.368 0-0.702 0.149-0.943 0.391L0.89 29.74c-0.241 0.241-0.391 0.575-0.391 0.943 0 0.737 0.597 1.334 1.334 1.334 0.368 0 0.702-0.149 0.943-0.391z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z" />
         </svg>
-        <span class="ibexa-btn__label">AI</span>
     `;
     return btn;
 }
@@ -46,6 +47,7 @@ export function createAiButton(doc, extraClass = '') {
  * Inject per-sub-field AI buttons into every eligible meta row of a
  * novaseometas container. Each row is a `.ibexa-data-source__input-wrapper`
  * containing a hidden `name` input (the meta key) and a `content` input/textarea.
+ * The button is placed inside `.ibexa-input-text-wrapper__actions` when available.
  */
 export function injectNovaseoMetaButtons(doc, fieldEdit, onOpenModal) {
     fieldEdit.querySelectorAll(NOVASEO.row).forEach((row) => {
@@ -62,10 +64,23 @@ export function injectNovaseoMetaButtons(doc, fieldEdit, onOpenModal) {
             onOpenModal(fieldEdit, 'novaseometas', contentInput, `Meta: ${metaKey}`, APPLY_MODE.SUB_FIELD, { subFieldKey: metaKey });
         });
 
-        const contentWrapper = row.querySelector(NOVASEO.contentWrapper);
-        if (contentWrapper) {
-            contentWrapper.style.position = 'relative';
-            contentWrapper.appendChild(btn);
+        // Try to find .ibexa-input-text-wrapper__actions inside the row
+        const wrapper = row.querySelector('.ibexa-input-text-wrapper');
+        if (wrapper) {
+            let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
+            if (!actions) {
+                actions = doc.createElement('div');
+                actions.className = 'ibexa-input-text-wrapper__actions';
+                wrapper.appendChild(actions);
+            }
+            actions.appendChild(btn);
+        } else {
+            // Fallback: append to contentWrapper
+            const contentWrapper = row.querySelector(NOVASEO.contentWrapper);
+            if (contentWrapper) {
+                contentWrapper.style.position = 'relative';
+                contentWrapper.appendChild(btn);
+            }
         }
     });
 }

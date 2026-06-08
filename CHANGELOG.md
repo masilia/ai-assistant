@@ -16,6 +16,17 @@ Types of changes:
 
 ## [Unreleased]
 
+### Changed
+- **Icon set migrated from emoji to Lucide-style SVG** — all
+  rendered icons in the AI modal, the dashboard, and the
+  field-level injector are now inline-SVG Lucide components
+  (`WandIcon`, `MinimizeIcon`, `LanguagesIcon`, `BrainIcon`,
+  `BotIcon`, `SearchXIcon`, etc.) instead of OS-dependent emoji
+  glyphs. Single source of truth in
+  `components/ai-settings/icons.jsx`. No new dependency.
+  `QUICK_ACTIONS[].icon` is now a React component reference, not
+  a string.
+
 ### Added
 - **`ResolvedProvider` domain object** — `lib/Client/Resolved/ResolvedProvider.php`.
   The `AiProviderRepositoryInterface` now returns framework-agnostic

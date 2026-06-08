@@ -40,6 +40,7 @@ class DoctrineRequestLogger implements RequestLoggerInterface
         $row->setErrorCode($record['errorCode'] ?? null);
         $row->setTokensIn(isset($record['tokensIn']) ? (int)$record['tokensIn'] : null);
         $row->setTokensOut(isset($record['tokensOut']) ? (int)$record['tokensOut'] : null);
+        $row->setFinishReason($record['finishReason'] ?? null);
 
         $this->entityManager->persist($row);
 

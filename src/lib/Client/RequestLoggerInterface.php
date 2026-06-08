@@ -19,6 +19,7 @@ interface RequestLoggerInterface
      *   errorCode: ?string,
      *   tokensIn: ?int,
      *   tokensOut: ?int,
+     *   finishReason: ?string,
      *   siteaccess: ?string,
      * } $record
      */

@@ -54,9 +54,11 @@ class AiClient implements AiClientInterface
             ]);
 
             $this->assertOk($response, $target->providerIdentifier);
-            $result = $target->adapter->parseResponse($response->toArray());
+            $rawData = $response->toArray();
+            $result = $target->adapter->parseResponse($rawData);
+            $usage = $target->adapter->extractUsage($rawData);
 
-            $this->logSuccess($target, $start);
+            $this->logSuccess($target, $start, $usage);
 
             return $result;
         } catch (\Throwable $e) {
@@ -123,7 +125,7 @@ class AiClient implements AiClientInterface
         }
     }
 
-    private function logSuccess(AiTarget $target, float $startMs): void
+    private function logSuccess(AiTarget $target, float $startMs, ?array $usage = null): void
     {
         $this->requestLogger->log([
             'providerIdentifier' => $target->providerIdentifier,
@@ -131,8 +133,9 @@ class AiClient implements AiClientInterface
             'success'             => true,
             'latencyMs'           => $this->elapsedMs($startMs),
             'errorCode'           => null,
-            'tokensIn'            => null,
-            'tokensOut'           => null,
+            'tokensIn'            => $usage['input']  ?? null,
+            'tokensOut'           => $usage['output'] ?? null,
+            'finishReason'        => $usage['finishReason'] ?? null,
             'siteaccess'          => null,
         ]);
     }

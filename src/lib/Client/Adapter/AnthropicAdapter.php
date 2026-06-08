@@ -140,4 +140,18 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
     {
         return \Masilia\AiAssistant\Client\ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
     }
+
+    public function extractUsage(array $data): ?array
+    {
+        $usage = $data['usage'] ?? null;
+        if (!is_array($usage)) {
+            return null;
+        }
+
+        return [
+            'input'        => isset($usage['input_tokens']) ? (int) $usage['input_tokens'] : null,
+            'output'       => isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : null,
+            'finishReason' => isset($data['stop_reason']) ? (string) $data['stop_reason'] : null,
+        ];
+    }
 }

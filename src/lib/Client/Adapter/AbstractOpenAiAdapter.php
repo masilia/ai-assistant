@@ -137,4 +137,18 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
     {
         return \Masilia\AiAssistant\Client\ProviderLimits::openAiCompatible();
     }
+
+    public function extractUsage(array $data): ?array
+    {
+        $usage = $data['usage'] ?? null;
+        if (!is_array($usage)) {
+            return null;
+        }
+
+        return [
+            'input'        => isset($usage['prompt_tokens']) ? (int) $usage['prompt_tokens'] : null,
+            'output'       => isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
+            'finishReason' => isset($data['choices'][0]['finish_reason']) ? (string) $data['choices'][0]['finish_reason'] : null,
+        ];
+    }
 }

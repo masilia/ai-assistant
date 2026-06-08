@@ -21,8 +21,8 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: AiRequestLogRepository::class)]
 #[ORM\Table(name: 'app_ai_request_log')]
-#[ORM\Index(name: 'idx_ai_log_created', columns: ['createdAt'])]
-#[ORM\Index(name: 'idx_ai_log_provider', columns: ['providerIdentifier'])]
+#[ORM\Index(columns: ['created_at'], name: 'idx_ai_log_created')]
+#[ORM\Index(columns: ['provider_identifier'], name: 'idx_ai_log_provider')]
 class AiRequestLog
 {
     #[ORM\Id]
@@ -54,6 +54,9 @@ class AiRequestLog
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $tokensOut = null;
 
+    #[ORM\Column(type: Types::STRING, length: 32, nullable: true)]
+    private ?string $finishReason = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -71,6 +74,7 @@ class AiRequestLog
     public function getErrorCode(): ?string { return $this->errorCode; }
     public function getTokensIn(): ?int { return $this->tokensIn; }
     public function getTokensOut(): ?int { return $this->tokensOut; }
+    public function getFinishReason(): ?string { return $this->finishReason; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
     public function setProviderIdentifier(string $v): self { $this->providerIdentifier = $v; return $this; }
@@ -81,4 +85,5 @@ class AiRequestLog
     public function setErrorCode(?string $v): self { $this->errorCode = $v; return $this; }
     public function setTokensIn(?int $v): self { $this->tokensIn = $v; return $this; }
     public function setTokensOut(?int $v): self { $this->tokensOut = $v; return $this; }
+    public function setFinishReason(?string $v): self { $this->finishReason = $v; return $this; }
 }

@@ -34,7 +34,7 @@ export default function SuggestionPreview({ text, fieldType, onApply }) {
                 {fieldType === 'ezrichtext' ? (
                     <div dangerouslySetInnerHTML={{ __html: text }} />
                 ) : (
-                    <pre>{text}</pre>
+                    <div className="ai-suggest-modal__preview-text">{text}</div>
                 )}
             </div>
         </div>

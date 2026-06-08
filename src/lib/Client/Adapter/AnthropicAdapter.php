@@ -8,6 +8,8 @@ use Masilia\AiAssistant\Client\ProviderId;
 
 class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
+    use AnthropicMessagesResponseTrait;
+
     private const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1';
     private const DEFAULT_TEST_MODEL = 'claude-sonnet-4-5';
 
@@ -71,21 +73,6 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         }
 
         return $text;
-    }
-
-    /**
-     * Anthropic may return multiple content blocks (e.g. thinking + text).
-     * Find the first block with type='text'.
-     */
-    protected function extractTextBlock(array $data): string
-    {
-        foreach ($data['content'] ?? [] as $block) {
-            if (($block['type'] ?? '') === 'text') {
-                return trim($block['text'] ?? '');
-            }
-        }
-
-        return '';
     }
 
     public function buildTestRequestBody(string $modelIdentifier): array

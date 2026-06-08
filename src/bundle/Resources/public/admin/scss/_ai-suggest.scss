@@ -167,11 +167,24 @@
         font-weight: 500;
         color: $ibexa-color-dark;
         cursor: pointer;
-        transition: all $ibexa-admin-transition-duration $ibexa-admin-transition;
+        // Explicit transitions beat 'transition: all' (which forces the
+        // browser to listen to every animatable property, including
+        // layout, which is a perf footgun). Same duration + easing as
+        // the rest of the Ibexa admin UI.
+        transition:
+            background-color $ibexa-admin-transition-duration $ibexa-admin-transition,
+            border-color $ibexa-admin-transition-duration $ibexa-admin-transition,
+            color $ibexa-admin-transition-duration $ibexa-admin-transition,
+            box-shadow $ibexa-admin-transition-duration $ibexa-admin-transition,
+            transform $ibexa-admin-transition-duration $ibexa-admin-transition;
 
         &:hover {
             background: $ibexa-color-light-200;
             border-color: $ibexa-color-primary-300;
+        }
+
+        &:active:not(:disabled) {
+            transform: scale(0.97);
         }
 
         &:focus {

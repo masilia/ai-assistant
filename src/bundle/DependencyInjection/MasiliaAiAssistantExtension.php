@@ -39,6 +39,14 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
             $config = Yaml::parse(file_get_contents($configFile));
             $container->prependExtensionConfig('twig', $config);
         }
+
+        // Register a dedicated Monolog channel so AI logs can be routed
+        // independently (e.g. to a separate file, Datadog, Sentry). The
+        // host app's monolog config can apply handlers, filters, and
+        // formatters to the 'ai' channel without touching the default one.
+        $container->prependExtensionConfig('monolog', [
+            'channels' => ['ai'],
+        ]);
     }
 
     public function load(array $configs, ContainerBuilder $container): void

@@ -38,7 +38,7 @@ readonly class AiSuggestController
         private PermissionResolver    $permissionResolver,
         private FieldContextExtractor $contextExtractor,
         private LanguageNormalizer    $languageNormalizer,
-        private LoggerInterface       $logger,
+        private LoggerInterface       $aiLogger,
     )
     {
     }
@@ -82,7 +82,7 @@ readonly class AiSuggestController
 
             return new JsonResponse($response->toArray());
         } catch (\RuntimeException $e) {
-            $this->logger->error('[AI] Suggestion failed: {message}', [
+            $this->aiLogger->error('[AI] Suggestion failed: {message}', [
                 'message' => $e->getMessage(),
                 'exception' => $e,
             ]);
@@ -211,7 +211,7 @@ readonly class AiSuggestController
         try {
             $prepared = $this->prepareSuggestion($aiRequest);
         } catch (\RuntimeException $e) {
-            $this->logger->error('[AI] Streaming preparation failed: {message}', [
+            $this->aiLogger->error('[AI] Streaming preparation failed: {message}', [
                 'message' => $e->getMessage(),
                 'exception' => $e,
             ]);
@@ -236,7 +236,7 @@ readonly class AiSuggestController
                 echo 'data: ' . json_encode(['token' => '', 'done' => true, 'format' => $formatValue]) . "\n\n";
                 flush();
             } catch (\RuntimeException $e) {
-                $this->logger->error('[AI] Streaming suggestion failed: {message}', [
+                $this->aiLogger->error('[AI] Streaming suggestion failed: {message}', [
                     'message' => $e->getMessage(),
                     'exception' => $e,
                 ]);

@@ -33,10 +33,14 @@ class FieldValueStringifierRegistry
 
     /**
      * @param iterable<FieldValueStringifierInterface> $stringifiers
+     * @param LoggerInterface                          $aiLogger
+     *        Channel-scoped logger (injected via $aiLogger parameter name
+     *        binding in services.yaml). Defaults to NullLogger if absent
+     *        so unit tests don't have to wire a logger.
      */
-    public function __construct(iterable $stringifiers, ?LoggerInterface $logger = null)
+    public function __construct(iterable $stringifiers, ?LoggerInterface $aiLogger = null)
     {
-        $this->logger = $logger ?? new NullLogger();
+        $this->logger = $aiLogger ?? new NullLogger();
 
         foreach ($stringifiers as $stringifier) {
             foreach ($stringifier::getSupportedFieldTypes() as $type) {

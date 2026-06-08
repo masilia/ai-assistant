@@ -30,7 +30,7 @@ readonly class FieldContextExtractor
         private FieldValueStringifierRegistry $stringifierRegistry,
         private FieldIdentifierResolver  $identifierResolver,
         private SiblingFieldsExtractor   $siblingExtractor,
-        private LoggerInterface          $logger,
+        private LoggerInterface          $aiLogger,
     ) {
     }
 
@@ -48,7 +48,7 @@ readonly class FieldContextExtractor
         try {
             $content = $this->contentService->loadContent($request->contentId);
         } catch (Throwable $e) {
-            $this->logger->warning(
+            $this->aiLogger->warning(
                 '[AI] Failed to load content {contentId}: {message}',
                 ['contentId' => $request->contentId, 'message' => $e->getMessage()]
             );
@@ -93,7 +93,7 @@ readonly class FieldContextExtractor
         try {
             $content = $this->contentService->loadContent($request->contentId);
         } catch (Throwable $e) {
-            $this->logger->warning(
+            $this->aiLogger->warning(
                 '[AI] Failed to load content {contentId} for translation: {message}',
                 ['contentId' => $request->contentId, 'message' => $e->getMessage()]
             );

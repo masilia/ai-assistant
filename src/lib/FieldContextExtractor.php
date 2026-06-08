@@ -6,26 +6,31 @@ namespace Masilia\AiAssistant;
 
 use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\SiblingField;
+use Masilia\AiAssistant\Field\FieldIdentifierResolver;
 use Masilia\AiAssistant\Field\FieldValueStringifierRegistry;
+use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
 use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
-use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
  * Extracts contextual field data from Ibexa content for AI prompts.
  *
+ * Orchestrator: loads the content via {@see ContentService}, then delegates
+ * identifier resolution and sibling extraction to dedicated helpers.
+ *
  * Field-value-to-string conversion is delegated to the
- * {@see FieldValueStringifierRegistry} (one stringifier class per field type),
- * following the same tagged-iterator pattern as the app's FieldValueTransformer.
+ * {@see FieldValueStringifierRegistry}.
  */
 readonly class FieldContextExtractor
 {
     public function __construct(
-        private ContentService                $contentService,
+        private ContentService           $contentService,
         private FieldValueStringifierRegistry $stringifierRegistry,
-        private LoggerInterface               $logger,
+        private FieldIdentifierResolver  $identifierResolver,
+        private SiblingFieldsExtractor   $siblingExtractor,
+        private LoggerInterface          $logger,
     ) {
     }
 
@@ -37,11 +42,7 @@ readonly class FieldContextExtractor
         string           $normalizedLanguage,
     ): array {
         if ($request->contentId <= 0) {
-            return [
-                'contentTitle' => $request->contentTitle,
-                'contentType' => $request->contentType,
-                'siblingFields' => [],
-            ];
+            return $this->emptyContext($request);
         }
 
         try {
@@ -52,33 +53,23 @@ readonly class FieldContextExtractor
                 ['contentId' => $request->contentId, 'message' => $e->getMessage()]
             );
 
-            return [
-                'contentTitle' => $request->contentTitle,
-                'contentType' => $request->contentType,
-                'siblingFields' => [],
-            ];
+            return $this->emptyContext($request);
         }
 
-        $contentTypeObj = $content->getContentType();
-        $contentTitle = $request->contentTitle;
-        $contentType = $contentTypeObj->getName();
+        $contentType = $content->getContentType();
+        $contentTitle = $this->resolveTitle($content, $normalizedLanguage) ?: $request->contentTitle;
 
-        $resolvedTitle = $content->getName($normalizedLanguage) ?? $content->getName();
-        if ($resolvedTitle !== null && $resolvedTitle !== '') {
-            $contentTitle = $resolvedTitle;
-        }
-
-        $currentFieldIdentifier = $this->resolveCurrentFieldIdentifier(
-            $request->fieldName, $contentTypeObj
+        $currentIdentifier = $this->identifierResolver->resolve(
+            $request->fieldName, $contentType
         );
 
-        $siblingFields = $this->extractSiblingFields(
-            $content, $contentTypeObj, $currentFieldIdentifier, $normalizedLanguage
+        $siblingFields = $this->siblingExtractor->extract(
+            $content, $contentType, $currentIdentifier, $normalizedLanguage
         );
 
         return [
             'contentTitle' => $contentTitle,
-            'contentType' => $contentType,
+            'contentType' => $contentType->getName(),
             'siblingFields' => $siblingFields,
         ];
     }
@@ -111,19 +102,19 @@ readonly class FieldContextExtractor
         }
 
         $contentType = $content->getContentType();
-        $currentFieldIdentifier = $this->resolveCurrentFieldIdentifier($request->fieldName, $contentType);
+        $currentIdentifier = $this->identifierResolver->resolve($request->fieldName, $contentType);
 
-        if ($currentFieldIdentifier === '') {
+        if ($currentIdentifier === '') {
             return null;
         }
 
-        $fieldDef = $contentType->getFieldDefinition($currentFieldIdentifier);
+        $fieldDef = $contentType->getFieldDefinition($currentIdentifier);
         if ($fieldDef === null) {
             return null;
         }
 
-        $field = $content->getField($currentFieldIdentifier, $sourceLanguage)
-            ?? $content->getField($currentFieldIdentifier);
+        $field = $content->getField($currentIdentifier, $sourceLanguage)
+            ?? $content->getField($currentIdentifier);
 
         if ($field === null) {
             return null;
@@ -137,77 +128,25 @@ readonly class FieldContextExtractor
 
         return [
             'value' => mb_substr($stringValue, 0, AiConstants::MAX_CURRENT_VALUE_CHARS * 2),
-            'label' => $fieldDef->getName() ?: $currentFieldIdentifier,
+            'label' => $fieldDef->getName() ?: $currentIdentifier,
         ];
     }
 
-    // -----------------------------------------------------------------------
-    //  Private helpers
-    // -----------------------------------------------------------------------
-
-    private function resolveCurrentFieldIdentifier(string $fieldName, ContentType $contentType): string
+    /**
+     * @return array{contentTitle: string, contentType: string, siblingFields: SiblingField[]}
+     */
+    private function emptyContext(AiSuggestRequest $request): array
     {
-        if ($fieldName === '') {
-            return '';
-        }
-
-        $normalised = mb_strtolower(trim($fieldName));
-
-        foreach ($contentType->getFieldDefinitions() as $fieldDef) {
-            $defName = mb_strtolower(trim($fieldDef->getName() ?? ''));
-            if ($defName === $normalised) {
-                return $fieldDef->identifier;
-            }
-        }
-
-        $asIdentifier = strtolower(str_replace(' ', '_', $fieldName));
-        foreach ($contentType->getFieldDefinitions() as $fieldDef) {
-            if ($fieldDef->identifier === $asIdentifier) {
-                return $fieldDef->identifier;
-            }
-        }
-
-        return $asIdentifier;
+        return [
+            'contentTitle' => $request->contentTitle,
+            'contentType' => $request->contentType,
+            'siblingFields' => [],
+        ];
     }
 
-    /**
-     * @return SiblingField[]
-     */
-    private function extractSiblingFields(
-        Content     $content,
-        ContentType $contentType,
-        string      $currentFieldIdentifier,
-        string      $language,
-    ): array {
-        $siblingFields = [];
-
-        foreach ($contentType->getFieldDefinitions() as $fieldDef) {
-            $identifier = $fieldDef->identifier;
-
-            if ($identifier === $currentFieldIdentifier) {
-                continue;
-            }
-
-            $field = $content->getField($identifier, $language)
-                ?? $content->getField($identifier);
-
-            if ($field === null) {
-                continue;
-            }
-
-            $stringValue = $this->stringifierRegistry->toString($field, $fieldDef);
-            if ($stringValue === '') {
-                continue;
-            }
-
-            $label = $fieldDef->getName() ?: $identifier;
-
-            $siblingFields[] = new SiblingField(
-                label: $label,
-                value: mb_substr($stringValue, 0, AiConstants::MAX_SIBLING_CHARS),
-            );
-        }
-
-        return $siblingFields;
+    private function resolveTitle(Content $content, string $language): ?string
+    {
+        $name = $content->getName($language) ?? $content->getName();
+        return ($name !== null && $name !== '') ? $name : null;
     }
 }

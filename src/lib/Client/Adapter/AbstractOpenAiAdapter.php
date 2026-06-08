@@ -56,7 +56,7 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
     {
         return [
             'model' => $modelIdentifier,
-            'temperature' => $temperature,
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
             'max_tokens' => $maxTokens,
             'messages' => [
                 ['role' => 'system', 'content' => $systemPrompt],
@@ -131,5 +131,10 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         $trimmed = trim($line);
 
         return $trimmed === 'data: [DONE]' || $trimmed === '[DONE]' || $trimmed === 'DONE';
+    }
+
+    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
+    {
+        return \Masilia\AiAssistant\Client\ProviderLimits::openAiCompatible();
     }
 }

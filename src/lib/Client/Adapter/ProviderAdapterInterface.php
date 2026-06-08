@@ -27,4 +27,10 @@ interface ProviderAdapterInterface
     ): array;
 
     public function parseResponse(array $data): string;
+
+    /**
+     * Per-provider shape limits. Default: OpenAI-compatible.
+     * Adapters with quirks (Anthropic, MiniMax) override.
+     */
+    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits;
 }

@@ -53,7 +53,7 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
     {
         return [
             'model' => $modelIdentifier,
-            'temperature' => $temperature,
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
             'max_tokens' => $maxTokens,
             'system' => $systemPrompt,
             'messages' => [
@@ -99,7 +99,7 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
     {
         return [
             'model' => $modelIdentifier,
-            'temperature' => max(0.01, $temperature),
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
             'max_tokens' => $maxTokens,
             'system' => $systemPrompt,
             'messages' => [
@@ -134,5 +134,10 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
     {
         $trimmed = trim($line);
         return str_starts_with($trimmed, 'event: message_stop');
+    }
+
+    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
+    {
+        return \Masilia\AiAssistant\Client\ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
-use Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface;
+use Masilia\AiAssistant\Client\Adapter\StreamingProviderAdapterInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -23,7 +23,7 @@ class StreamConsumer
     /**
      * @return \Generator<int, string>
      */
-    public function consume(ResponseInterface $response, ProviderAdapterInterface $adapter): \Generator
+    public function consume(ResponseInterface $response, StreamingProviderAdapterInterface $adapter): \Generator
     {
         $buffer = '';
 

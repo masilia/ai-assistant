@@ -50,6 +50,14 @@ class AiClient implements AiClientInterface
     {
         $target = $this->resolver->resolve();
 
+        if (!$target->adapter instanceof \Masilia\AiAssistant\Client\Adapter\StreamingProviderAdapterInterface) {
+            throw new \RuntimeException(sprintf(
+                'Provider "%s" does not support streaming (adapter %s).',
+                $target->providerIdentifier,
+                $target->adapter::class
+            ));
+        }
+
         $body = $target->adapter->buildStreamRequestBody(
             $target->modelIdentifier,
             $target->temperature,

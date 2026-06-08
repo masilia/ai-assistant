@@ -13,7 +13,7 @@ use Masilia\AiAssistant\Client\ProviderId;
  * Subclasses only need to define their provider identifier, default base URL,
  * and default test model. All request/response logic is shared.
  */
-abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface
+abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
     abstract protected function getProviderIdentifier(): string;
 

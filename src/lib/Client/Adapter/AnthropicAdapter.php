@@ -6,7 +6,7 @@ namespace Masilia\AiAssistant\Client\Adapter;
 
 use Masilia\AiAssistant\Client\ProviderId;
 
-class AnthropicAdapter implements ProviderAdapterInterface
+class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
     private const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1';
     private const DEFAULT_TEST_MODEL = 'claude-sonnet-4-5';

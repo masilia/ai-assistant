@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client\Adapter;
 
+/**
+ * Base provider adapter contract. Every AI provider adapter must
+ * implement at least this interface. Streaming and testable providers
+ * additionally implement {@see StreamingProviderAdapterInterface} and
+ * {@see TestableProviderAdapterInterface}.
+ */
 interface ProviderAdapterInterface
 {
     public function supports(string $providerIdentifier): bool;
@@ -21,20 +27,4 @@ interface ProviderAdapterInterface
     ): array;
 
     public function parseResponse(array $data): string;
-
-    public function buildTestRequestBody(string $modelIdentifier): array;
-
-    public function getDefaultTestModel(): string;
-
-    public function buildStreamRequestBody(
-        string $modelIdentifier,
-        float  $temperature,
-        int    $maxTokens,
-        string $systemPrompt,
-        string $userPrompt,
-    ): array;
-
-    public function parseStreamChunk(string $line): ?string;
-
-    public function isStreamEnd(string $line): bool;
 }

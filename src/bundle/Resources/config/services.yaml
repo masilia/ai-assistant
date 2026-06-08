@@ -17,14 +17,23 @@ services:
     Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface:
         abstract: true
 
+    Masilia\AiAssistant\Client\Adapter\StreamingProviderAdapterInterface:
+        abstract: true
+
+    Masilia\AiAssistant\Client\Adapter\TestableProviderAdapterInterface:
+        abstract: true
+
     Masilia\AiAssistant\:
         resource: '../../../lib/*'
         exclude:
             - '../../../lib/Client/Adapter/ProviderAdapterInterface.php'
+            - '../../../lib/Client/Adapter/StreamingProviderAdapterInterface.php'
+            - '../../../lib/Client/Adapter/TestableProviderAdapterInterface.php'
             - '../../../lib/Client/Adapter/AbstractOpenAiCompatibleAdapter.php'
             - '../../../lib/Client/AiClientInterface.php'
             - '../../../lib/Client/AiTarget.php'
             - '../../../lib/Client/ProviderId.php'
+            - '../../../lib/Client/Resolved/ResolvedProvider.php'
             - '../../../lib/Field/FieldValueStringifierInterface.php'
             - '../../../lib/Repository/'
             - '../../../lib/DTO/'

@@ -7,6 +7,7 @@ namespace Masilia\Bundle\AiAssistant\Service;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
+use Masilia\AiAssistant\Client\Adapter\TestableProviderAdapterInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -31,6 +32,17 @@ class ProviderConnectionTester
             ?? throw new \InvalidArgumentException('Provider not found.');
 
         $adapter = $this->adapterRegistry->getForProvider($provider->getIdentifier());
+
+        if (!$adapter instanceof TestableProviderAdapterInterface) {
+            return [
+                'success' => false,
+                'message' => sprintf(
+                    'Provider adapter "%s" does not implement connection-test support.',
+                    $adapter::class
+                ),
+                'httpStatus' => null,
+            ];
+        }
 
         $models = $provider->getModels();
         $testModel = $models->count() > 0

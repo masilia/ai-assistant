@@ -285,13 +285,13 @@ function AiSuggestModal() {
                             >
                                 {stream.streaming ? (
                                     <>
-                                        <BrainIcon size={16} className="ai-suggest-modal__brain-icon ai-suggest-modal__brain-icon--pulse" />
+                                        <BrainIcon size={16} className="ibexa-icon--small ai-suggest-modal__brain-icon--pulse" />
                                         <span>Stop</span>
                                         <span className="visually-hidden">AI is generating content, please wait.</span>
                                     </>
                                 ) : stream.loading ? (
                                     <>
-                                        <BrainIcon size={16} className="ai-suggest-modal__brain-icon ai-suggest-modal__brain-icon--pulse" />
+                                        <BrainIcon size={16} className="ibexa-icon--small ai-suggest-modal__brain-icon--pulse" />
                                         <span className="visually-hidden">Loading, please wait.</span>
                                     </>
                                 ) : (

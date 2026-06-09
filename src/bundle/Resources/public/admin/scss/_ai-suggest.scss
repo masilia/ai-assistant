@@ -313,18 +313,12 @@
     }
 
     // ── Brain icon pulse ──────────────────────────────────────
-    &__brain-icon {
-        transition: transform 0.2s ease;
-
-        &--pulse {
-            animation: ai-brain-pulse 1.2s ease-in-out infinite;
-        }
+    &__brain-icon--pulse {
+        animation: ai-brain-pulse 1.2s ease-in-out infinite;
     }
 
-    &__generate-btn--active {
-        .ai-suggest-modal__brain-icon {
-            animation: ai-brain-pulse 1.2s ease-in-out infinite;
-        }
+    &__generate-btn--active .ai-suggest-modal__brain-icon--pulse {
+        animation: ai-brain-pulse 1.2s ease-in-out infinite;
     }
 
     // ── Preview section ───────────────────────────────────────
@@ -451,9 +445,8 @@
     .ai-suggest-modal__streaming-indicator,
     .ai-suggest-modal__streaming-indicator::before,
     .ai-suggest-modal__streaming-indicator::after,
-    .ai-suggest-modal__brain-icon,
     .ai-suggest-modal__brain-icon--pulse,
-    .ai-suggest-modal__generate-btn--active .ai-suggest-modal__brain-icon,
+    .ai-suggest-modal__generate-btn--active .ai-suggest-modal__brain-icon--pulse,
     .ai-suggest-modal__quick-action,
     .ai-suggest-trigger--inline {
         animation: none !important;

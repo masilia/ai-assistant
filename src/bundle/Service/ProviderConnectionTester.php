@@ -83,7 +83,7 @@ readonly class ProviderConnectionTester
         // Sync test passed. Optionally exercise the streaming path.
         $streamOk = null;
         if ($testStream) {
-            $streamOk = $this->testStream($provider, $adapter, $testModel, $url, $headers);
+            $streamOk = $this->testStream($provider, $this->adapterRegistry, $testModel, $url, $headers);
         }
 
         $message = $streamOk === false

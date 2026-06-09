@@ -36,8 +36,14 @@ class AiClient implements AiClientInterface
 
     public function suggest(string $systemPrompt, string $userPrompt): string
     {
-        $target = $this->resolver->resolve();
         $start = microtime(true);
+
+        try {
+            $target = $this->resolver->resolve();
+        } catch (\Throwable $e) {
+            $this->logResolutionFailure($start, $e);
+            throw $e;
+        }
 
         try {
             $body = $target->adapter->buildRequestBody(
@@ -69,15 +75,23 @@ class AiClient implements AiClientInterface
 
     public function suggestStream(string $systemPrompt, string $userPrompt): \Generator
     {
-        $target = $this->resolver->resolve();
         $start = microtime(true);
 
+        try {
+            $target = $this->resolver->resolve();
+        } catch (\Throwable $e) {
+            $this->logResolutionFailure($start, $e);
+            throw $e;
+        }
+
         if (!$target->adapter instanceof StreamingProviderAdapterInterface) {
-            throw new \RuntimeException(sprintf(
+            $e = new \RuntimeException(sprintf(
                 'Provider "%s" does not support streaming (adapter %s).',
                 $target->providerIdentifier,
                 $target->adapter::class
             ));
+            $this->logFailure($target, $start, $e);
+            throw $e;
         }
 
         try {
@@ -96,17 +110,30 @@ class AiClient implements AiClientInterface
             ]);
 
             $this->assertOk($response, $target->providerIdentifier);
-
-            // Log the success BEFORE yielding so we record that the
-            // connection succeeded; token-level telemetry would be a
-            // larger feature, not in scope here.
-            $this->logSuccess($target, $start);
-
-            return $this->streamConsumer->consume($response, $target->adapter);
         } catch (\Throwable $e) {
             $this->logFailure($target, $start, $e);
             throw $e;
         }
+
+        // Wrap the generator so mid-stream failures are also logged.
+        // The connection established successfully (we passed assertOk);
+        // we delay logging success until the entire stream has been
+        // consumed, so a mid-stream drop or parse error flips the
+        // outcome to failure.
+        $logger = $this->requestLogger;
+        $consumer = $this->streamConsumer;
+
+        return (function () use ($target, $start, $logger, $consumer, $response) {
+            try {
+                foreach ($consumer->consume($response, $target->adapter) as $token) {
+                    yield $token;
+                }
+                $this->logSuccess($target, $start);
+            } catch (\Throwable $e) {
+                $this->logFailure($target, $start, $e);
+                throw $e;
+            }
+        })();
     }
 
     private function assertOk(ResponseInterface $response, string $providerIdentifier): void
@@ -136,7 +163,7 @@ class AiClient implements AiClientInterface
             'tokensIn'            => $usage['input']  ?? null,
             'tokensOut'           => $usage['output'] ?? null,
             'finishReason'        => $usage['finishReason'] ?? null,
-            'siteaccess'          => null,
+            'siteaccess'          => $target->siteaccess,
         ]);
     }
 
@@ -145,6 +172,25 @@ class AiClient implements AiClientInterface
         $this->requestLogger->log([
             'providerIdentifier' => $target->providerIdentifier,
             'modelIdentifier'    => $target->modelIdentifier,
+            'success'             => false,
+            'latencyMs'           => $this->elapsedMs($startMs),
+            'errorCode'           => $this->extractErrorCode($e),
+            'tokensIn'            => null,
+            'tokensOut'           => null,
+            'siteaccess'          => $target->siteaccess,
+        ]);
+    }
+
+    /**
+     * Logs a failure that happened BEFORE we had an AiTarget (i.e. during
+     * target resolution). The provider/model are unknown, but the failure
+     * is still worth recording so the Usage tab can show config errors.
+     */
+    private function logResolutionFailure(float $startMs, \Throwable $e): void
+    {
+        $this->requestLogger->log([
+            'providerIdentifier' => 'unknown',
+            'modelIdentifier'    => 'unknown',
             'success'             => false,
             'latencyMs'           => $this->elapsedMs($startMs),
             'errorCode'           => $this->extractErrorCode($e),

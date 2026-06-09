@@ -58,6 +58,7 @@ class TargetResolver
             maxTokens: $resolved->maxTokens,
             url: $adapter->buildEndpointUrl($resolved->apiUrl),
             headers: $adapter->buildHeaders($resolved->apiKey),
+            siteaccess: $this->getCurrentSiteaccess(),
         );
     }
 
@@ -94,6 +95,7 @@ class TargetResolver
             maxTokens: (int) ($maxTokens ?: 4096),
             url: $adapter->buildEndpointUrl($apiUrl),
             headers: $adapter->buildHeaders($apiKey),
+            siteaccess: $this->getCurrentSiteaccess(),
         );
     }
 

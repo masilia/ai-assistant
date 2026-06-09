@@ -25,6 +25,7 @@ final readonly class AiTarget
         public int                      $maxTokens,
         public string                   $url,
         public array                    $headers,
+        public ?string                  $siteaccess = null,
     ) {
     }
 }

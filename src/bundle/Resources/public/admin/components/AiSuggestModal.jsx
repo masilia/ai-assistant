@@ -296,7 +296,7 @@ function AiSuggestModal() {
                                     </>
                                 ) : (
                                     <>
-                                        <BrainIcon size={16} className="ai-suggest-modal__brain-icon" />
+                                        <SparklesIcon size={16} className="ibexa-icon--small" />
                                         <span className="ibexa-btn__label">{stream.suggestion ? 'Regenerate' : 'Generate'}</span>
                                     </>
                                 )}

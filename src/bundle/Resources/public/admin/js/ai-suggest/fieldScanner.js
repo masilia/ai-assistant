@@ -1,4 +1,4 @@
-import { SELECTORS } from './selectors.js';
+import { SELECTORS, MATRIX } from './selectors.js';
 import { getFieldType, getFieldLabel, getCurrentValue, getContentTypeName, getContentTitle, getSiblingFields, getFieldIdentifier, getContentId } from './fieldInfo.js';
 import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, createTranslateButton, injectTranslateButtonsForSiblings } from './novaseo.js';
 import { applyToField } from './apply.js';
@@ -95,6 +95,31 @@ function injectButton(doc, fieldEdit) {
         }
         // Per-sub-field buttons on every eligible meta row
         injectNovaseoMetaButtons(doc, fieldEdit, openAiModal);
+        return;
+    }
+
+    if (fieldType === 'ezmatrix') {
+        // Field-level button (per-row buttons are out of scope for v1).
+        // Placed in the matrix's actions div (next to Add/Delete);
+        // falls back to the field label.
+        if (!fieldEdit.querySelector(SELECTORS.trigger)) {
+            const target = fieldEdit.querySelector(MATRIX.actions)
+                || fieldEdit.querySelector(SELECTORS.fieldLabel)
+                || fieldEdit.querySelector('.ibexa-field-edit__label-wrapper label')
+                || fieldEdit.querySelector('legend');
+            if (target) {
+                const btn = createAiButton(doc);
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openAiModal(
+                        doc, fieldEdit, fieldType, null, getFieldLabel(fieldEdit), APPLY_MODE.WHOLE_BLOCK
+                    );
+                });
+                target.style.position = 'relative';
+                target.appendChild(btn);
+            }
+        }
         return;
     }
 

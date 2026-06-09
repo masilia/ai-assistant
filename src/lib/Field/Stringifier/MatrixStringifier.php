@@ -26,16 +26,42 @@ final class MatrixStringifier implements FieldValueStringifierInterface
             return '';
         }
 
-        $lines = [];
+        $columns = $fieldDefinition->getFieldSettings()['columns'] ?? [];
+        $headerByIdentifier = [];
+        foreach ($columns as $col) {
+            if (!isset($col['identifier'])) {
+                continue;
+            }
+            $headerByIdentifier[$col['identifier']] = $col['name'] ?? $col['identifier'];
+        }
+
+        $blocks = [];
         $count = 0;
+        $rowIndex = 0;
 
         foreach ($value->getRows() as $row) {
             if (++$count > self::MAX_ROWS) {
                 break;
             }
-            $lines[] = implode(' | ', $row->getCells());
+            $rowIndex++;
+
+            $cellLines = [];
+            foreach ($row->getCells() as $colId => $cellValue) {
+                $colName = $headerByIdentifier[$colId] ?? $colId;
+                $trimmed = trim((string) $cellValue);
+                if ($trimmed === '') {
+                    continue;
+                }
+                $cellLines[] = sprintf('  - [%s]: %s', $colName, $trimmed);
+            }
+
+            if (empty($cellLines)) {
+                continue;
+            }
+
+            $blocks[] = sprintf('Row %d:', $rowIndex) . "\n" . implode("\n", $cellLines);
         }
 
-        return implode("\n", $lines);
+        return implode("\n\n", $blocks);
     }
 }

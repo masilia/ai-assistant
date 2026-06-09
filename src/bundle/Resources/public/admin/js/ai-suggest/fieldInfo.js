@@ -1,4 +1,4 @@
-import { SELECTORS, FIELD_NAME_RE, CONTENT_EDIT_RE, TITLE_IDENTIFIERS } from './selectors.js';
+import { SELECTORS, MATRIX, FIELD_NAME_RE, CONTENT_EDIT_RE, TITLE_IDENTIFIERS } from './selectors.js';
 import { getEditor } from './ckeditor.js';
 import { getSupportedFields } from './fieldTypes.js';
 
@@ -23,15 +23,50 @@ export function getFieldLabel(fieldEdit) {
 
 /**
  * Get the current value of a field (CKEditor data for rich text, raw value
- * for plain inputs).
+ * for plain inputs). For ezmatrix, returns a JSON string shaped as
+ * {"rows": [{"cells": {<colId>: <value>}}, ...]}.
  */
 export function getCurrentValue(fieldEdit, fieldType, targetElement) {
     if (fieldType === 'ezrichtext') {
         const editor = getEditor(fieldEdit);
         return editor ? editor.getData() : '';
     }
+    if (fieldType === 'ezmatrix') {
+        return getCurrentValueMatrix(fieldEdit);
+    }
     const input = targetElement || fieldEdit.querySelector(SELECTORS.dataInput);
     return input ? input.value : '';
+}
+
+/**
+ * Read an ezmatrix field's DOM and return a JSON string capturing the
+ * column headers (from <th data-identifier>) and every row's cell values
+ * keyed by column identifier (from the input's [entries][<i>][<colId>]
+ * name suffix).
+ *
+ * Returns "{\"rows\":[]}" when the matrix has no rows yet.
+ *
+ * @returns {string}
+ */
+export function getCurrentValueMatrix(fieldEdit) {
+    const headers = {};
+    fieldEdit.querySelectorAll(MATRIX.columnHeader).forEach((th) => {
+        const id = th.getAttribute('data-identifier');
+        if (!id) return;
+        headers[id] = th.textContent.trim();
+    });
+
+    const rows = [];
+    fieldEdit.querySelectorAll(MATRIX.rows).forEach((tr) => {
+        const cells = {};
+        tr.querySelectorAll('input[type="text"], textarea').forEach((input) => {
+            const m = (input.name || '').match(MATRIX.inputNameRe);
+            if (m) cells[m[2]] = input.value || '';
+        });
+        rows.push({ cells });
+    });
+
+    return JSON.stringify({ rows });
 }
 
 /**

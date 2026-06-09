@@ -13,6 +13,7 @@ class FieldFormatResolver
         'eztext' => FieldFormat::TEXT_BLOCK,
         'ezrichtext' => FieldFormat::HTML,
         'novaseometas' => FieldFormat::PLAIN_TEXT,
+        'ezmatrix' => FieldFormat::JSON,
     ];
 
     public function resolve(string $fieldTypeIdentifier): FieldFormat
@@ -38,6 +39,7 @@ class FieldFormatResolver
             'ibexa-field-edit--eztext' => 'eztext',
             'ibexa-field-edit--ezrichtext' => 'ezrichtext',
             'ibexa-field-edit--novaseometas' => 'novaseometas',
+            'ibexa-field-edit--ezmatrix' => 'ezmatrix',
         ];
     }
 }

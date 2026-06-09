@@ -22,10 +22,14 @@ class AiPromptBuilder
      *        (label + value) or a list of plain strings. Empty entries are skipped.
      * @param string[] $metaKeys     Explicit set of editable, AI-eligible meta
      *                               keys for a novaseometas whole-block request.
+     * @param array{headers: array<string,string>, rowCount: int}|null $matrixContext
+     *        When set, the field is an ezmatrix and the prompt is augmented
+     *        with matrix-specific rules and the column header list.
      */
     public function buildSystemPrompt(
         SystemPromptContext $ctx,
         ?LanguageNormalizer $languageNormalizer = null,
+        ?array $matrixContext = null,
     ): string {
         // Resolve the SEO meta key explicitly. Fall back to deriving it from the
         // legacy "Meta: <key>" display label only when no explicit key is given.
@@ -83,6 +87,10 @@ class AiPromptBuilder
             return $this->novaSeo->subFieldPrompt($base, $subFieldKey);
         }
 
+        if ($ctx->fieldType === 'ezmatrix' && $matrixContext !== null) {
+            return $this->matrixPrompt($base, $matrixContext);
+        }
+
         return match ($ctx->format) {
             FieldFormat::PLAIN_TEXT => "$base\n\nRules:\n- Output ONLY plain text, single line.\n- No HTML tags, no markdown formatting, no line breaks.\n- Be concise and direct.\n- Tailor the content specifically to the context provided above.",
 
@@ -97,6 +105,38 @@ class AiPromptBuilder
     private function escape(string $value): string
     {
         return str_replace(['"', "\n", "\r"], ['\\"', ' ', ''], $value);
+    }
+
+    /**
+     * Build the system prompt for an ezmatrix field. The output JSON shape
+     * is fixed: {"rows": [{"cells": {<col_id>: "<value>"}}, ...]}.
+     * The column identifier list and target row count come from
+     * $matrixContext (extracted by {@see FieldContextExtractor::extractMatrixContext}).
+     *
+     * @param array{headers: array<string,string>, rowCount: int} $matrixContext
+     */
+    private function matrixPrompt(string $base, array $matrixContext): string
+    {
+        $headers = $matrixContext['headers'] ?? [];
+        $rowCount = max(1, (int) ($matrixContext['rowCount'] ?? 0));
+
+        $columnLines = '';
+        foreach ($headers as $colId => $colName) {
+            $columnLines .= "\n  - \"" . $this->escape((string) $colId) . "\" (\"" . $this->escape((string) $colName) . "\")";
+        }
+        if ($columnLines === '') {
+            $columnLines = "\n  - (no columns defined; use a single \"value\" key)";
+        }
+
+        return $base
+            . "\n\nMatrix generation rules:"
+            . "\n- The output is a JSON object with shape: {\"rows\": [{\"cells\": {<col_id>: \"<value>\"}}, ...]}."
+            . "\n- Use the exact column identifiers shown below as keys inside each row's \"cells\" object:"
+            . $columnLines
+            . "\n- The output must contain " . $rowCount . " row(s) (match the existing row count)."
+            . "\n- Preserve the original row order."
+            . "\n- Each cell value is plain text only. No HTML."
+            . "\n- Output ONLY the raw JSON, no markdown code fences, no commentary.";
     }
 
     public function enrichUserPrompt(string $userPrompt, string $currentValue = ''): string

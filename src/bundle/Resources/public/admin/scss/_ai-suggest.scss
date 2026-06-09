@@ -367,6 +367,48 @@
         li { margin-bottom: calculateRem(4px); }
         strong { font-weight: $ibexa-font-weight-bold; }
         em { font-style: italic; }
+    }
+
+    // ── Matrix preview (ezmatrix fields) ──────────────────────
+    &__matrix-preview {
+        overflow-x: auto;
+    }
+
+    &__matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: calculateRem(13px);
+
+        th, td {
+            padding: calculateRem(6px) calculateRem(10px);
+            border: calculateRem(1px) solid $ibexa-color-light-400;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        th {
+            background: $ibexa-color-light-300;
+            font-weight: $ibexa-font-weight-bold;
+            color: $ibexa-color-dark-400;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: calculateRem(11px);
+        }
+
+        td {
+            color: $ibexa-color-dark;
+            word-break: break-word;
+        }
+
+        tr:nth-child(even) td {
+            background: rgba($ibexa-color-light-200, 0.5);
+        }
+    }
+
+    &__matrix-cell--empty {
+        color: $ibexa-color-dark-200;
+        font-style: italic;
+    }
 
         blockquote {
             border-left: calculateRem(3px) solid $ibexa-color-primary;

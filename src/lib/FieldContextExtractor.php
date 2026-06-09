@@ -133,6 +133,47 @@ readonly class FieldContextExtractor
     }
 
     /**
+     * Pulls matrix-specific context (column headers + current row count) for
+     * the AI system prompt. Returns null for non-matrix field types so
+     * the controller can branch cleanly.
+     *
+     * @return array{headers: array<string,string>, rowCount: int}|null
+     */
+    public function extractMatrixContext(
+        Content     $content,
+        ContentType $contentType,
+        string      $fieldIdentifier,
+        string      $language,
+    ): ?array {
+        $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
+        if ($fieldDef === null || $fieldDef->fieldTypeIdentifier !== 'ezmatrix') {
+            return null;
+        }
+
+        $columns = $fieldDef->getFieldSettings()['columns'] ?? [];
+        $headers = [];
+        foreach ($columns as $col) {
+            if (!isset($col['identifier'])) {
+                continue;
+            }
+            $headers[(string) $col['identifier']] = (string) ($col['name'] ?? $col['identifier']);
+        }
+
+        $field = $content->getField($fieldIdentifier, $language)
+            ?? $content->getField($fieldIdentifier);
+
+        $rowCount = 0;
+        if ($field !== null && $field->value instanceof \Ibexa\FieldTypeMatrix\FieldType\Value) {
+            $rowCount = $field->value->getRows()->count();
+        }
+
+        return [
+            'headers'  => $headers,
+            'rowCount' => $rowCount,
+        ];
+    }
+
+    /**
      * @return array{contentTitle: string, contentType: string, siblingFields: SiblingField[]}
      */
     private function emptyContext(AiSuggestRequest $request): array

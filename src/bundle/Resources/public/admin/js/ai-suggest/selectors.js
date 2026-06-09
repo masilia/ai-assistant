@@ -36,3 +36,21 @@ export const NOVASEO = {
     contentInput:   '.ibexa-data-source__field--content input, .ibexa-data-source__field--content textarea',
     contentWrapper: '.ibexa-data-source__field--content',
 };
+
+// Matrix (ezmatrix) DOM contract. The edit view is a table with one
+// <tr> per row; each <td> contains a plain <input>/<textarea> whose
+// `name` ends in `[entries][<rowIndex>][<columnId>]`.
+//
+// Field-level AI button is injected into the matrix's
+// `.ibexa-field-edit__actions` div (next to Add/Delete). Per-row
+// injection is not in scope for v1.
+export const MATRIX = {
+    field:        '.ibexa-field-edit--ezmatrix',
+    rows:         'table tbody tr.ibexa-table__matrix-entry',
+    columnHeader: 'th[data-identifier]',
+    actions:      '.ibexa-field-edit__actions',
+    // Suffix of the Symfony form input name. The full name is e.g.
+    //   ezplatform_content_forms_content_edit[fieldsData][matrix_id][entries][0][col_id]
+    // We anchor to $ to be robust to whatever prefix Symfony adds.
+    inputNameRe:  /\[entries\]\[(\d+)\]\[([^\]]+)\]$/,
+};

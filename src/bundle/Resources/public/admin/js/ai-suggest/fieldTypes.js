@@ -11,6 +11,7 @@ export const DEFAULT_SUPPORTED_FIELDS = {
     'ibexa-field-edit--eztext':        'eztext',
     'ibexa-field-edit--ezrichtext':    'ezrichtext',
     'ibexa-field-edit--novaseometas':  'novaseometas',
+    'ibexa-field-edit--ezmatrix':      'ezmatrix',
 };
 
 /**

@@ -1,6 +1,6 @@
 import { APPLY_MODE, SUGGEST_MODE } from '../../components/ai-settings/constants.js';
 import { getEditor } from './ckeditor.js';
-import { NOVASEO } from './selectors.js';
+import { NOVASEO, MATRIX } from './selectors.js';
 
 /**
  * Strip surrounding markdown code fences (```...``` or ```json...```) from
@@ -132,6 +132,59 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
         }
         targetElement.dispatchEvent(new Event('input', { bubbles: true }));
         return { success: true };
+    }
+
+    if (fieldType === 'ezmatrix') {
+        let data;
+        try {
+            data = JSON.parse(stripCodeFences(suggestion));
+        } catch (e) {
+            console.error('[AI] Failed to parse matrix JSON:', e, suggestion);
+            return { success: false, error: 'AI returned an invalid matrix response. Please try again.' };
+        }
+
+        if (!data || !Array.isArray(data.rows)) {
+            return { success: false, error: 'AI response missing "rows" array.' };
+        }
+
+        const rows = fieldEdit.querySelectorAll(MATRIX.rows);
+        let applied = 0;
+
+        data.rows.forEach((row, i) => {
+            if (!rows[i] || !row.cells) return;
+            const inputs = rows[i].querySelectorAll('input[type="text"], textarea');
+            const inputByCol = new Map();
+            inputs.forEach((input) => {
+                const m = (input.name || '').match(MATRIX.inputNameRe);
+                if (m) inputByCol.set(m[2], input);
+            });
+
+            const cells = row.cells;
+            if (cells && typeof cells === 'object' && !Array.isArray(cells)) {
+                // Keyed-by-column-id shape (preferred)
+                for (const [colId, val] of Object.entries(cells)) {
+                    const input = inputByCol.get(colId);
+                    if (!input) continue;
+                    const text = sanitizeAiText(String(val));
+                    input.value = mode === SUGGEST_MODE.REPLACE ? text : (input.value + ' ' + text);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    applied++;
+                }
+            } else if (Array.isArray(cells)) {
+                // Positional fallback
+                inputs.forEach((input, j) => {
+                    if (j >= cells.length) return;
+                    const text = sanitizeAiText(String(cells[j]));
+                    input.value = mode === SUGGEST_MODE.REPLACE ? text : (input.value + ' ' + text);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    applied++;
+                });
+            }
+        });
+
+        return applied > 0
+            ? { success: true }
+            : { success: false, error: 'No matching matrix cells were found to update.' };
     }
 
     if (fieldType === 'ezrichtext') {

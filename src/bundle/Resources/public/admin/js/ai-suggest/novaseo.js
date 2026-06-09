@@ -107,9 +107,10 @@ export function detectTranslationSibling(label) {
 }
 
 /**
- * Inject a one-click "Translate from {language}" button next to a
- * sibling field whose label matches the translation pattern.
- * Clicking the button dispatches a custom event the modal listens for.
+ * Inject a one-click "Translate from {language}" button into the
+ * input-actions wrapper of a sibling field whose label matches the
+ * translation pattern. Clicking the button dispatches a custom event
+ * the modal listens for.
  */
 export function injectTranslateButtonsForSiblings(doc, onTrigger) {
     doc.querySelectorAll(SELECTORS.fieldEdit).forEach((fieldEdit) => {
@@ -124,17 +125,29 @@ export function injectTranslateButtonsForSiblings(doc, onTrigger) {
         // Don't double-inject.
         if (fieldEdit.querySelector('.ai-suggest-translate-sibling')) return;
 
+        // Find the input-actions wrapper (same as the AI suggest button).
+        const input = fieldEdit.querySelector(SELECTORS.dataInput);
+        if (!input) return;
+
+        const wrapper = input.closest('.ibexa-input-text-wrapper');
+        if (!wrapper) return;
+
+        let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
+        if (!actions) {
+            actions = doc.createElement('div');
+            actions.className = 'ibexa-input-text-wrapper__actions';
+            wrapper.appendChild(actions);
+        }
+
         const btn = doc.createElement('button');
         btn.type = 'button';
-        btn.className = 'ai-suggest-translate-sibling ibexa-btn ibexa-btn--tertiary ibexa-btn--small';
+        btn.className = 'btn ibexa-btn ibexa-btn--ghost ibexa-btn--no-text ibexa-input-text-wrapper__action-btn ai-suggest-translate-sibling';
         btn.setAttribute('aria-label', `Translate to current language from ${detection.sourceLanguage}`);
-        // Inline Lucide-style "Languages" icon + label. Built via
-        // DOM API to avoid the JSX runtime in this vanilla-JS module.
+        // Inline Lucide-style "Languages" icon — matches icons.jsx#L136.
         btn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14"
+            <svg class="ibexa-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"
                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                 stroke-linejoin="round" aria-hidden="true" focusable="false"
-                 style="vertical-align: -2px; margin-right: 4px;">
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
                 <path d="m5 8 6 6" />
                 <path d="m4 14 6-6 3-3" />
                 <path d="M2 5h12" />
@@ -142,7 +155,6 @@ export function injectTranslateButtonsForSiblings(doc, onTrigger) {
                 <path d="m22 22-5-10-5 10" />
                 <path d="M14 18h6" />
             </svg>
-            Translate from ${detection.sourceLanguage}
         `;
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -150,11 +162,7 @@ export function injectTranslateButtonsForSiblings(doc, onTrigger) {
             onTrigger(fieldEdit, fieldType, detection.sourceLanguage);
         });
 
-        // Insert next to the field label.
-        const labelEl = fieldEdit.querySelector(SELECTORS.fieldLabel);
-        if (labelEl) {
-            labelEl.appendChild(btn);
-        }
+        actions.appendChild(btn);
     });
 }
 

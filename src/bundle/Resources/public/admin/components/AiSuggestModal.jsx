@@ -9,7 +9,7 @@ import SourceLanguageInput from './AiSuggestModal/SourceLanguageInput.jsx';
 import ModeSelector from './AiSuggestModal/ModeSelector.jsx';
 import ErrorBanner from './AiSuggestModal/ErrorBanner.jsx';
 import SuggestionPreview from './AiSuggestModal/SuggestionPreview.jsx';
-import { SparklesIcon, CloseIcon } from './ai-settings/icons.jsx';
+import { SparklesIcon, BrainIcon, CloseIcon } from './ai-settings/icons.jsx';
 
 /**
  * @typedef {import('./ai-settings/types.js').FieldContext} FieldContext
@@ -278,25 +278,25 @@ function AiSuggestModal() {
                                 type="button"
                             >Cancel</button>
                             <button
-                                className="ibexa-btn ibexa-btn--primary"
+                                className={`ibexa-btn ibexa-btn--primary ${stream.streaming || stream.loading ? 'ai-suggest-modal__generate-btn--active' : ''}`}
                                 onClick={handleGenerate}
                                 disabled={generateButtonDisabled}
                                 type="button"
                             >
                                 {stream.streaming ? (
                                     <>
-                                        <span className="ai-suggest-modal__streaming-indicator" aria-hidden="true" />
+                                        <BrainIcon size={16} className="ai-suggest-modal__brain-icon ai-suggest-modal__brain-icon--pulse" />
                                         <span>Stop</span>
                                         <span className="visually-hidden">AI is generating content, please wait.</span>
                                     </>
                                 ) : stream.loading ? (
                                     <>
-                                        <span className="ai-suggest-modal__spinner" aria-hidden="true" />
+                                        <BrainIcon size={16} className="ai-suggest-modal__brain-icon ai-suggest-modal__brain-icon--pulse" />
                                         <span className="visually-hidden">Loading, please wait.</span>
                                     </>
                                 ) : (
                                     <>
-                                        <SparklesIcon size="small" className="ibexa-icon--small" />
+                                        <BrainIcon size={16} className="ai-suggest-modal__brain-icon" />
                                         <span className="ibexa-btn__label">{stream.suggestion ? 'Regenerate' : 'Generate'}</span>
                                     </>
                                 )}

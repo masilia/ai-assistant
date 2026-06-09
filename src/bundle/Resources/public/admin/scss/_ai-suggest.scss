@@ -312,6 +312,21 @@
         &::after { animation-delay: 0.5s; }
     }
 
+    // ── Brain icon pulse ──────────────────────────────────────
+    &__brain-icon {
+        transition: transform 0.2s ease;
+
+        &--pulse {
+            animation: ai-brain-pulse 1.2s ease-in-out infinite;
+        }
+    }
+
+    &__generate-btn--active {
+        .ai-suggest-modal__brain-icon {
+            animation: ai-brain-pulse 1.2s ease-in-out infinite;
+        }
+    }
+
     // ── Preview section ───────────────────────────────────────
     &__preview-section {
         margin-top: calculateRem(16px);
@@ -419,6 +434,11 @@
     50%       { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
 }
 
+@keyframes ai-brain-pulse {
+    0%, 100% { transform: scale(1);   opacity: 1; }
+    50%       { transform: scale(1.2); opacity: 0.7; }
+}
+
 // ── Reduced motion ───────────────────────────────────────────
 // Respect users who have requested reduced motion at the OS level
 // (vestibular disorders, focus/concentration needs, etc.). All non-essential
@@ -431,6 +451,9 @@
     .ai-suggest-modal__streaming-indicator,
     .ai-suggest-modal__streaming-indicator::before,
     .ai-suggest-modal__streaming-indicator::after,
+    .ai-suggest-modal__brain-icon,
+    .ai-suggest-modal__brain-icon--pulse,
+    .ai-suggest-modal__generate-btn--active .ai-suggest-modal__brain-icon,
     .ai-suggest-modal__quick-action,
     .ai-suggest-trigger--inline {
         animation: none !important;

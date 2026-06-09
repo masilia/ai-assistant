@@ -44,6 +44,31 @@ export function createAiButton(doc, extraClass = '') {
 }
 
 /**
+ * Create a translate button element. Ghost button with Languages icon.
+ * Lives inside .ibexa-input-text-wrapper__actions next to the AI button.
+ */
+export function createTranslateButton(doc) {
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn ibexa-btn ibexa-btn--ghost ibexa-btn--no-text ibexa-input-text-wrapper__action-btn ai-suggest-translate-trigger';
+    btn.setAttribute('aria-label', 'Translate field');
+    btn.title = 'Translate with AI';
+    btn.innerHTML = `
+        <svg class="ibexa-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="m5 8 6 6" />
+            <path d="m4 14 6-6 3-3" />
+            <path d="M2 5h12" />
+            <path d="M7 2h1" />
+            <path d="m22 22-5-10-5 10" />
+            <path d="M14 18h6" />
+        </svg>
+    `;
+    return btn;
+}
+
+/**
  * Inject per-sub-field AI buttons into every eligible meta row of a
  * novaseometas container. Each row is a `.ibexa-data-source__input-wrapper`
  * containing a hidden `name` input (the meta key) and a `content` input/textarea.

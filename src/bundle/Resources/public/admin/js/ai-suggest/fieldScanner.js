@@ -1,6 +1,6 @@
 import { SELECTORS } from './selectors.js';
 import { getFieldType, getFieldLabel, getCurrentValue, getContentTypeName, getContentTitle, getSiblingFields, getFieldIdentifier, getContentId } from './fieldInfo.js';
-import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, injectTranslateButtonsForSiblings } from './novaseo.js';
+import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, createTranslateButton, injectTranslateButtonsForSiblings } from './novaseo.js';
 import { applyToField } from './apply.js';
 import { APPLY_MODE, SUGGEST_MODE } from '../../components/ai-settings/constants.js';
 
@@ -67,7 +67,7 @@ function findInputActionsWrapper(doc, fieldEdit, targetElement) {
 }
 
 /**
- * Inject an AI button into a single field-edit element (if eligible).
+ * Inject an AI button and a translate button into a single field-edit element (if eligible).
  */
 function injectButton(doc, fieldEdit) {
     const fieldType = getFieldType(fieldEdit);
@@ -104,14 +104,50 @@ function injectButton(doc, fieldEdit) {
     const actionsWrapper = findInputActionsWrapper(doc, fieldEdit);
     if (!actionsWrapper) return;
 
-    const btn = createAiButton(doc);
-    btn.addEventListener('click', (e) => {
+    // AI suggest button
+    const aiBtn = createAiButton(doc);
+    aiBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         openAiModal(doc, fieldEdit, fieldType);
     });
+    actionsWrapper.appendChild(aiBtn);
 
-    actionsWrapper.appendChild(btn);
+    // Translate button
+    const translateBtn = createTranslateButton(doc);
+    translateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openTranslateModal(doc, fieldEdit, fieldType);
+    });
+    actionsWrapper.appendChild(translateBtn);
+}
+
+/**
+ * Open the modal with the translate action pre-selected (no source language
+ * pre-filled — the user picks it from the dropdown).
+ */
+function openTranslateModal(doc, fieldEdit, fieldType) {
+    const currentInput = fieldEdit.querySelector(SELECTORS.dataInput);
+    const fieldName = getFieldLabel(fieldEdit);
+
+    const detail = {
+        fieldEdit,
+        fieldType,
+        fieldName,
+        subFieldKey: '',
+        metaKeys: [],
+        currentValue: getCurrentValue(fieldEdit, fieldType, currentInput),
+        contentTypeName: getContentTypeName(doc),
+        language: doc.querySelector(SELECTORS.languageMeta)?.content || 'eng-GB',
+        contentTitle: getContentTitle(doc),
+        siblingFields: getSiblingFields(doc, getFieldIdentifier(currentInput)),
+        contentId: getContentId(doc),
+        onApply: (suggestion, mode) => applyToField(fieldEdit, fieldType, currentInput, suggestion, mode, APPLY_MODE.SUB_FIELD),
+        hintAction: 'translate',
+        hintSourceLanguage: '',
+    };
+    doc.dispatchEvent(new CustomEvent('ai-suggest:open', { detail }));
 }
 
 /**

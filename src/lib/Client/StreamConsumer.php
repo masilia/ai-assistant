@@ -9,9 +9,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Consumes a Server-Sent Events stream line-by-line and yields decoded tokens
- * via the adapter. Owns the streaming buffering, end-of-stream detection, and
- * the split between line-based and remaining-buffer content.
+ * Consumes a Server-Sent Events stream line-by-line and yields
+ * {@see StreamEvent} value objects. Owns the streaming buffering,
+ * end-of-stream detection, the split between line-based and
+ * remaining-buffer content, and the final-event synthesis that
+ * captures the last decoded chunk + last finish reason for the
+ * adapter to inspect via extractStreamUsage().
  */
 class StreamConsumer
 {
@@ -21,11 +24,13 @@ class StreamConsumer
     }
 
     /**
-     * @return \Generator<int, string>
+     * @return \Generator<int, StreamEvent>
      */
     public function consume(ResponseInterface $response, StreamingProviderAdapterInterface $adapter): \Generator
     {
-        $buffer = '';
+        $buffer     = '';
+        $lastChunk  = null;
+        $lastFinish = null;
 
         foreach ($this->httpClient->stream($response) as $chunk) {
             if ($chunk->isLast()) {
@@ -43,22 +48,75 @@ class StreamConsumer
                 }
 
                 if ($adapter->isStreamEnd($line)) {
+                    yield $this->finalEvent($adapter, $lastChunk, $lastFinish);
                     return;
+                }
+
+                $parsed = $this->decodeIfDataLine($line);
+                if ($parsed !== null) {
+                    $lastChunk = $parsed;
+                    $finishInChunk = $parsed['choices'][0]['finish_reason']
+                        ?? $parsed['delta']['stop_reason']
+                        ?? $parsed['stop_reason']
+                        ?? null;
+                    if ($finishInChunk !== null) {
+                        $lastFinish = (string) $finishInChunk;
+                    }
                 }
 
                 $token = $adapter->parseStreamChunk($line);
                 if ($token !== null) {
-                    yield $token;
+                    yield new StreamEvent($token, false);
                 }
             }
         }
 
         $line = trim($buffer);
         if ($line !== '' && !$adapter->isStreamEnd($line)) {
-            $token = $adapter->parseStreamChunk($line);
-            if ($token !== null) {
-                yield $token;
+            $parsed = $this->decodeIfDataLine($line);
+            if ($parsed !== null) {
+                $lastChunk = $parsed;
             }
         }
+
+        yield $this->finalEvent($adapter, $lastChunk, $lastFinish);
+    }
+
+    /**
+     * Build the final event. The adapter inspects the last decoded
+     * chunk + last finish reason to extract usage data.
+     */
+    private function finalEvent(
+        StreamingProviderAdapterInterface $adapter,
+        ?array $lastChunk,
+        ?string $lastFinish,
+    ): StreamEvent {
+        return new StreamEvent(
+            token:        null,
+            isFinal:      true,
+            usage:        $adapter->extractStreamUsage($lastChunk ?? [], $lastFinish),
+            finishReason: $lastFinish,
+        );
+    }
+
+    /**
+     * If a line is an SSE `data: ...` line, decode its JSON payload.
+     * Returns null for `event:` lines, comments, or malformed JSON.
+     */
+    private function decodeIfDataLine(string $line): ?array
+    {
+        if (!str_starts_with($line, 'data: ')) {
+            return null;
+        }
+        $json = trim(substr($line, 6));
+        if ($json === '' || $json === '[DONE]' || $json === 'DONE') {
+            return null;
+        }
+        try {
+            $data = json_decode($json, true, 16, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        return is_array($data) ? $data : null;
     }
 }

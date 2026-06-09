@@ -101,6 +101,9 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
     {
         $body = $this->buildRequestBody($modelIdentifier, $temperature, $maxTokens, $systemPrompt, $userPrompt);
         $body['stream'] = true;
+        // OpenAI-compatible APIs (OpenAI, Qwen, Mistral, Ollama) require
+        // this flag for the final SSE chunk to include a `usage` block.
+        $body['stream_options'] = ['include_usage' => true];
 
         return $body;
     }
@@ -149,6 +152,22 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
             'input'        => isset($usage['prompt_tokens']) ? (int) $usage['prompt_tokens'] : null,
             'output'       => isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
             'finishReason' => isset($data['choices'][0]['finish_reason']) ? (string) $data['choices'][0]['finish_reason'] : null,
+        ];
+    }
+
+    public function extractStreamUsage(array $lastChunk, ?string $lastFinishReason = null): ?array
+    {
+        $usage = $lastChunk['usage'] ?? null;
+        $finish = $lastChunk['choices'][0]['finish_reason'] ?? $lastFinishReason;
+
+        if (!is_array($usage) && $finish === null) {
+            return null;
+        }
+
+        return [
+            'input'        => isset($usage['prompt_tokens'])     ? (int) $usage['prompt_tokens']     : null,
+            'output'       => isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
+            'finishReason' => $finish,
         ];
     }
 }

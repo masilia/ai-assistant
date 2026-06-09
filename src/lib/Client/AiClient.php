@@ -119,16 +119,21 @@ class AiClient implements AiClientInterface
         // The connection established successfully (we passed assertOk);
         // we delay logging success until the entire stream has been
         // consumed, so a mid-stream drop or parse error flips the
-        // outcome to failure.
-        $logger = $this->requestLogger;
+        // outcome to failure. The final event carries the usage data
+        // extracted from the last SSE chunk, which the logger persists.
         $consumer = $this->streamConsumer;
 
-        return (function () use ($target, $start, $logger, $consumer, $response) {
+        return (function () use ($target, $start, $consumer, $response) {
             try {
-                foreach ($consumer->consume($response, $target->adapter) as $token) {
-                    yield $token;
+                $usage = null;
+                foreach ($consumer->consume($response, $target->adapter) as $event) {
+                    if ($event->isFinal) {
+                        $usage = $event->usage;
+                        continue;
+                    }
+                    yield $event->token;
                 }
-                $this->logSuccess($target, $start);
+                $this->logSuccess($target, $start, $usage);
             } catch (\Throwable $e) {
                 $this->logFailure($target, $start, $e);
                 throw $e;

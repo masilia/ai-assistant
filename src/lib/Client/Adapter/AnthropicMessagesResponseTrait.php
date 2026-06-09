@@ -32,4 +32,33 @@ trait AnthropicMessagesResponseTrait
 
         return '';
     }
+
+    /**
+     * Anthropic-Messages-API-shaped streaming usage extraction.
+     *
+     * Anthropic sends usage in a `message_delta` event:
+     *   event: message_delta
+     *   data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},
+     *          "usage":{"input_tokens":100,"output_tokens":200}}
+     *
+     * Stop reason may also arrive in `message_stop` (event-only) or in
+     * the `delta.stop_reason` of message_delta itself.
+     */
+    protected function extractAnthropicStreamUsage(array $lastChunk, ?string $lastFinishReason = null): ?array
+    {
+        $usage = $lastChunk['usage'] ?? null;
+        $finish = $lastChunk['delta']['stop_reason']
+            ?? $lastChunk['stop_reason']
+            ?? $lastFinishReason;
+
+        if (!is_array($usage) && $finish === null) {
+            return null;
+        }
+
+        return [
+            'input'        => isset($usage['input_tokens'])  ? (int) $usage['input_tokens']  : null,
+            'output'       => isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : null,
+            'finishReason' => $finish,
+        ];
+    }
 }

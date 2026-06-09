@@ -26,4 +26,16 @@ interface StreamingProviderAdapterInterface extends ProviderAdapterInterface
     public function parseStreamChunk(string $line): ?string;
 
     public function isStreamEnd(string $line): bool;
+
+    /**
+     * Inspect the last decoded SSE chunk and the last seen finish-reason
+     * (already extracted by {@see StreamConsumer}) and return usage data
+     * in the same shape as {@see ProviderAdapterInterface::extractUsage()}:
+     *
+     *   ['input' => int|null, 'output' => int|null, 'finishReason' => string|null]
+     *
+     * Returns null if the stream did not surface a usage block (some
+     * providers do not return token counts over SSE).
+     */
+    public function extractStreamUsage(array $lastChunk, ?string $lastFinishReason = null): ?array;
 }

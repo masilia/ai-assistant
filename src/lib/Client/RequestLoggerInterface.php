@@ -24,4 +24,11 @@ interface RequestLoggerInterface
      * } $record
      */
     public function log(array $record): void;
+
+    /**
+     * Flush any pending log records to persistent storage. Called at
+     * the end of the request (kernel.terminate) to make sure rows
+     * persisted mid-request actually reach the database.
+     */
+    public function flush(): void;
 }

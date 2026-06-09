@@ -14,4 +14,9 @@ final class NullRequestLogger implements RequestLoggerInterface
     {
         // intentionally empty
     }
+
+    public function flush(): void
+    {
+        // intentionally empty
+    }
 }

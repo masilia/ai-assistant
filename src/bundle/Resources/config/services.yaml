@@ -100,6 +100,10 @@ services:
     Masilia\Bundle\AiAssistant\EventListener\:
         resource: '../../EventListener/*'
 
+    Masilia\Bundle\AiAssistant\EventListener\RequestLogFlushListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.terminate, method: __invoke }
+
     Masilia\Bundle\AiAssistant\Repository\:
         resource: '../../Repository/*'
 

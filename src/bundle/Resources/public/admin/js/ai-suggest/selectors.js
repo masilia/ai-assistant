@@ -49,6 +49,9 @@ export const MATRIX = {
     rows:         'table tbody tr.ibexa-table__matrix-entry',
     columnHeader: 'th[data-identifier]',
     actions:      '.ibexa-table-header__actions',
+    // Ibexa's "Add row" button. Clicking it triggers Ibexa's own row
+    // template expansion (which auto-increments the [entries][N] index).
+    addEntry:     '.ibexa-btn--add-matrix-entry',
     // Suffix of the Symfony form input name. The full name is e.g.
     //   ezplatform_content_forms_content_edit[fieldsData][matrix_id][entries][0][col_id]
     // We anchor to $ to be robust to whatever prefix Symfony adds.

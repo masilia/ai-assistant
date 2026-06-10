@@ -147,6 +147,22 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             return { success: false, error: 'AI response missing "rows" array.' };
         }
 
+        // Ibexa's matrix only renders the rows currently bound to the
+        // form. If the AI generated more rows than the DOM has, the
+        // extra rows would be silently dropped and `applied` could
+        // end up at 0 (-> "No matching matrix cells..." error). Grow
+        // the matrix first by clicking Ibexa's own Add-row button,
+        // which expands the row template and auto-increments
+        // [entries][N] indexes for us.
+        const addBtn = fieldEdit.querySelector(MATRIX.addEntry);
+        let existingRows = fieldEdit.querySelectorAll(MATRIX.rows).length;
+        const needed = data.rows.length - existingRows;
+        if (needed > 0 && addBtn) {
+            for (let k = 0; k < needed; k++) {
+                addBtn.click();
+            }
+        }
+
         const rows = fieldEdit.querySelectorAll(MATRIX.rows);
         let applied = 0;
 

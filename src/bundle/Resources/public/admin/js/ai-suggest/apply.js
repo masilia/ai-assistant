@@ -154,10 +154,16 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             if (!rows[i] || !row.cells) return;
             const inputs = rows[i].querySelectorAll('input[type="text"], textarea');
             const inputByCol = new Map();
-            // Also build a fallback map: display name (from <th data-identifier>)
-            // → input. The AI sometimes uses display names (e.g. "VALUE") instead
-            // of the lowercase identifier (e.g. "value"), so this catches both.
-            const inputByHeaderText = new Map();
+            // Build a per-column lookup that handles every variant the
+            // AI is likely to emit:
+            //   - lowercase identifier: "value"            (preferred)
+            //   - uppercase identifier:  "VALUE"
+            //   - mixed-case identifier:  "Value"
+            //   - display name:          "Value" (matches the <th> text)
+            //   - display name uppercased by CSS: "VALUE"
+            // The map is keyed by both the identifier and every case variant
+            // of it, so any spelling the AI produces resolves to the right input.
+            const inputByColVariants = new Map();
             const headerCells = fieldEdit.querySelectorAll(MATRIX.columnHeader);
             inputs.forEach((input) => {
                 const m = (input.name || '').match(MATRIX.inputNameRe);
@@ -165,23 +171,30 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
                 const colId = m[2];
                 inputByCol.set(colId, input);
                 // Find the matching <th> by data-identifier
+                let headerText = null;
                 headerCells.forEach((th) => {
                     if (th.getAttribute('data-identifier') === colId) {
-                        inputByHeaderText.set(th.textContent.trim().toLowerCase(), input);
+                        headerText = th.textContent.trim();
                     }
                 });
+                // Index the input under every spelling the AI might use
+                const variants = new Set([colId, colId.toLowerCase(), colId.toUpperCase()]);
+                if (headerText) variants.add(headerText);
+                if (headerText) variants.add(headerText.toLowerCase());
+                if (headerText) variants.add(headerText.toUpperCase());
+                variants.forEach((v) => inputByColVariants.set(v, input));
             });
 
             const cells = row.cells;
             if (cells && typeof cells === 'object' && !Array.isArray(cells)) {
-                // Keyed-by-column-id shape (preferred) — try exact id first,
-                // then fall back to matching the display name in lowercase.
                 for (const [colKey, val] of Object.entries(cells)) {
-                    let input = inputByCol.get(colKey);
+                    const input = inputByColVariants.get(colKey)
+                        ?? inputByColVariants.get(colKey.toLowerCase())
+                        ?? inputByColVariants.get(colKey.toUpperCase());
                     if (!input) {
-                        input = inputByHeaderText.get(colKey.toLowerCase());
+                        console.warn('[AI] Matrix apply: no input for column key', colKey);
+                        continue;
                     }
-                    if (!input) continue;
                     const text = sanitizeAiText(String(val));
                     input.value = mode === SUGGEST_MODE.REPLACE ? text : (input.value + ' ' + text);
                     input.dispatchEvent(new Event('input', { bubbles: true }));

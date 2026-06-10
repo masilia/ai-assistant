@@ -367,6 +367,26 @@
         li { margin-bottom: calculateRem(4px); }
         strong { font-weight: $ibexa-font-weight-bold; }
         em { font-style: italic; }
+
+        blockquote {
+            border-left: calculateRem(3px) solid $ibexa-color-primary;
+            padding-left: calculateRem(12px);
+            margin: calculateRem(8px) 0;
+            color: $ibexa-color-dark-400;
+        }
+
+        a { color: $ibexa-color-primary; text-decoration: underline; }
+
+        // Plain-text preview (non-rich-text fields like ezstring / eztext).
+        // Replaces a <pre> so the output reads as a content preview
+        // rather than a code block. Whitespace is preserved via
+        // white-space: pre-wrap (line breaks stay), but the font is
+        // inherited so it matches the surrounding text.
+        .ai-suggest-modal__preview-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: calculateRem(13px);
+        }
     }
 
     // ── Matrix preview (ezmatrix fields) ──────────────────────
@@ -408,27 +428,6 @@
     &__matrix-cell--empty {
         color: $ibexa-color-dark-200;
         font-style: italic;
-    }
-
-        blockquote {
-            border-left: calculateRem(3px) solid $ibexa-color-primary;
-            padding-left: calculateRem(12px);
-            margin: calculateRem(8px) 0;
-            color: $ibexa-color-dark-400;
-        }
-
-        a { color: $ibexa-color-primary; text-decoration: underline; }
-
-        // Plain-text preview (non-rich-text fields like ezstring / eztext).
-        // Replaces a <pre> so the output reads as a content preview
-        // rather than a code block. Whitespace is preserved via
-        // white-space: pre-wrap (line breaks stay), but the font is
-        // inherited so it matches the surrounding text.
-        .ai-suggest-modal__preview-text {
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: calculateRem(13px);
-        }
     }
 }
 

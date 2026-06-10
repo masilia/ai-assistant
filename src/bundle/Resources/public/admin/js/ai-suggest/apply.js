@@ -154,16 +154,33 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             if (!rows[i] || !row.cells) return;
             const inputs = rows[i].querySelectorAll('input[type="text"], textarea');
             const inputByCol = new Map();
+            // Also build a fallback map: display name (from <th data-identifier>)
+            // → input. The AI sometimes uses display names (e.g. "VALUE") instead
+            // of the lowercase identifier (e.g. "value"), so this catches both.
+            const inputByHeaderText = new Map();
+            const headerCells = fieldEdit.querySelectorAll(MATRIX.columnHeader);
             inputs.forEach((input) => {
                 const m = (input.name || '').match(MATRIX.inputNameRe);
-                if (m) inputByCol.set(m[2], input);
+                if (!m) return;
+                const colId = m[2];
+                inputByCol.set(colId, input);
+                // Find the matching <th> by data-identifier
+                headerCells.forEach((th) => {
+                    if (th.getAttribute('data-identifier') === colId) {
+                        inputByHeaderText.set(th.textContent.trim().toLowerCase(), input);
+                    }
+                });
             });
 
             const cells = row.cells;
             if (cells && typeof cells === 'object' && !Array.isArray(cells)) {
-                // Keyed-by-column-id shape (preferred)
-                for (const [colId, val] of Object.entries(cells)) {
-                    const input = inputByCol.get(colId);
+                // Keyed-by-column-id shape (preferred) — try exact id first,
+                // then fall back to matching the display name in lowercase.
+                for (const [colKey, val] of Object.entries(cells)) {
+                    let input = inputByCol.get(colKey);
+                    if (!input) {
+                        input = inputByHeaderText.get(colKey.toLowerCase());
+                    }
                     if (!input) continue;
                     const text = sanitizeAiText(String(val));
                     input.value = mode === SUGGEST_MODE.REPLACE ? text : (input.value + ' ' + text);

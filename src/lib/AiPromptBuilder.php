@@ -122,7 +122,12 @@ class AiPromptBuilder
 
         $columnLines = '';
         foreach ($headers as $colId => $colName) {
-            $columnLines .= "\n  - \"" . $this->escape((string) $colId) . "\" (\"" . $this->escape((string) $colName) . "\")";
+            // Put the identifier prominently (it's the JSON key the AI
+            // must use) and relegate the display name to a parenthetical
+            // hint. The previous "Display Name (\"id\")" ordering made the
+            // AI use the display name (often uppercased by CSS) as the
+            // key, which then failed to match the lowercase DOM identifier.
+            $columnLines .= "\n  - key: \"" . $this->escape((string) $colId) . "\" (human label: " . $this->escape((string) $colName) . ")";
         }
         if ($columnLines === '') {
             $columnLines = "\n  - (no columns defined; use a single \"value\" key)";
@@ -131,7 +136,7 @@ class AiPromptBuilder
         return $base
             . "\n\nMatrix generation rules:"
             . "\n- The output is a JSON object with shape: {\"rows\": [{\"cells\": {<col_id>: \"<value>\"}}, ...]}."
-            . "\n- Use the exact column identifiers shown below as keys inside each row's \"cells\" object:"
+            . "\n- Use the EXACT lowercase identifier (the value of the 'key' field below) inside each row's \"cells\" object. Do NOT use the human label, do NOT change case:"
             . $columnLines
             . "\n- The output must contain " . $rowCount . " row(s) (match the existing row count)."
             . "\n- Preserve the original row order."

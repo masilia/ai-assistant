@@ -11,6 +11,7 @@ use Masilia\AiAssistant\Field\FieldValueStringifierRegistry;
 use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
 use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
+use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Psr\Log\LoggerInterface;
 use Throwable;
 

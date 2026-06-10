@@ -42,13 +42,13 @@ export const NOVASEO = {
 // `name` ends in `[entries][<rowIndex>][<columnId>]`.
 //
 // Field-level AI button is injected into the matrix's
-// `.ibexa-field-edit__actions` div (next to Add/Delete). Per-row
-// injection is not in scope for v1.
+// `.ibexa-table-header__actions` div (next to Add/Delete).
+// Per-row injection is not in scope for v1.
 export const MATRIX = {
     field:        '.ibexa-field-edit--ezmatrix',
     rows:         'table tbody tr.ibexa-table__matrix-entry',
     columnHeader: 'th[data-identifier]',
-    actions:      '.ibexa-field-edit__actions',
+    actions:      '.ibexa-table-header__actions',
     // Suffix of the Symfony form input name. The full name is e.g.
     //   ezplatform_content_forms_content_edit[fieldsData][matrix_id][entries][0][col_id]
     // We anchor to $ to be robust to whatever prefix Symfony adds.

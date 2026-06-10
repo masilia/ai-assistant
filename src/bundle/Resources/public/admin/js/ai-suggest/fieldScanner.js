@@ -100,13 +100,11 @@ function injectButton(doc, fieldEdit) {
 
     if (fieldType === 'ezmatrix') {
         // Field-level button (per-row buttons are out of scope for v1).
-        // Placed in the matrix's actions div (next to Add/Delete);
-        // falls back to the field label.
+        // Placed in the matrix's table-header actions div (next to
+        // Add/Delete) so it sits at the top of the matrix alongside the
+        // existing matrix action buttons.
         if (!fieldEdit.querySelector(SELECTORS.trigger)) {
-            const target = fieldEdit.querySelector(MATRIX.actions)
-                || fieldEdit.querySelector(SELECTORS.fieldLabel)
-                || fieldEdit.querySelector('.ibexa-field-edit__label-wrapper label')
-                || fieldEdit.querySelector('legend');
+            const target = fieldEdit.querySelector(MATRIX.actions);
             if (target) {
                 const btn = createAiButton(doc);
                 btn.addEventListener('click', (e) => {
@@ -116,7 +114,6 @@ function injectButton(doc, fieldEdit) {
                         doc, fieldEdit, fieldType, null, getFieldLabel(fieldEdit), APPLY_MODE.WHOLE_BLOCK
                     );
                 });
-                target.style.position = 'relative';
                 target.appendChild(btn);
             }
         }

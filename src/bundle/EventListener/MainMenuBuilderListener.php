@@ -10,6 +10,12 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Adds the "AI Assistant" entry under the Admin menu group in the Ibexa sidebar.
+ *
+ * RISK: The menu keys 'main__admin' and 'main__admin__ai_settings' are
+ * Ibexa internal conventions, not a public API. If Ibexa renames its
+ * admin menu structure, this listener silently stops adding the entry.
+ * There is no public constant or API to guard against this — the only
+ * mitigation is a runtime null-check (done below) plus a comment.
  */
 class MainMenuBuilderListener implements EventSubscriberInterface
 {

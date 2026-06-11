@@ -33,6 +33,34 @@ class NovaSeoPromptBuilder
         'description' => 160,
     ];
 
+    /**
+     * Exact-match hints for well-known SEO meta keys.
+     *
+     * @var array<string, string>
+     */
+    private const KEY_HINTS = [
+        'title' => 'compelling, click-worthy SEO Meta Title',
+        'description' => 'concise, engaging Meta Description summarizing the content',
+        'keywords' => '5-8 relevant, search-optimized keywords or keyphrases (comma-separated list)',
+        'canonical' => 'absolute canonical URL (leave empty if not applicable)',
+        'type' => 'content type (e.g. website, article)',
+    ];
+
+    /**
+     * Prefix-based hints for og: and twitter: sub-fields. Evaluated in
+     * order; the first matching prefix wins.
+     *
+     * @var array<string, string>
+     */
+    private const KEY_HINT_PREFIXES = [
+        'og:title' => 'Open Graph title',
+        'og:description' => 'Open Graph description',
+        'og:image' => 'Open Graph image URL (leave empty if not applicable)',
+        'twitter:title' => 'Twitter card title',
+        'twitter:description' => 'Twitter card description',
+        'twitter:image' => 'Twitter image URL (leave empty if not applicable)',
+    ];
+
     private SeoMetaFieldsProviderInterface $fieldsProvider;
 
     public function __construct(?SeoMetaFieldsProviderInterface $fieldsProvider = null)
@@ -112,25 +140,8 @@ class NovaSeoPromptBuilder
 
     private function fieldHint(string $key, ?int $maxLength): string
     {
-        // Prefer the SEO-recommended length (single source of truth, shared with
-        // the single-field prompts) over the field's raw storage cap, falling
-        // back to the configured maxLength for any other field.
         $charLimit = $this->defaultCharLimit($key) ?? $maxLength;
-
-        $description = match (true) {
-            $key === 'title' => 'compelling, click-worthy SEO Meta Title',
-            $key === 'description' => 'concise, engaging Meta Description summarizing the content',
-            $key === 'keywords' => '5-8 relevant, search-optimized keywords or keyphrases (comma-separated list)',
-            $key === 'canonical' => 'absolute canonical URL (leave empty if not applicable)',
-            $key === 'type' => 'content type (e.g. website, article)',
-            str_starts_with($key, 'og:title') => 'Open Graph title',
-            str_starts_with($key, 'og:description') => 'Open Graph description',
-            str_starts_with($key, 'og:image') => 'Open Graph image URL (leave empty if not applicable)',
-            str_starts_with($key, 'twitter:title') => 'Twitter card title',
-            str_starts_with($key, 'twitter:description') => 'Twitter card description',
-            str_starts_with($key, 'twitter:image') => 'Twitter image URL (leave empty if not applicable)',
-            default => 'metadata value',
-        };
+        $description = self::KEY_HINTS[$key] ?? $this->resolvePrefixHint($key);
 
         if ($charLimit !== null) {
             return sprintf('%s, under %d characters', $description, $charLimit);
@@ -139,12 +150,25 @@ class NovaSeoPromptBuilder
         return $description;
     }
 
+    private function resolvePrefixHint(string $key): string
+    {
+        foreach (self::KEY_HINT_PREFIXES as $prefix => $hint) {
+            if (str_starts_with($key, $prefix)) {
+                return $hint;
+            }
+        }
+
+        return 'metadata value';
+    }
+
     private function defaultCharLimit(string $key): ?int
     {
-        return match (true) {
-            $key === 'title', str_ends_with($key, ':title') => self::RECOMMENDED_CHAR_LIMITS['title'],
-            $key === 'description', str_ends_with($key, ':description') => self::RECOMMENDED_CHAR_LIMITS['description'],
-            default => null,
-        };
+        foreach (self::RECOMMENDED_CHAR_LIMITS as $suffix => $limit) {
+            if ($key === $suffix || str_ends_with($key, ':' . $suffix)) {
+                return $limit;
+            }
+        }
+
+        return null;
     }
 }

@@ -88,6 +88,10 @@ class FieldValueStringifierRegistry
     /**
      * Whether a specific (non-fallback) stringifier is registered for the
      * given field type.
+     *
+     * Primarily exposed for test assertions and runtime introspection.
+     * Production code should call {@see toString()} directly — it
+     * transparently falls back to the generic stringifier.
      */
     public function hasStringifier(string $fieldTypeIdentifier): bool
     {

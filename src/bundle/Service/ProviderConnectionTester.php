@@ -23,6 +23,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 readonly class ProviderConnectionTester
 {
+    private const STREAM_TEST_TEMPERATURE = 0.7;
+    private const STREAM_TEST_MAX_TOKENS = 10;
+    private const STREAM_TEST_SYSTEM = 'ping';
+    private const STREAM_TEST_USER = 'hi';
+
     public function __construct(
         private AiProviderRepository    $providerRepository,
         private ProviderAdapterRegistry $adapterRegistry,
@@ -113,7 +118,13 @@ readonly class ProviderConnectionTester
             return true;
         }
 
-        $body = $adapter->buildStreamRequestBody($testModel, 0.7, 10, 'ping', 'hi');
+        $body = $adapter->buildStreamRequestBody(
+            $testModel,
+            self::STREAM_TEST_TEMPERATURE,
+            self::STREAM_TEST_MAX_TOKENS,
+            self::STREAM_TEST_SYSTEM,
+            self::STREAM_TEST_USER,
+        );
 
         try {
             $response = $this->httpClient->request('POST', $url, [

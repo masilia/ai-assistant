@@ -36,7 +36,7 @@ readonly class AiSuggestRequest
             currentValue: $data['currentValue'] ?? '',
             fieldName: $data['fieldName'] ?? '',
             language: $data['language'] ?? 'en',
-            contentId: isset($data['contentId']) && $data['contentId'] !== '' ? (int)$data['contentId'] : 0,
+            contentId: self::toIntOrZero($data['contentId'] ?? null),
             contentTitle: $data['contentTitle'] ?? '',
             contentType: $data['contentType'] ?? '',
             siblingFields: $data['siblingFields'] ?? [],
@@ -48,5 +48,10 @@ readonly class AiSuggestRequest
                 static fn($value) => is_string($value) && $value !== ''
             )),
         );
+    }
+
+    private static function toIntOrZero(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 }

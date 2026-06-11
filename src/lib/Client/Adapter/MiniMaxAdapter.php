@@ -113,21 +113,21 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
     {
         $trimmed = trim($line);
 
-        if (!str_starts_with($trimmed, 'event: ')) {
-            if (str_starts_with($trimmed, 'data: ')) {
-                $json = trim(substr($trimmed, 6));
-                if ($json === '' || $json === '{}') {
-                    return null;
-                }
-                $data = json_decode($json, true);
-                if (isset($data['type']) && $data['type'] === 'content_block_delta') {
-                    return $data['delta']['text'] ?? null;
-                }
-            }
+        if (!str_starts_with($trimmed, 'data: ')) {
             return null;
         }
 
-        return null;
+        $json = trim(substr($trimmed, 6));
+        if ($json === '' || $json === '{}') {
+            return null;
+        }
+
+        $data = json_decode($json, true);
+        if (!isset($data['type']) || $data['type'] !== 'content_block_delta') {
+            return null;
+        }
+
+        return $data['delta']['text'] ?? null;
     }
 
     public function isStreamEnd(string $line): bool

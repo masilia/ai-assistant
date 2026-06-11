@@ -11,7 +11,7 @@ use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Computes the 3-state health of the AI engine for the current siteaccess:
+ * Computes the 3-state health of the AI engine for any active provider:
  *   - not_configured: no active provider in DB
  *   - online:        active provider is reachable (or the adapter can't be tested)
  *   - offline:       active provider configured but unreachable / test failed
@@ -19,6 +19,14 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Backed by a thin HTTP probe (using the same adapter as the
  * ProviderConnectionTester). The result is cheap enough to call on
  * every dashboard load.
+ *
+ * Note: looks up the active provider globally (`findActive()` — any
+ * siteaccess scope), not for the current siteaccess. The runtime path
+ * (`TargetResolver`) resolves the active provider per siteaccess; the
+ * health banner is intentionally global because the dashboard renders
+ * one banner per provider row and uses the current siteaccess to
+ * highlight which row is "yours" separately. If the host app needs a
+ * siteaccess-scoped health probe, pass the siteaccess through here.
  */
 readonly class HealthChecker
 {

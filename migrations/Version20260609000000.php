@@ -16,6 +16,19 @@ final class Version20260609000000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // Idempotency guard: skip the seed if a `qwen` provider row
+        // already exists. Re-running a migration that hit a partial
+        // failure previously would otherwise fail on the UNIQUE index
+        // on `app_ai_provider.identifier`. To re-seed after a
+        // partial failure, run `down` first.
+        $existing = $this->connection->fetchOne(
+            "SELECT id FROM app_ai_provider WHERE identifier = 'qwen'"
+        );
+        if ($existing !== false) {
+            $this->skipIf(true, 'Qwen provider already seeded; skipping');
+            return;
+        }
+
         // Insert Qwen provider (Dashscope API — OpenAI-compatible)
         // Base URL: China (Beijing). For other regions, update the api_url:
         //   Singapore: https://dashscope-intl.aliyuncs.com/compatible-mode/v1

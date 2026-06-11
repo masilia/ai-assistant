@@ -73,11 +73,6 @@ class AiProviderApiController extends Controller
             ];
         }, $models);
 
-        $activeProvider = $this->providerRepository->findActiveEntity();
-        $activeModel = $activeProvider !== null
-            ? $this->modelRepository->findActiveForProvider($activeProvider)
-            : null;
-
         $siteaccesses = [];
         foreach ($this->siteAccessService->getAll() as $sa) {
             $siteaccesses[] = $sa->name;
@@ -85,6 +80,17 @@ class AiProviderApiController extends Controller
         sort($siteaccesses);
 
         $currentSiteaccess = $this->siteAccessService->getCurrent()?->name ?? 'default';
+
+        // Match the runtime resolution path: scoped → global, scoped
+        // to the current siteaccess. The previous findActiveEntity()
+        // returned the first active row across ALL siteaccess scopes,
+        // which made the dashboard's "active provider" highlight flip
+        // non-deterministically when two siteaccesses had different
+        // active providers.
+        $activeProvider = $this->providerRepository->findActiveEntityForSiteaccess($currentSiteaccess);
+        $activeModel = $activeProvider !== null
+            ? $this->modelRepository->findActiveForProvider($activeProvider)
+            : null;
 
         return new JsonResponse([
             'providers' => $providersData,

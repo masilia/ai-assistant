@@ -53,6 +53,19 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
         return $this->findOneBy(['isActive' => true]);
     }
 
+    /**
+     * Siteaccess-scoped counterpart of {@see findActiveEntity()}.
+     * Mirrors the scoped → global fallback in {@see findActiveForSiteaccess()}
+     * but returns the raw entity so callers (the admin dashboard) can
+     * use the primary key.
+     */
+    public function findActiveEntityForSiteaccess(string $siteaccess): ?AiProvider
+    {
+        $scoped = $this->findOneBy(['isActive' => true, 'siteaccess' => $siteaccess]);
+
+        return $scoped ?? $this->findOneBy(['isActive' => true, 'siteaccess' => null]);
+    }
+
     private function toResolved(AiProvider $provider): ?ResolvedProvider
     {
         $activeModel = $provider->getModels()->filter(

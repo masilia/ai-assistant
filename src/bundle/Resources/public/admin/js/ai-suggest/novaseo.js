@@ -69,6 +69,29 @@ export function createTranslateButton(doc) {
 }
 
 /**
+ * Create an image generation button for ezimage fields.
+ * Placed inside .ibexa-field-edit-preview__actions (next to Delete/Preview).
+ */
+export function createImageGenButton(doc) {
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn ibexa-btn ibexa-btn--ghost ibexa-btn--small ai-suggest-image-gen-trigger';
+    btn.setAttribute('aria-label', 'Generate image with AI');
+    btn.title = 'Generate image with AI';
+    btn.innerHTML = `
+        <svg class="ibexa-icon ibexa-icon--small" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"
+             fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+        </svg>
+        <span class="ibexa-btn__label">Generate</span>
+    `;
+    return btn;
+}
+
+/**
  * Inject per-sub-field AI buttons into every eligible meta row of a
  * novaseometas container. Each row is a `.ibexa-data-source__input-wrapper`
  * containing a hidden `name` input (the meta key) and a `content` input/textarea.

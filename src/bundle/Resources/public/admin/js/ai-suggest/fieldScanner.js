@@ -1,6 +1,6 @@
 import { SELECTORS, MATRIX, EZIMAGE } from './selectors.js';
 import { getFieldType, getFieldLabel, getCurrentValue, getContentTypeName, getContentTitle, getSiblingFields, getFieldIdentifier, getContentId } from './fieldInfo.js';
-import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, createTranslateButton, injectTranslateButtonsForSiblings } from './novaseo.js';
+import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, createTranslateButton, createImageGenButton, injectTranslateButtonsForSiblings } from './novaseo.js';
 import { applyToField } from './apply.js';
 import { APPLY_MODE, SUGGEST_MODE } from '../../components/ai-settings/constants.js';
 
@@ -127,27 +127,42 @@ function injectButton(doc, fieldEdit) {
         if (fieldEdit.querySelector(SELECTORS.trigger)) return;
 
         const altInput = fieldEdit.querySelector(EZIMAGE.altTextInput);
-        if (!altInput) return;
 
-        // Place the button inside .ibexa-input-text-wrapper__actions
-        // (next to the clear button) — same pattern as all other fields.
-        const wrapper = altInput.closest('.ibexa-input-text-wrapper');
-        if (!wrapper) return;
+        // 1) Alt text AI button — inside .ibexa-input-text-wrapper__actions
+        if (altInput) {
+            const wrapper = altInput.closest('.ibexa-input-text-wrapper');
+            if (wrapper) {
+                let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
+                if (!actions) {
+                    actions = doc.createElement('div');
+                    actions.className = 'ibexa-input-text-wrapper__actions';
+                    wrapper.appendChild(actions);
+                }
 
-        let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
-        if (!actions) {
-            actions = doc.createElement('div');
-            actions.className = 'ibexa-input-text-wrapper__actions';
-            wrapper.appendChild(actions);
+                const btn = createAiButton(doc, 'ai-suggest-trigger--inline');
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openAiModal(doc, fieldEdit, fieldType, altInput, 'Alt Text', APPLY_MODE.SUB_FIELD);
+                });
+                actions.appendChild(btn);
+            }
         }
 
-        const btn = createAiButton(doc, 'ai-suggest-trigger--inline');
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openAiModal(doc, fieldEdit, fieldType, altInput, 'Alt Text', APPLY_MODE.SUB_FIELD);
-        });
-        actions.appendChild(btn);
+        // 2) Generate image button — inside .ibexa-field-edit-preview__actions
+        const previewActions = fieldEdit.querySelector(EZIMAGE.previewActions);
+        if (previewActions && !previewActions.querySelector('.ai-suggest-image-gen-trigger')) {
+            const imgBtn = createImageGenButton(doc);
+            imgBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openAiModal(doc, fieldEdit, fieldType, null, 'Image', APPLY_MODE.WHOLE_BLOCK, {
+                    hintAction: 'generate_image',
+                });
+            });
+            previewActions.appendChild(imgBtn);
+        }
+
         return;
     }
 

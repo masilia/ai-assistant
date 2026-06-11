@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Client;
 
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
+use Masilia\AiAssistant\AiDefaults;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 
@@ -90,9 +91,9 @@ class TargetResolver
         return new AiTarget(
             adapter: $adapter,
             providerIdentifier: $providerIdentifier,
-            modelIdentifier: (string) ($model ?: 'gpt-4o-mini'),
-            temperature: (float) ($temp ?: 0.7),
-            maxTokens: (int) ($maxTokens ?: 4096),
+            modelIdentifier: (string) ($model ?: AiDefaults::MODEL),
+            temperature: (float) ($temp ?: AiDefaults::TEMPERATURE),
+            maxTokens: (int) ($maxTokens ?: AiDefaults::MAX_TOKENS),
             url: $adapter->buildEndpointUrl($apiUrl),
             headers: $adapter->buildHeaders($apiKey),
             siteaccess: $this->getCurrentSiteaccess(),

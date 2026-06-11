@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\Entity;
 
+use Masilia\AiAssistant\AiDefaults;
 use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -31,10 +32,10 @@ class AiModel
     private bool $isActive = false;
 
     #[ORM\Column(type: Types::FLOAT)]
-    private float $temperature = 0.7;
+    private float $temperature = AiDefaults::TEMPERATURE;
 
     #[ORM\Column(type: Types::INTEGER)]
-    private int $maxTokens = 2048;
+    private int $maxTokens = AiDefaults::LEGACY_MAX_TOKENS;
 
     public function getId(): ?int
     {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Masilia\Bundle\AiAssistant\ApiKey;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 
@@ -41,9 +42,9 @@ readonly class ProviderManager
         $provider->setIdentifier($data['identifier']);
         $provider->setSiteaccess(!empty($data['siteaccess']) ? $data['siteaccess'] : null);
 
-        // Only update the API key when a new one is provided (skip masked
-        // '••••••••' sent by the frontend for existing keys).
-        if (isset($data['apiKey']) && $data['apiKey'] !== '••••••••' && $data['apiKey'] !== '') {
+        // Only update the API key when a new one is provided (skip the
+        // masked value sent by the frontend for existing keys).
+        if (isset($data['apiKey']) && $data['apiKey'] !== ApiKey::MASK && $data['apiKey'] !== '') {
             $provider->setApiKey($data['apiKey']);
         }
 

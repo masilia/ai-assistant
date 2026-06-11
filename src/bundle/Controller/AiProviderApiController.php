@@ -7,6 +7,7 @@ namespace Masilia\Bundle\AiAssistant\Controller;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
+use Masilia\Bundle\AiAssistant\ApiKey;
 use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
@@ -23,6 +24,9 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/admin/ai/settings/api')]
 class AiProviderApiController extends Controller
 {
+    use JsonRequestDecoder;
+    use RequirePermission;
+
     public function __construct(
         private readonly PermissionResolver         $permissionResolver,
         private readonly AiProviderRepository       $providerRepository,
@@ -37,7 +41,9 @@ class AiProviderApiController extends Controller
     #[Route('/data', name: 'app.admin.ai_settings.api.data', methods: ['GET'])]
     public function getData(): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         $providers = $this->providerRepository->findAll();
         $models = $this->modelRepository->findAll();
@@ -48,7 +54,7 @@ class AiProviderApiController extends Controller
                 'name' => $provider->getName(),
                 'identifier' => $provider->getIdentifier(),
                 'siteaccess' => $provider->getSiteaccess(),
-                'apiKey' => $provider->getApiKey() ? '••••••••' : null,
+                'apiKey' => $provider->getApiKey() ? ApiKey::MASK : null,
                 'apiUrl' => $provider->getApiUrl(),
                 'isActive' => $provider->isActive(),
             ];
@@ -93,24 +99,30 @@ class AiProviderApiController extends Controller
     #[Route('/provider', name: 'app.admin.ai_provider.api.save', methods: ['POST'])]
     public function saveProvider(Request $request): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
+
+        $data = $this->decodeJsonRequest($request);
+        if ($data === null) {
+            return $this->validationError('Invalid JSON payload');
+        }
 
         try {
-            $data = $this->decodeJson($request);
             $this->providerManager->save($data);
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
             return $this->validationError($e->getMessage());
-        } catch (\JsonException) {
-            return $this->validationError('Invalid JSON payload');
         }
     }
 
     #[Route('/provider/{id}', name: 'app.admin.ai_provider.api.delete', methods: ['DELETE'])]
     public function deleteProvider(int $id): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         try {
             $this->providerManager->delete($id);
@@ -124,7 +136,9 @@ class AiProviderApiController extends Controller
     #[Route('/provider/{id}/activate', name: 'app.admin.ai_provider.api.activate', methods: ['POST'])]
     public function activateProvider(int $id): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         try {
             $this->providerManager->activate($id);
@@ -138,7 +152,9 @@ class AiProviderApiController extends Controller
     #[Route('/provider/{id}/test', name: 'app.admin.ai_provider.api.test', methods: ['POST'])]
     public function testProvider(int $id, Request $request): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         // ?stream=1 also exercises the SSE path. Useful for catching the
         // "non-streaming works but streaming is misconfigured" failure
@@ -162,24 +178,11 @@ class AiProviderApiController extends Controller
     #[Route('/health', name: 'app.admin.ai_settings.api.health', methods: ['GET'])]
     public function health(): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         return new JsonResponse($this->healthChecker->check());
-    }
-
-    private function checkAccess(): void
-    {
-        if (!$this->permissionResolver->hasAccess('setup', 'administrate')) {
-            throw $this->createAccessDeniedException('You do not have permission to access AI settings.');
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function decodeJson(Request $request): array
-    {
-        return json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
     }
 
     private function validationError(string $message, int $status = Response::HTTP_BAD_REQUEST): JsonResponse

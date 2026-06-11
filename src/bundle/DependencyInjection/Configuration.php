@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\DependencyInjection;
 
 use Ibexa\Bundle\Core\DependencyInjection\Configuration\SiteAccessAware;
+use Masilia\AiAssistant\AiDefaults;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
 class Configuration extends SiteAccessAware\Configuration
@@ -29,15 +30,15 @@ class Configuration extends SiteAccessAware\Configuration
                 ->info('Custom endpoint URL. Leave null for provider default.')
             ->end()
             ->scalarNode('model')
-                ->defaultValue('gpt-4o-mini')
+                ->defaultValue(AiDefaults::MODEL)
                 ->info('Model identifier to use as fallback.')
             ->end()
             ->floatNode('temperature')
-                ->defaultValue(0.7)
+                ->defaultValue(AiDefaults::TEMPERATURE)
                 ->min(0.0)->max(2.0)
             ->end()
             ->integerNode('max_tokens')
-                ->defaultValue(4096)
+                ->defaultValue(AiDefaults::MAX_TOKENS)
                 ->min(1)
             ->end()
         ;

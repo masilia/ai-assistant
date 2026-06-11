@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Masilia\AiAssistant\AiDefaults;
 use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
@@ -49,8 +50,8 @@ readonly class ModelManager
         $model->setProvider($provider);
         $model->setName($data['name']);
         $model->setIdentifier($data['identifier']);
-        $model->setTemperature((float)($data['temperature'] ?? 0.7));
-        $model->setMaxTokens((int)($data['maxTokens'] ?? 2048));
+        $model->setTemperature((float)($data['temperature'] ?? AiDefaults::TEMPERATURE));
+        $model->setMaxTokens((int)($data['maxTokens'] ?? AiDefaults::MAX_TOKENS));
         $model->setIsActive((bool)($data['isActive'] ?? false));
 
         if ($model->isActive()) {

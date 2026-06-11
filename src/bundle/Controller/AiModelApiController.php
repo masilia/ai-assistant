@@ -7,7 +7,6 @@ namespace Masilia\Bundle\AiAssistant\Controller;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Masilia\Bundle\AiAssistant\Service\ModelManager;
-use Masilia\AiAssistant\DTO\AiError;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +15,9 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/admin/ai/settings/api')]
 class AiModelApiController extends Controller
 {
+    use JsonRequestDecoder;
+    use RequirePermission;
+
     public function __construct(
         private readonly PermissionResolver $permissionResolver,
         private readonly ModelManager       $modelManager,
@@ -25,52 +27,53 @@ class AiModelApiController extends Controller
     #[Route('/model', name: 'app.admin.ai_model.api.save', methods: ['POST'])]
     public function saveModel(Request $request): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
+
+        $data = $this->decodeJsonRequest($request);
+        if ($data === null) {
+            return $this->jsonErrorResponse('Invalid JSON payload');
+        }
 
         try {
-            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
             $this->modelManager->save($data);
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return new JsonResponse(AiError::validationError($e->getMessage())->toArray(), Response::HTTP_BAD_REQUEST);
-        } catch (\JsonException) {
-            return new JsonResponse(AiError::validationError('Invalid JSON payload')->toArray(), Response::HTTP_BAD_REQUEST);
+            return $this->jsonErrorResponse($e->getMessage());
         }
     }
 
     #[Route('/model/{id}', name: 'app.admin.ai_model.api.delete', methods: ['DELETE'])]
     public function deleteModel(int $id): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         try {
             $this->modelManager->delete($id);
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return new JsonResponse(AiError::validationError($e->getMessage())->toArray(), Response::HTTP_NOT_FOUND);
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
 
     #[Route('/model/{id}/activate', name: 'app.admin.ai_model.api.activate', methods: ['POST'])]
     public function activateModel(int $id): JsonResponse
     {
-        $this->checkAccess();
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
 
         try {
             $this->modelManager->activate($id);
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return new JsonResponse(AiError::validationError($e->getMessage())->toArray(), Response::HTTP_NOT_FOUND);
-        }
-    }
-
-    private function checkAccess(): void
-    {
-        if (!$this->permissionResolver->hasAccess('setup', 'administrate')) {
-            throw $this->createAccessDeniedException('You do not have permission to access AI settings.');
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
 }

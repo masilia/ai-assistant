@@ -26,6 +26,9 @@ use Symfony\Component\Routing\Annotation\Route;
 
 readonly class AiSuggestController
 {
+    use JsonRequestDecoder;
+    use RequirePermission;
+
     /**
      * Generic, client-safe message returned when the AI backend fails. The
      * detailed reason (which may include upstream provider response bodies,
@@ -62,8 +65,8 @@ readonly class AiSuggestController
     )]
     public function getLanguages(int $contentId): JsonResponse
     {
-        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
-            return new JsonResponse(AiError::accessDenied()->toArray(), Response::HTTP_FORBIDDEN);
+        if (($denied = $this->requireContentEdit($this->permissionResolver)) !== null) {
+            return $denied;
         }
 
         // Source: the existing content's language list.
@@ -115,17 +118,13 @@ readonly class AiSuggestController
     #[Route('/admin/api/ai/suggest', name: 'app.ai.suggest', methods: ['POST'])]
     public function suggest(Request $request): JsonResponse
     {
-        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
-            return new JsonResponse(AiError::accessDenied()->toArray(), Response::HTTP_FORBIDDEN);
+        if (($denied = $this->requireContentEdit($this->permissionResolver)) !== null) {
+            return $denied;
         }
 
-        try {
-            $payload = $this->decodePayload($request);
-        } catch (\JsonException) {
-            return new JsonResponse(
-                AiError::validationError('Invalid JSON payload')->toArray(),
-                Response::HTTP_BAD_REQUEST
-            );
+        $payload = $this->decodeJsonRequest($request);
+        if ($payload === null) {
+            return $this->jsonErrorResponse('Invalid JSON payload');
         }
 
         $aiRequest = AiSuggestRequest::fromArray($payload);
@@ -158,11 +157,6 @@ readonly class AiSuggestController
     /**
      * @return array<string, mixed>
      */
-    private function decodePayload(Request $request): array
-    {
-        return json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
-    }
-
     private function validate(AiSuggestRequest $aiRequest): ?AiError
     {
         if ($aiRequest->fieldType === '' || $aiRequest->prompt === '') {
@@ -311,13 +305,13 @@ readonly class AiSuggestController
     #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]
     public function suggestStream(Request $request): StreamedResponse
     {
-        if (!$this->permissionResolver->hasAccess('content', 'edit')) {
+        $denied = $this->requireContentEdit($this->permissionResolver);
+        if ($denied !== null) {
             return $this->streamError(AiError::accessDenied(), Response::HTTP_FORBIDDEN);
         }
 
-        try {
-            $payload = $this->decodePayload($request);
-        } catch (\JsonException) {
+        $payload = $this->decodeJsonRequest($request);
+        if ($payload === null) {
             return $this->streamError(
                 AiError::validationError('Invalid JSON payload'),
                 Response::HTTP_BAD_REQUEST

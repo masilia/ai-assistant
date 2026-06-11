@@ -17,6 +17,8 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/admin/ai/usage/api')]
 class AiUsageController extends Controller
 {
+    use RequirePermission;
+
     public function __construct(
         private readonly PermissionResolver       $permissionResolver,
         private readonly AiRequestLogRepository  $logRepository,
@@ -26,11 +28,8 @@ class AiUsageController extends Controller
     #[Route('/data', name: 'app.admin.ai_usage.api.data', methods: ['GET'])]
     public function getData(): \Symfony\Component\HttpFoundation\JsonResponse
     {
-        if (!$this->permissionResolver->hasAccess('setup', 'administrate')) {
-            return new \Symfony\Component\HttpFoundation\JsonResponse(
-                \Masilia\AiAssistant\DTO\AiError::accessDenied()->toArray(),
-                \Symfony\Component\HttpFoundation\Response::HTTP_FORBIDDEN
-            );
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
         }
 
         $now = new \DateTimeImmutable();

@@ -126,18 +126,28 @@ function injectButton(doc, fieldEdit) {
         if (!fieldEdit.querySelector(EZIMAGE.preview)) return;
         if (fieldEdit.querySelector(SELECTORS.trigger)) return;
 
-        const altWrapper = fieldEdit.querySelector(EZIMAGE.altTextWrapper);
-        if (!altWrapper) return;
-
         const altInput = fieldEdit.querySelector(EZIMAGE.altTextInput);
+        if (!altInput) return;
+
+        // Place the button inside .ibexa-input-text-wrapper__actions
+        // (next to the clear button) — same pattern as all other fields.
+        const wrapper = altInput.closest('.ibexa-input-text-wrapper');
+        if (!wrapper) return;
+
+        let actions = wrapper.querySelector('.ibexa-input-text-wrapper__actions');
+        if (!actions) {
+            actions = doc.createElement('div');
+            actions.className = 'ibexa-input-text-wrapper__actions';
+            wrapper.appendChild(actions);
+        }
+
         const btn = createAiButton(doc, 'ai-suggest-trigger--inline');
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             openAiModal(doc, fieldEdit, fieldType, altInput, 'Alt Text', APPLY_MODE.SUB_FIELD);
         });
-        altWrapper.style.position = 'relative';
-        altWrapper.appendChild(btn);
+        actions.appendChild(btn);
         return;
     }
 

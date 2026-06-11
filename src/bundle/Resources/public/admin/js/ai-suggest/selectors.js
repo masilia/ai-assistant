@@ -41,7 +41,6 @@ export const NOVASEO = {
 export const EZIMAGE = {
     field:          '.ibexa-field-edit--ezimage',
     preview:        '.ibexa-field-edit__preview',
-    altTextWrapper: '.ibexa-field-edit-preview__image-alt',
     altTextInput:   '.ibexa-field-edit-preview__image-alt .ibexa-data-source__input',
     uploadZone:     '.ibexa-data-source',
 };

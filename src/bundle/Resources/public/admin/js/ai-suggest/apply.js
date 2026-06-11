@@ -42,9 +42,10 @@ export function sanitizeAiText(text) {
 /**
  * Try to extract a single meta value from an AI response. Handles:
  * - Plain text → returned as-is after sanitization
- * - JSON object → extract the value for `metaKey` only; returns null if the
- *   key is absent so the caller can surface an actionable error instead of
- *   silently writing a wrong value.
+ * - JSON object → extract the value for `metaKey` if present; otherwise
+ *   fall back to the full text (the AI may have returned a single string
+ *   instead of a JSON object, or the key may be missing from a partial
+ *   response).
  *
  * @returns {string|null}
  */
@@ -57,8 +58,8 @@ export function extractSubFieldValue(suggestion, metaKey) {
             if (metaKey && data[metaKey] !== undefined && data[metaKey] !== null) {
                 return sanitizeAiText(String(data[metaKey]));
             }
-            // Key not found in JSON — return null so the caller can error
-            return null;
+            // Key not found in JSON — fall back to the full text rather
+            // than returning null, so partial responses still produce output.
         }
     } catch (e) {
         // Not JSON, treat as plain text
@@ -100,7 +101,10 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             if (mode === SUGGEST_MODE.REPLACE) {
                 input.value = text;
             } else {
-                input.value = (input.value ? input.value + ' ' : '') + text;
+                // Append without a space separator — SEO values like
+                // titles and descriptions should not have spaces between
+                // the old and new text.
+                input.value = (input.value ? input.value + text : '') || text;
             }
             input.dispatchEvent(new Event('input', { bubbles: true }));
             applied++;
@@ -128,7 +132,7 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
         if (mode === SUGGEST_MODE.REPLACE) {
             targetElement.value = extracted;
         } else {
-            targetElement.value = (targetElement.value ? targetElement.value + ' ' : '') + extracted;
+            targetElement.value = (targetElement.value ? targetElement.value + extracted : '') || extracted;
         }
         targetElement.dispatchEvent(new Event('input', { bubbles: true }));
         return { success: true };

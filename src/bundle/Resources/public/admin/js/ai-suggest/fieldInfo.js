@@ -1,4 +1,4 @@
-import { SELECTORS, MATRIX, FIELD_NAME_RE, CONTENT_EDIT_RE, TITLE_IDENTIFIERS } from './selectors.js';
+import { SELECTORS, MATRIX, NOVASEO, FIELD_NAME_RE, CONTENT_EDIT_RE, TITLE_IDENTIFIERS } from './selectors.js';
 import { getEditor } from './ckeditor.js';
 import { getSupportedFields } from './fieldTypes.js';
 
@@ -25,6 +25,7 @@ export function getFieldLabel(fieldEdit) {
  * Get the current value of a field (CKEditor data for rich text, raw value
  * for plain inputs). For ezmatrix, returns a JSON string shaped as
  * {"rows": [{"cells": {<colId>: <value>}}, ...]}.
+ * For novaseometas, returns a JSON object of {metaKey: value} pairs.
  */
 export function getCurrentValue(fieldEdit, fieldType, targetElement) {
     if (fieldType === 'ezrichtext') {
@@ -33,6 +34,9 @@ export function getCurrentValue(fieldEdit, fieldType, targetElement) {
     }
     if (fieldType === 'ezmatrix') {
         return getCurrentValueMatrix(fieldEdit);
+    }
+    if (fieldType === 'novaseometas') {
+        return getCurrentValueNovaSeo(fieldEdit);
     }
     const input = targetElement || fieldEdit.querySelector(SELECTORS.dataInput);
     return input ? input.value : '';
@@ -67,6 +71,25 @@ export function getCurrentValueMatrix(fieldEdit) {
     });
 
     return JSON.stringify({ rows });
+}
+
+/**
+ * Read a novaseometas field's DOM and return a JSON string of all
+ * meta key-value pairs. This gives the AI context about the existing
+ * SEO values so it can improve them rather than starting from scratch.
+ *
+ * @returns {string} JSON object like '{"title":"...","description":"..."}'
+ */
+export function getCurrentValueNovaSeo(fieldEdit) {
+    const metas = {};
+    fieldEdit.querySelectorAll(NOVASEO.row).forEach((row) => {
+        const hiddenName = row.querySelector(NOVASEO.nameInput);
+        const contentInput = row.querySelector(NOVASEO.contentInput);
+        if (hiddenName?.value && contentInput) {
+            metas[hiddenName.value] = contentInput.value || '';
+        }
+    });
+    return JSON.stringify(metas);
 }
 
 /**

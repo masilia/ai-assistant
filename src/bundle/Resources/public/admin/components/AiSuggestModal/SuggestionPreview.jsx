@@ -3,8 +3,8 @@ import React, { useMemo } from 'react';
 /**
  * Suggestion preview panel: shows the streamed result and the Apply button.
  * For ezrichtext fields, renders HTML; for ezmatrix fields, renders an
- * inline table mirroring the source matrix's columns; otherwise renders
- * pre-formatted text.
+ * inline table mirroring the source matrix's columns; for novaseometas
+ * fields, renders a key-value table; otherwise renders pre-formatted text.
  */
 export default function SuggestionPreview({ text, fieldType, onApply }) {
     if (!text) return null;
@@ -37,6 +37,8 @@ export default function SuggestionPreview({ text, fieldType, onApply }) {
                     <div dangerouslySetInnerHTML={{ __html: text }} />
                 ) : fieldType === 'ezmatrix' ? (
                     <MatrixPreview text={text} />
+                ) : fieldType === 'novaseometas' ? (
+                    <NovaSeoPreview text={text} />
                 ) : (
                     <div className="ai-suggest-modal__preview-text">{text}</div>
                 )}
@@ -130,4 +132,80 @@ function cellValue(cells, colId) {
         return cells[colId] ?? '';
     }
     return '';
+}
+
+/**
+ * Human-readable labels for well-known SEO meta keys.
+ *
+ * @type {Record<string, string>}
+ */
+const SEO_KEY_LABELS = {
+    title: 'Title',
+    description: 'Description',
+    keywords: 'Keywords',
+    canonical: 'Canonical',
+    type: 'Type',
+    'og:title': 'OG Title',
+    'og:description': 'OG Description',
+    'og:image': 'OG Image',
+    'twitter:title': 'Twitter Title',
+    'twitter:description': 'Twitter Description',
+    'twitter:image': 'Twitter Image',
+};
+
+/**
+ * Renders an AI-suggested novaseometas value as a key-value table.
+ *
+ * Expects the AI to return a flat JSON object: {"title": "...", "description": "..."}.
+ * If parsing fails, falls back to raw text.
+ */
+function NovaSeoPreview({ text }) {
+    const data = useMemo(() => {
+        try {
+            const cleaned = text.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+            const parsed = JSON.parse(cleaned);
+            return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
+        } catch {
+            return null;
+        }
+    }, [text]);
+
+    if (!data) {
+        return <div className="ai-suggest-modal__preview-text">{text}</div>;
+    }
+
+    const entries = Object.entries(data);
+    if (entries.length === 0) {
+        return <div className="ai-suggest-modal__preview-text">{text}</div>;
+    }
+
+    return (
+        <div className="ai-suggest-modal__seo-preview">
+            <table className="ai-suggest-modal__seo-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Meta Key</th>
+                        <th scope="col">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {entries.map(([key, val]) => (
+                        <tr key={key}>
+                            <td className="ai-suggest-modal__seo-key">
+                                {SEO_KEY_LABELS[key] || key}
+                                <span className="ai-suggest-modal__seo-key-id">{key}</span>
+                            </td>
+                            <td className="ai-suggest-modal__seo-value">
+                                {val === null || val === '' ? (
+                                    <span className="ai-suggest-modal__seo-cell--empty">(empty)</span>
+                                ) : (
+                                    String(val)
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
 }

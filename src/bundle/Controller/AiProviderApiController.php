@@ -182,7 +182,7 @@ class AiProviderApiController extends Controller
             return $denied;
         }
 
-        return new JsonResponse($this->healthChecker->check());
+        return new JsonResponse($this->healthChecker->check()->toArray());
     }
 
     private function validationError(string $message, int $status = Response::HTTP_BAD_REQUEST): JsonResponse

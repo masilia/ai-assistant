@@ -7,6 +7,7 @@ namespace Masilia\AiAssistant\Field\Stringifier;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Ibexa\FieldTypeMatrix\FieldType\Value;
+use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Field\FieldValueStringifierInterface;
 
 final class MatrixStringifier implements FieldValueStringifierInterface
@@ -15,7 +16,7 @@ final class MatrixStringifier implements FieldValueStringifierInterface
 
     public static function getSupportedFieldTypes(): array
     {
-        return ['ezmatrix'];
+        return [FieldType::EZMATRIX];
     }
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string

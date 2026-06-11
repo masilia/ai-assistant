@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant;
 
 use InvalidArgumentException;
+use Masilia\AiAssistant\Field\FieldType;
 
 class FieldFormatResolver
 {
     private const FIELD_FORMAT_MAP = [
-        'ezstring' => FieldFormat::PLAIN_TEXT,
-        'eztext' => FieldFormat::TEXT_BLOCK,
-        'ezrichtext' => FieldFormat::HTML,
-        'novaseometas' => FieldFormat::PLAIN_TEXT,
-        'ezmatrix' => FieldFormat::JSON,
+        FieldType::EZSTRING     => FieldFormat::PLAIN_TEXT,
+        FieldType::EZTEXT       => FieldFormat::TEXT_BLOCK,
+        FieldType::EZRICHTEXT   => FieldFormat::HTML,
+        FieldType::NOVASEOMETAS => FieldFormat::PLAIN_TEXT,
+        FieldType::EZMATRIX     => FieldFormat::JSON,
     ];
 
     public function resolve(string $fieldTypeIdentifier): FieldFormat
@@ -35,11 +36,11 @@ class FieldFormatResolver
     public function getSupportedFieldTypes(): array
     {
         return [
-            'ibexa-field-edit--ezstring' => 'ezstring',
-            'ibexa-field-edit--eztext' => 'eztext',
-            'ibexa-field-edit--ezrichtext' => 'ezrichtext',
-            'ibexa-field-edit--novaseometas' => 'novaseometas',
-            'ibexa-field-edit--ezmatrix' => 'ezmatrix',
+            'ibexa-field-edit--ezstring'      => FieldType::EZSTRING,
+            'ibexa-field-edit--eztext'        => FieldType::EZTEXT,
+            'ibexa-field-edit--ezrichtext'    => FieldType::EZRICHTEXT,
+            'ibexa-field-edit--novaseometas'  => FieldType::NOVASEOMETAS,
+            'ibexa-field-edit--ezmatrix'      => FieldType::EZMATRIX,
         ];
     }
 }

@@ -7,19 +7,20 @@ namespace Masilia\AiAssistant\Field\Stringifier;
 use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
+use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Field\FieldValueStringifierInterface;
 use Throwable;
 
-final class RelationStringifier implements FieldValueStringifierInterface
+final readonly class RelationStringifier implements FieldValueStringifierInterface
 {
     public function __construct(
-        private readonly ContentService $contentService,
+        private ContentService $contentService,
     ) {
     }
 
     public static function getSupportedFieldTypes(): array
     {
-        return ['ezobjectrelation'];
+        return [FieldType::EZOBJECTRELATION];
     }
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string

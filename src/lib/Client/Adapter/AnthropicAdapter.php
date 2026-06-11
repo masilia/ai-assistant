@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Client\Adapter;
 
 use Masilia\AiAssistant\Client\ProviderId;
+use Masilia\AiAssistant\Client\ProviderLimits;
 
 class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
@@ -97,16 +98,10 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         string $userPrompt,
     ): array
     {
-        return [
-            'model' => $modelIdentifier,
-            'temperature' => $this->getLimits()->clampTemperature($temperature),
-            'max_tokens' => $maxTokens,
-            'system' => $systemPrompt,
-            'messages' => [
-                ['role' => 'user', 'content' => $userPrompt],
-            ],
-            'stream' => true,
-        ];
+        $body = $this->buildRequestBody($modelIdentifier, $temperature, $maxTokens, $systemPrompt, $userPrompt);
+        $body['stream'] = true;
+
+        return $body;
     }
 
     public function parseStreamChunk(string $line): ?string
@@ -136,9 +131,9 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         return str_starts_with($trimmed, 'event: message_stop');
     }
 
-    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
+    public function getLimits(): ProviderLimits
     {
-        return \Masilia\AiAssistant\Client\ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
+        return ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
     }
 
     public function extractUsage(array $data): ?array

@@ -25,7 +25,7 @@ final class GenericStringifier implements FieldValueStringifierInterface
 
     public static function getSupportedFieldTypes(): array
     {
-        return ['_fallback'];
+        return [FieldValueStringifierInterface::FALLBACK_TYPE];
     }
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string

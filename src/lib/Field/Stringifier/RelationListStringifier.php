@@ -7,6 +7,7 @@ namespace Masilia\AiAssistant\Field\Stringifier;
 use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
+use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Field\FieldValueStringifierInterface;
 use Throwable;
 
@@ -22,7 +23,7 @@ final class RelationListStringifier implements FieldValueStringifierInterface
 
     public static function getSupportedFieldTypes(): array
     {
-        return ['ezobjectrelationlist'];
+        return [FieldType::EZOBJECTRELATIONLIST];
     }
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string

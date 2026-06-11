@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Service;
 
 use Masilia\AiAssistant\Client\Adapter\TestableProviderAdapterInterface;
-use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
+use Masilia\Bundle\AiAssistant\Health\HealthReport;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -13,7 +13,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * Computes the 3-state health of the AI engine for the current siteaccess:
  *   - not_configured: no active provider in DB
- *   - online:        active provider is reachable
+ *   - online:        active provider is reachable (or the adapter can't be tested)
  *   - offline:       active provider configured but unreachable / test failed
  *
  * Backed by a thin HTTP probe (using the same adapter as the
@@ -29,27 +29,12 @@ readonly class HealthChecker
     ) {
     }
 
-    /**
-     * @return array{
-     *   state: 'not_configured'|'online'|'offline',
-     *   providerId: int|null,
-     *   providerName: string|null,
-     *   message: string|null,
-     *   checkedAt: string,
-     * }
-     */
-    public function check(): array
+    public function check(): HealthReport
     {
         $resolved = $this->providerRepository->findActive();
 
         if ($resolved === null) {
-            return [
-                'state' => 'not_configured',
-                'providerId' => null,
-                'providerName' => null,
-                'message' => null,
-                'checkedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-            ];
+            return HealthReport::notConfigured();
         }
 
         $adapter = $this->adapterRegistry->getForProvider($resolved->providerIdentifier);
@@ -57,13 +42,7 @@ readonly class HealthChecker
         if (!$adapter instanceof TestableProviderAdapterInterface) {
             // Provider is configured but the adapter can't be tested; treat
             // it as online (we can't prove otherwise).
-            return [
-                'state' => 'online',
-                'providerId' => null,
-                'providerName' => $resolved->name,
-                'message' => 'Adapter does not support connection testing.',
-                'checkedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-            ];
+            return HealthReport::online($resolved->name, 'Adapter does not support connection testing.');
         }
 
         $body = $adapter->buildTestRequestBody($resolved->modelIdentifier);
@@ -78,31 +57,13 @@ readonly class HealthChecker
             ]);
             $status = $response->getStatusCode();
         } catch (\Throwable $e) {
-            return [
-                'state' => 'offline',
-                'providerId' => null,
-                'providerName' => $resolved->name,
-                'message' => $e->getMessage(),
-                'checkedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-            ];
+            return HealthReport::offline($resolved->name, $e->getMessage());
         }
 
         if ($status === 200) {
-            return [
-                'state' => 'online',
-                'providerId' => null,
-                'providerName' => $resolved->name,
-                'message' => null,
-                'checkedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-            ];
+            return HealthReport::online($resolved->name);
         }
 
-        return [
-            'state' => 'offline',
-            'providerId' => null,
-            'providerName' => $resolved->name,
-            'message' => sprintf('HTTP %d', $status),
-            'checkedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-        ];
+        return HealthReport::offline($resolved->name, sprintf('HTTP %d', $status));
     }
 }

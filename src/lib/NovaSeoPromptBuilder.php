@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant;
 
+use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Seo\FallbackSeoMetaFieldsProvider;
 use Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface;
 
@@ -21,7 +22,7 @@ use Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface;
  */
 class NovaSeoPromptBuilder
 {
-    public const FIELD_TYPE = 'novaseometas';
+    public const FIELD_TYPE = FieldType::NOVASEOMETAS;
 
     /**
      * Recommended (not hard-cap) character limits per meta key. Single source

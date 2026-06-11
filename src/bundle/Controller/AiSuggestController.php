@@ -11,11 +11,11 @@ use Masilia\AiAssistant\DTO\AiSuggestResponse;
 use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\AiPromptBuilder;
 use Masilia\AiAssistant\Client\AiClientInterface;
+use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\FieldContextExtractor;
 use Masilia\AiAssistant\FieldFormat;
 use Masilia\AiAssistant\FieldFormatResolver;
 use Masilia\AiAssistant\LanguageNormalizer;
-use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -44,7 +44,6 @@ readonly class AiSuggestController
         private FieldContextExtractor $contextExtractor,
         private LanguageNormalizer    $languageNormalizer,
         private LoggerInterface       $aiLogger,
-        private ContentService        $contentService,
     )
     {
     }
@@ -88,9 +87,8 @@ readonly class AiSuggestController
         // (see the #[Route] above). The pattern requires \d+ so
         // the parameter is guaranteed to be a positive integer by
         // the time we get here.
-        try {
-            $content = $this->contentService->loadContent($contentId);
-        } catch (\Throwable) {
+        $content = $this->contextExtractor->loadOrLog($contentId, 'for language list');
+        if ($content === null) {
             // Content not found, not accessible, or deleted. The modal
             // can fall back to a free-text input; return [] rather
             // than a 500.
@@ -192,8 +190,8 @@ readonly class AiSuggestController
         }
 
         $matrixContext = null;
-        if ($aiRequest->fieldType === 'ezmatrix' && $aiRequest->contentId > 0) {
-            $matrixContext = $this->extractMatrixContextForRequest($aiRequest, $normalizedLanguage);
+        if ($aiRequest->fieldType === FieldType::EZMATRIX && $aiRequest->contentId > 0) {
+            $matrixContext = $this->contextExtractor->extractMatrixContextForRequest($aiRequest, $normalizedLanguage);
         }
 
         $currentValue = $aiRequest->currentValue;
@@ -208,7 +206,7 @@ readonly class AiSuggestController
             );
 
             if ($sourceValue !== null && $sourceValue['value'] !== '') {
-                if ($aiRequest->fieldType === 'ezmatrix') {
+                if ($aiRequest->fieldType === FieldType::EZMATRIX) {
                     $userPromptText = sprintf(
                         "Translate each cell of the following matrix from %s to %s. "
                       . "Output ONLY a JSON object with shape {\"rows\": [{\"cells\": {<col_id>: \"<translated_value>\"}}, ...]}. "
@@ -255,51 +253,6 @@ readonly class AiSuggestController
             'userPrompt' => $userPrompt,
             'format' => $format,
         ];
-    }
-
-    /**
-     * Loads the content for a matrix field request and pulls the
-     * {headers, rowCount} context via FieldContextExtractor. Returns
-     * null on any failure (e.g. content not loaded) so the prompt
-     * builder can fall back to its default matrix rules.
-     *
-     * @return array{headers: array<string,string>, rowCount: int}|null
-     */
-    private function extractMatrixContextForRequest(
-        AiSuggestRequest $aiRequest,
-        string $normalizedLanguage,
-    ): ?array {
-        try {
-            $content = $this->contentService->loadContent($aiRequest->contentId);
-        } catch (\Throwable) {
-            return null;
-        }
-
-        $contentType = $content->getContentType();
-
-        // Reuse the identifier resolution logic the FieldContextExtractor
-        // applies internally by delegating to a tiny helper that resolves
-        // the field identifier from the AI request's display label.
-        $identifier = $this->resolveCurrentFieldIdentifier($aiRequest, $contentType);
-        if ($identifier === '') {
-            return null;
-        }
-
-        return $this->contextExtractor
-            ->extractMatrixContext($content, $contentType, $identifier, $normalizedLanguage);
-    }
-
-    /**
-     * Resolves the canonical field identifier from the AI request's
-     * display label using the same fuzzy match the FieldContextExtractor
-     * uses internally.
-     */
-    private function resolveCurrentFieldIdentifier(
-        AiSuggestRequest $aiRequest,
-        \Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType $contentType,
-    ): string {
-        $resolver = new \Masilia\AiAssistant\Field\FieldIdentifierResolver();
-        return $resolver->resolve($aiRequest->fieldName, $contentType);
     }
 
     #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]

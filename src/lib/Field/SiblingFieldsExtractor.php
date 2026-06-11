@@ -8,6 +8,7 @@ use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\DTO\SiblingField;
+use Masilia\AiAssistant\Field\ContentFieldAccessor;
 
 /**
  * Walks every other field in the same content item and produces a list of
@@ -17,10 +18,10 @@ use Masilia\AiAssistant\DTO\SiblingField;
  *
  * Pure orchestration: no I/O, no logging, no exception swallowing.
  */
-class SiblingFieldsExtractor
+readonly class SiblingFieldsExtractor
 {
     public function __construct(
-        private readonly FieldValueStringifierRegistry $stringifierRegistry,
+        private FieldValueStringifierRegistry $stringifierRegistry,
     ) {
     }
 
@@ -42,8 +43,7 @@ class SiblingFieldsExtractor
                 continue;
             }
 
-            $field = $content->getField($identifier, $language)
-                ?? $content->getField($identifier);
+            $field = ContentFieldAccessor::getWithFallback($content, $identifier, $language);
 
             if ($field === null) {
                 continue;

@@ -3,6 +3,3 @@ composer.lock
 .phpunit.result.cache
 /phpunit.xml
 /phpstan.neon
-
-ARCHITECTURE.md
-IMPROVEMENT_PLAN.md

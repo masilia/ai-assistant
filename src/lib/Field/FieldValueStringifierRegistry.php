@@ -33,7 +33,7 @@ class FieldValueStringifierRegistry
 
     /**
      * @param iterable<FieldValueStringifierInterface> $stringifiers
-     * @param LoggerInterface                          $aiLogger
+     * @param LoggerInterface|null $aiLogger
      *        Channel-scoped logger (injected via $aiLogger parameter name
      *        binding in services.yaml). Defaults to NullLogger if absent
      *        so unit tests don't have to wire a logger.
@@ -44,7 +44,7 @@ class FieldValueStringifierRegistry
 
         foreach ($stringifiers as $stringifier) {
             foreach ($stringifier::getSupportedFieldTypes() as $type) {
-                if ($type === '_fallback') {
+                if ($type === FieldValueStringifierInterface::FALLBACK_TYPE) {
                     $this->fallback = $stringifier;
                     continue;
                 }

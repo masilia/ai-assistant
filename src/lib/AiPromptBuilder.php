@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant;
 
+use Masilia\AiAssistant\Field\FieldType;
+
 class AiPromptBuilder
 {
     private NovaSeoPromptBuilder $novaSeo;
@@ -17,14 +19,12 @@ class AiPromptBuilder
     /**
      * Build the system prompt for an AI suggestion request.
      *
-     * @param string[]|array<int,array{label: string, value: string}> $siblingFields
-     *        The shape is forgiving: either a list of SiblingField::toArray() arrays
-     *        (label + value) or a list of plain strings. Empty entries are skipped.
-     * @param string[] $metaKeys     Explicit set of editable, AI-eligible meta
-     *                               keys for a novaseometas whole-block request.
+     * @param SystemPromptContext $ctx
+     * @param LanguageNormalizer|null $languageNormalizer
      * @param array{headers: array<string,string>, rowCount: int}|null $matrixContext
      *        When set, the field is an ezmatrix and the prompt is augmented
      *        with matrix-specific rules and the column header list.
+     * @return string
      */
     public function buildSystemPrompt(
         SystemPromptContext $ctx,
@@ -87,7 +87,7 @@ class AiPromptBuilder
             return $this->novaSeo->subFieldPrompt($base, $subFieldKey);
         }
 
-        if ($ctx->fieldType === 'ezmatrix' && $matrixContext !== null) {
+        if ($ctx->fieldType === FieldType::EZMATRIX && $matrixContext !== null) {
             return $this->matrixPrompt($base, $matrixContext);
         }
 

@@ -18,6 +18,14 @@ use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 interface FieldValueStringifierInterface
 {
     /**
+     * Pseudo field-type identifier used by the registry to register the
+     * one stringifier that handles every other field type
+     * (typically {@see GenericStringifier}). It is not a real Ibexa
+     * field type — it's a routing sentinel for the registry.
+     */
+    public const FALLBACK_TYPE = '_fallback';
+
+    /**
      * Field-type identifiers this stringifier handles (e.g. ['ezstring', 'eztext']).
      *
      * @return string[]

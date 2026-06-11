@@ -41,6 +41,10 @@ class Configuration extends SiteAccessAware\Configuration
                 ->defaultValue(AiDefaults::MAX_TOKENS)
                 ->min(1)
             ->end()
+            ->scalarNode('image_model')
+                ->defaultNull()
+                ->info('Model identifier for image generation (e.g. gpt-image-2, image-01).')
+            ->end()
         ;
 
         return $treeBuilder;

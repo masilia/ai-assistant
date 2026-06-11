@@ -72,6 +72,9 @@ services:
     Masilia\AiAssistant\Client\Adapter\OpenAiImageAdapter:
         tags: [masilia.ai.image_adapter]
 
+    Masilia\AiAssistant\Client\Adapter\MiniMaxImageAdapter:
+        tags: [masilia.ai.image_adapter]
+
     Masilia\AiAssistant\Client\ImageAdapterRegistry:
         arguments:
             $adapters: !tagged_iterator masilia.ai.image_adapter

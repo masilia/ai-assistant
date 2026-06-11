@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Repository;
 
+use Masilia\AiAssistant\Client\Resolved\ResolvedImageTarget;
 use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
 
 /**
@@ -32,4 +33,10 @@ interface AiProviderRepositoryInterface
      * Returns null if none. Used by the admin dashboard's GET /api/data.
      */
     public function findActive(): ?ResolvedProvider;
+
+    /**
+     * Finds the active image generation target for a given siteaccess.
+     * Returns null if no active provider has an image model configured.
+     */
+    public function findActiveImageTarget(string $siteaccess): ?ResolvedImageTarget;
 }

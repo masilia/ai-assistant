@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { SUGGEST_MODE, applyQuickAction } from './ai-settings/constants.js';
+import { SUGGEST_MODE, applyQuickAction, notify, cleanErrorMessage } from './ai-settings/constants.js';
 import { AI_ROUTES } from './ai-settings/api-routes.js';
 import { useAiStream } from './AiSuggestModal/useAiStream.js';
 import PromptSection from './AiSuggestModal/PromptSection.jsx';
@@ -20,6 +20,8 @@ const FIELD_TYPE_LABELS = {
     eztext: 'Text Block',
     ezrichtext: 'Rich Text',
     novaseometas: 'SEO Metas',
+    ezmatrix: 'Matrix',
+    ezimage: 'Image',
 };
 
 /**
@@ -40,6 +42,8 @@ function AiSuggestModal() {
     const [sourceLanguage, setSourceLanguage] = useState('');
     const [showSourceLangInput, setShowSourceLangInput] = useState(false);
     const [availableLanguages, setAvailableLanguages] = useState(/** @type {Array<{code: string, name: string}>} */ ([]));
+    const [imageGenLoading, setImageGenLoading] = useState(false);
+    const [imageGenResult, setImageGenResult] = useState(/** @type {{ imageData: string, mimeType: string } | null} */ (null));
 
     const promptRef = useRef(null);
     const onApplyRef = useRef(null);
@@ -69,6 +73,8 @@ function AiSuggestModal() {
             setSelectedQuickAction(null);
             setSourceLanguage('');
             setShowSourceLangInput(false);
+            setImageGenLoading(false);
+            setImageGenResult(null);
             stream.stop();
             stream.clear();
 
@@ -140,6 +146,17 @@ function AiSuggestModal() {
     }, [stream]);
 
     const handleApply = useCallback(() => {
+        // Image generation: inject the generated image into the file picker
+        if (imageGenResult && onApplyRef.current) {
+            const result = onApplyRef.current(imageGenResult, 'image');
+            if (result && result.success === false) {
+                stream.setError(result.error || 'Failed to apply the image.');
+                return;
+            }
+            setOpen(false);
+            return;
+        }
+
         if (!stream.suggestion || !onApplyRef.current) return;
         const result = onApplyRef.current(stream.suggestion, mode);
         if (result && result.success === false) {
@@ -147,24 +164,63 @@ function AiSuggestModal() {
             return;
         }
         setOpen(false);
-    }, [stream, mode]);
+    }, [stream, mode, imageGenResult]);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
-            if (stream.suggestion) {
+            if (stream.suggestion || imageGenResult) {
                 handleApply();
             } else {
                 handleGenerate();
             }
         }
-    }, [stream.suggestion, handleApply, handleGenerate]);
+    }, [stream.suggestion, imageGenResult, handleApply, handleGenerate]);
+
+    const handleImageGeneration = useCallback(async () => {
+        setImageGenLoading(true);
+        setImageGenResult(null);
+        stream.setError(null);
+
+        try {
+            const response = await fetch(AI_ROUTES.generateImage, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: prompt.trim() || 'Generate an image',
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Image generation failed.');
+            }
+
+            setImageGenResult({
+                imageData: data.imageData,
+                mimeType: data.mimeType || 'image/png',
+            });
+        } catch (err) {
+            stream.setError(cleanErrorMessage(err.message || 'Image generation failed.'));
+        } finally {
+            setImageGenLoading(false);
+        }
+    }, [prompt, stream]);
 
     const handleQuickAction = useCallback((quickAction) => {
         setSelectedQuickAction(quickAction.id);
 
         if (quickAction.isTranslation) {
             setShowSourceLangInput(true);
+            return;
+        }
+
+        if (quickAction.isImageGeneration) {
+            handleImageGeneration();
             return;
         }
 
@@ -189,7 +245,7 @@ function AiSuggestModal() {
     }, []);
 
     const isNovaSeo = fieldContext?.fieldType === 'novaseometas';
-    const generateButtonDisabled = (!stream.streaming && stream.loading) || !prompt.trim();
+    const generateButtonDisabled = (!stream.streaming && stream.loading) || imageGenLoading || !prompt.trim();
 
     if (!open) return null;
 
@@ -268,6 +324,7 @@ function AiSuggestModal() {
                                 text={stream.suggestion}
                                 fieldType={fieldContext?.fieldType}
                                 onApply={handleApply}
+                                imageGenResult={imageGenResult}
                             />
                         </div>
 
@@ -278,7 +335,7 @@ function AiSuggestModal() {
                                 type="button"
                             >Cancel</button>
                             <button
-                                className={`ibexa-btn ibexa-btn--primary ${stream.streaming || stream.loading ? 'ai-suggest-modal__generate-btn--active' : ''}`}
+                                className={`ibexa-btn ibexa-btn--primary ${stream.streaming || stream.loading || imageGenLoading ? 'ai-suggest-modal__generate-btn--active' : ''}`}
                                 onClick={handleGenerate}
                                 disabled={generateButtonDisabled}
                                 type="button"
@@ -289,7 +346,7 @@ function AiSuggestModal() {
                                         <span>Stop</span>
                                         <span className="visually-hidden">AI is generating content, please wait.</span>
                                     </>
-                                ) : stream.loading ? (
+                                ) : stream.loading || imageGenLoading ? (
                                     <>
                                         <BrainIcon size={16} className="ibexa-icon--small ai-suggest-modal__brain-icon--pulse" />
                                         <span className="visually-hidden">Loading, please wait.</span>
@@ -297,7 +354,7 @@ function AiSuggestModal() {
                                 ) : (
                                     <>
                                         <SparklesIcon size={16} className="ibexa-icon--small" />
-                                        <span className="ibexa-btn__label">{stream.suggestion ? 'Regenerate' : 'Generate'}</span>
+                                        <span className="ibexa-btn__label">{stream.suggestion || imageGenResult ? 'Regenerate' : 'Generate'}</span>
                                     </>
                                 )}
                             </button>

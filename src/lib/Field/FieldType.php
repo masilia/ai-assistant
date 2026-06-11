@@ -60,6 +60,7 @@ final class FieldType
             self::EZRICHTEXT,
             self::NOVASEOMETAS,
             self::EZMATRIX,
+            self::EZIMAGE,
         ];
     }
 }

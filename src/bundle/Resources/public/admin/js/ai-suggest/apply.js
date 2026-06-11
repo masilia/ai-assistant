@@ -252,6 +252,25 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
         return { success: true };
     }
 
+    if (fieldType === 'ezimage') {
+        // Image generation result: inject the generated image into the file picker
+        if (suggestion && typeof suggestion === 'object' && suggestion.imageData) {
+            return applyGeneratedImage(fieldEdit, suggestion);
+        }
+
+        // Alt text generation: write to the alt text input
+        const input = targetElement || fieldEdit.querySelector('.ibexa-field-edit-preview__image-alt .ibexa-data-source__input');
+        if (!input) return { success: false, error: 'No alt text input found for this image.' };
+        const cleaned = sanitizeAiText(suggestion);
+        if (mode === SUGGEST_MODE.REPLACE) {
+            input.value = cleaned;
+        } else {
+            input.value = (input.value ? input.value + cleaned : '') || cleaned;
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return { success: true };
+    }
+
     const input = targetElement || fieldEdit.querySelector('.ibexa-data-source__input');
     if (!input) return { success: false, error: 'No input element found for this field.' };
     const cleaned = sanitizeAiText(suggestion);
@@ -262,4 +281,52 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
     }
     input.dispatchEvent(new Event('input', { bubbles: true }));
     return { success: true };
+}
+
+/**
+ * Convert a base64 image to a File and inject it into Ibexa's native
+ * file picker. This triggers the same upload flow as a manual drag-and-drop.
+ *
+ * @param {HTMLElement} fieldEdit  The ezimage field-edit element
+ * @param {{ imageData: string, mimeType: string }} imageResult
+ * @returns {{ success: boolean, error?: string }}
+ */
+function applyGeneratedImage(fieldEdit, imageResult) {
+    try {
+        // Decode base64 to binary
+        const base64Data = imageResult.imageData.startsWith('data:')
+            ? imageResult.imageData.split(',')[1]
+            : imageResult.imageData;
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create a File object
+        const mimeType = imageResult.mimeType || 'image/png';
+        const ext = mimeType.split('/')[1] || 'png';
+        const file = new File([bytes], `ai-generated.${ext}`, { type: mimeType });
+
+        // Find Ibexa's file input (the hidden input that handles file uploads)
+        // Ibexa uses a custom upload widget; we need to find the input element
+        // and set its files property via a DataTransfer.
+        const fileInput = fieldEdit.querySelector('input[type="file"]');
+        if (!fileInput) {
+            return { success: false, error: 'No file input found for this image field.' };
+        }
+
+        // Use DataTransfer to programmatically set files
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+
+        // Dispatch change event to trigger Ibexa's upload handler
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+        return { success: true };
+    } catch (err) {
+        console.error('[AI] Failed to apply generated image:', err);
+        return { success: false, error: 'Failed to process the generated image.' };
+    }
 }

@@ -18,6 +18,7 @@ export const AI_ROUTES = {
     usage:            '/admin/ai/usage/api/data',
     suggest:          '/admin/api/ai/suggest',
     suggestStream:    '/admin/api/ai/suggest/stream',
+    generateImage:    '/admin/api/ai/generate-image',
     fieldTypes:       '/admin/api/ai/field-types',
     languages:        (contentId) => `/admin/api/ai/languages/${contentId}`,
 };

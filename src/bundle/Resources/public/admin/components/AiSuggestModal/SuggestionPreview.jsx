@@ -4,10 +4,11 @@ import React, { useMemo } from 'react';
  * Suggestion preview panel: shows the streamed result and the Apply button.
  * For ezrichtext fields, renders HTML; for ezmatrix fields, renders an
  * inline table mirroring the source matrix's columns; for novaseometas
- * fields, renders a key-value table; otherwise renders pre-formatted text.
+ * fields, renders a key-value table; for image generation results,
+ * renders the generated image; otherwise renders pre-formatted text.
  */
-export default function SuggestionPreview({ text, fieldType, onApply }) {
-    if (!text) return null;
+export default function SuggestionPreview({ text, fieldType, onApply, imageGenResult }) {
+    if (!text && !imageGenResult) return null;
 
     return (
         <div className="ai-suggest-modal__preview-section">
@@ -33,7 +34,9 @@ export default function SuggestionPreview({ text, fieldType, onApply }) {
                 aria-atomic="false"
                 aria-label="AI suggestion preview"
             >
-                {fieldType === 'ezrichtext' ? (
+                {imageGenResult ? (
+                    <ImagePreview imageData={imageGenResult.imageData} mimeType={imageGenResult.mimeType} />
+                ) : fieldType === 'ezrichtext' ? (
                     <div dangerouslySetInnerHTML={{ __html: text }} />
                 ) : fieldType === 'ezmatrix' ? (
                     <MatrixPreview text={text} />
@@ -206,6 +209,23 @@ function NovaSeoPreview({ text }) {
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+/**
+ * Renders a generated image from base64 data.
+ */
+function ImagePreview({ imageData, mimeType }) {
+    const src = imageData.startsWith('data:') ? imageData : `data:${mimeType};base64,${imageData}`;
+
+    return (
+        <div className="ai-suggest-modal__image-preview">
+            <img
+                src={src}
+                alt="AI generated image"
+                style={{ maxWidth: '100%', borderRadius: '4px' }}
+            />
         </div>
     );
 }

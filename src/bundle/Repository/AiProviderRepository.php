@@ -6,6 +6,7 @@ namespace Masilia\Bundle\AiAssistant\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Masilia\AiAssistant\Client\Resolved\ResolvedImageTarget;
 use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
@@ -37,6 +38,23 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
     {
         $provider = $this->findOneBy(['isActive' => true]);
         return $provider !== null ? $this->toResolved($provider) : null;
+    }
+
+    public function findActiveImageTarget(string $siteaccess): ?ResolvedImageTarget
+    {
+        // 1. Try siteaccess-specific provider with image model configured
+        $provider = $this->findOneBy(['isActive' => true, 'siteaccess' => $siteaccess]);
+        if ($provider !== null && $provider->getImageModelIdentifier() !== null) {
+            return $this->toResolvedImageTarget($provider);
+        }
+
+        // 2. Fall back to global provider (siteaccess = null)
+        $global = $this->findOneBy(['isActive' => true, 'siteaccess' => null]);
+        if ($global !== null && $global->getImageModelIdentifier() !== null) {
+            return $this->toResolvedImageTarget($global);
+        }
+
+        return null;
     }
 
     /**
@@ -84,6 +102,21 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
             modelIdentifier: $activeModel->getIdentifier(),
             temperature: $activeModel->getTemperature(),
             maxTokens: $activeModel->getMaxTokens(),
+        );
+    }
+
+    private function toResolvedImageTarget(AiProvider $provider): ?ResolvedImageTarget
+    {
+        $imageModel = $provider->getImageModelIdentifier();
+        if ($imageModel === null || $provider->getApiKey() === null) {
+            return null;
+        }
+
+        return new ResolvedImageTarget(
+            providerIdentifier: $provider->getIdentifier(),
+            apiKey: $provider->getApiKey(),
+            apiUrl: $provider->getApiUrl(),
+            imageModelIdentifier: $imageModel,
         );
     }
 }

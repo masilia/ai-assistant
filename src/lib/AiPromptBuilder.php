@@ -91,7 +91,27 @@ class AiPromptBuilder
             return $this->matrixPrompt($base, $matrixContext);
         }
 
+        if ($ctx->fieldType === FieldType::EZIMAGE) {
+            return $this->ezimagePrompt($base);
+        }
+
         return $base . FormatPromptRules::for($ctx->format);
+    }
+
+    /**
+     * Build the system prompt for an ezimage alt text field.
+     */
+    private function ezimagePrompt(string $base): string
+    {
+        return $base
+            . "\n\nAlt text generation rules:"
+            . "\n- Generate concise, descriptive alt text for screen readers."
+            . "\n- Keep it under 125 characters."
+            . "\n- Be specific and factual about the image content."
+            . "\n- Do not start with \"Image of\" or \"Photo of\"."
+            . "\n- Focus on what the image shows, not its style."
+            . "\n- Output ONLY the alt text, no quotes, no commentary."
+            . "\n- Plain text only. No HTML.";
     }
 
     private function scrubForPrompt(string $value): string

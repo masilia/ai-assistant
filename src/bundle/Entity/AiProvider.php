@@ -38,6 +38,9 @@ class AiProvider
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isActive = false;
 
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $imageModelIdentifier = null;
+
     /**
      * @var Collection<int, AiModel>
      */
@@ -120,6 +123,17 @@ class AiProvider
     public function setIsActive(bool $isActive): self
     {
         $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function getImageModelIdentifier(): ?string
+    {
+        return $this->imageModelIdentifier;
+    }
+
+    public function setImageModelIdentifier(?string $imageModelIdentifier): self
+    {
+        $this->imageModelIdentifier = $imageModelIdentifier;
         return $this;
     }
 

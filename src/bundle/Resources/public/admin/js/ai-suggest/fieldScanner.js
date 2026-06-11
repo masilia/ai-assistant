@@ -1,4 +1,4 @@
-import { SELECTORS, MATRIX } from './selectors.js';
+import { SELECTORS, MATRIX, EZIMAGE } from './selectors.js';
 import { getFieldType, getFieldLabel, getCurrentValue, getContentTypeName, getContentTitle, getSiblingFields, getFieldIdentifier, getContentId } from './fieldInfo.js';
 import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, createTranslateButton, injectTranslateButtonsForSiblings } from './novaseo.js';
 import { applyToField } from './apply.js';
@@ -117,6 +117,27 @@ function injectButton(doc, fieldEdit) {
                 target.appendChild(btn);
             }
         }
+        return;
+    }
+
+    if (fieldType === 'ezimage') {
+        // Only inject when an image is uploaded (preview visible).
+        // No image → upload zone → no alt text input → no button.
+        if (!fieldEdit.querySelector(EZIMAGE.preview)) return;
+        if (fieldEdit.querySelector(SELECTORS.trigger)) return;
+
+        const altWrapper = fieldEdit.querySelector(EZIMAGE.altTextWrapper);
+        if (!altWrapper) return;
+
+        const altInput = fieldEdit.querySelector(EZIMAGE.altTextInput);
+        const btn = createAiButton(doc, 'ai-suggest-trigger--inline');
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openAiModal(doc, fieldEdit, fieldType, altInput, 'Alt Text', APPLY_MODE.SUB_FIELD);
+        });
+        altWrapper.style.position = 'relative';
+        altWrapper.appendChild(btn);
         return;
     }
 

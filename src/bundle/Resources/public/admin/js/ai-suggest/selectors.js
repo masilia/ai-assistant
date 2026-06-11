@@ -37,6 +37,15 @@ export const NOVASEO = {
     contentWrapper: '.ibexa-data-source__field--content',
 };
 
+// ezimage DOM contract. Two-state: image uploaded vs upload zone.
+export const EZIMAGE = {
+    field:          '.ibexa-field-edit--ezimage',
+    preview:        '.ibexa-field-edit__preview',
+    altTextWrapper: '.ibexa-field-edit-preview__image-alt',
+    altTextInput:   '.ibexa-field-edit-preview__image-alt .ibexa-data-source__input',
+    uploadZone:     '.ibexa-data-source',
+};
+
 // Matrix (ezmatrix) DOM contract. The edit view is a table with one
 // <tr> per row; each <td> contains a plain <input>/<textarea> whose
 // `name` ends in `[entries][<rowIndex>][<columnId>]`.

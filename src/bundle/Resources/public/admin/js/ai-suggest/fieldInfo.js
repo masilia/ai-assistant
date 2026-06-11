@@ -1,4 +1,4 @@
-import { SELECTORS, MATRIX, NOVASEO, FIELD_NAME_RE, CONTENT_EDIT_RE, TITLE_IDENTIFIERS } from './selectors.js';
+import { SELECTORS, MATRIX, NOVASEO, EZIMAGE, FIELD_NAME_RE, CONTENT_EDIT_RE, TITLE_IDENTIFIERS } from './selectors.js';
 import { getEditor } from './ckeditor.js';
 import { getSupportedFields } from './fieldTypes.js';
 
@@ -37,6 +37,9 @@ export function getCurrentValue(fieldEdit, fieldType, targetElement) {
     }
     if (fieldType === 'novaseometas') {
         return getCurrentValueNovaSeo(fieldEdit);
+    }
+    if (fieldType === 'ezimage') {
+        return getCurrentValueEzImage(fieldEdit);
     }
     const input = targetElement || fieldEdit.querySelector(SELECTORS.dataInput);
     return input ? input.value : '';
@@ -90,6 +93,16 @@ export function getCurrentValueNovaSeo(fieldEdit) {
         }
     });
     return JSON.stringify(metas);
+}
+
+/**
+ * Read an ezimage field's current alt text value.
+ *
+ * @returns {string}
+ */
+export function getCurrentValueEzImage(fieldEdit) {
+    const input = fieldEdit.querySelector(EZIMAGE.altTextInput);
+    return input ? input.value : '';
 }
 
 /**

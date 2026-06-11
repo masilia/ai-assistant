@@ -54,6 +54,7 @@ import {
     SmileIcon,
     FileTextIcon,
     LanguagesIcon,
+    ImageIcon,
 } from './icons.jsx';
 
 export const QUICK_ACTIONS = [
@@ -105,6 +106,13 @@ export const QUICK_ACTIONS = [
         icon: LanguagesIcon,
         promptTemplate: 'TRANSLATE', // Special: replaced by modal with source language
         isTranslation: true,
+    },
+    {
+        id: 'generate_image',
+        label: 'Generate Image',
+        icon: ImageIcon,
+        promptTemplate: 'GENERATE_IMAGE', // Special: triggers image generation flow
+        isImageGeneration: true,
     },
 ];
 

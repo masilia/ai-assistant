@@ -24,6 +24,12 @@ final class FileStringifier implements FieldValueStringifierInterface
             return '';
         }
 
-        return (string) $value->fileName;
+        $fileName = (string) $value->fileName;
+
+        if (property_exists($value, 'alternativeText') && !empty($value->alternativeText)) {
+            return $fileName . ' (alt: ' . $value->alternativeText . ')';
+        }
+
+        return $fileName;
     }
 }

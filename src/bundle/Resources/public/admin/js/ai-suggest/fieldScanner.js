@@ -139,7 +139,7 @@ function injectButton(doc, fieldEdit) {
                     wrapper.appendChild(actions);
                 }
 
-                const btn = createAiButton(doc, 'ai-suggest-trigger--inline');
+                const btn = createAiButton(doc);
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();

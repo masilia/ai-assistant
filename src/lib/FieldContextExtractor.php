@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant;
 
+use Ibexa\FieldTypeMatrix\FieldType\Value;
 use Masilia\AiAssistant\Field\FieldType;
+use Masilia\AiAssistant\Field\FieldStringValue;
 use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\Field\ContentFieldAccessor;
@@ -71,14 +73,11 @@ readonly class FieldContextExtractor
         ];
     }
 
-    /**
-     * @return array{value: string, label: string}|null
-     */
     public function getFieldValueInLanguage(
         AiSuggestRequest $request,
         string $sourceLanguage,
         string $targetLanguage,
-    ): ?array {
+    ): ?FieldStringValue {
         if ($request->contentId <= 0 || $sourceLanguage === '') {
             return null;
         }
@@ -116,10 +115,10 @@ readonly class FieldContextExtractor
             return null;
         }
 
-        return [
-            'value' => mb_substr($stringValue, 0, AiConstants::MAX_CURRENT_VALUE_CHARS * 2),
-            'label' => $fieldDef->getName() ?: $currentIdentifier,
-        ];
+        return new FieldStringValue(
+            value: mb_substr($stringValue, 0, AiConstants::MAX_CURRENT_VALUE_CHARS * 2),
+            label: $fieldDef->getName() ?: $currentIdentifier,
+        );
     }
 
     /**
@@ -152,7 +151,7 @@ readonly class FieldContextExtractor
         $field = ContentFieldAccessor::getWithFallback($content, $fieldIdentifier, $language);
 
         $rowCount = 0;
-        if ($field !== null && $field->value instanceof \Ibexa\FieldTypeMatrix\FieldType\Value) {
+        if ($field !== null && $field->value instanceof Value) {
             $rowCount = $field->value->getRows()->count();
         }
 

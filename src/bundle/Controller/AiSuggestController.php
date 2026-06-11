@@ -262,13 +262,13 @@ readonly class AiSuggestController
             $enrichment->normalizedLanguage,
         );
 
-        if ($sourceValue === null || $sourceValue['value'] === '') {
+        if ($sourceValue === null || $sourceValue->value === '') {
             return $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
         }
 
         $userPromptText = $aiRequest->fieldType === FieldType::EZMATRIX
-            ? $this->translationMatrixPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue['value'])
-            : $this->translationTextPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue['value']);
+            ? $this->translationMatrixPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue->value)
+            : $this->translationTextPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue->value);
 
         return $this->promptBuilder->enrichUserPrompt($userPromptText, '');
     }

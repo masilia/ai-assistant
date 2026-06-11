@@ -52,19 +52,7 @@ class StreamConsumer
                     return;
                 }
 
-                $parsed = $this->decodeIfDataLine($line);
-                if ($parsed !== null) {
-                    $lastChunk = $parsed;
-                    $finishInChunk = $parsed['choices'][0]['finish_reason']
-                        ?? $parsed['delta']['stop_reason']
-                        ?? $parsed['stop_reason']
-                        ?? null;
-                    if ($finishInChunk !== null) {
-                        $lastFinish = (string) $finishInChunk;
-                    }
-                }
-
-                $token = $adapter->parseStreamChunk($line);
+                $token = $this->processLine($line, $adapter, $lastChunk, $lastFinish);
                 if ($token !== null) {
                     yield new StreamEvent($token, false);
                 }
@@ -80,6 +68,32 @@ class StreamConsumer
         }
 
         yield $this->finalEvent($adapter, $lastChunk, $lastFinish);
+    }
+
+    /**
+     * Process one SSE line: decode its JSON payload (updating $lastChunk
+     * / $lastFinish by reference) and return the token the adapter
+     * extracted, or null for non-data lines.
+     */
+    private function processLine(
+        string $line,
+        StreamingProviderAdapterInterface $adapter,
+        ?array &$lastChunk,
+        ?string &$lastFinish,
+    ): ?string {
+        $parsed = $this->decodeIfDataLine($line);
+        if ($parsed !== null) {
+            $lastChunk = $parsed;
+            $finishInChunk = $parsed['choices'][0]['finish_reason']
+                ?? $parsed['delta']['stop_reason']
+                ?? $parsed['stop_reason']
+                ?? null;
+            if ($finishInChunk !== null) {
+                $lastFinish = (string) $finishInChunk;
+            }
+        }
+
+        return $adapter->parseStreamChunk($line);
     }
 
     /**

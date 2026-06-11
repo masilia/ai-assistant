@@ -110,3 +110,5 @@ services:
 
     Masilia\Bundle\AiAssistant\Seo\:
         resource: '../../Seo/*'
+
+    Masilia\AiAssistant\Seo\FallbackSeoMetaFieldsProvider: ~

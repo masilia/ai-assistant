@@ -146,13 +146,10 @@ class AiClient implements AiClientInterface
         $statusCode = $response->getStatusCode();
 
         if ($statusCode !== 200) {
-            throw new \RuntimeException(
-                sprintf(
-                    '%s API error (HTTP %d): %s',
-                    ProviderId::displayName($providerIdentifier),
-                    $statusCode,
-                    $response->getContent(false)
-                )
+            throw new HttpRequestException(
+                ProviderId::displayName($providerIdentifier),
+                $statusCode,
+                $response->getContent(false),
             );
         }
     }
@@ -212,12 +209,10 @@ class AiClient implements AiClientInterface
 
     private function extractErrorCode(\Throwable $e): string
     {
-        $message = $e->getMessage();
-        // HTTP code in the message? Extract it. Otherwise return the
-        // exception class short name (e.g. RuntimeException -> RuntimeException).
-        if (preg_match('/HTTP (\d{3})/', $message, $m)) {
-            return 'HTTP_' . $m[1];
+        if ($e instanceof HttpRequestException) {
+            return 'HTTP_' . $e->statusCode;
         }
+
         $parts = explode('\\', $e::class);
         return end($parts) ?: 'UnknownError';
     }

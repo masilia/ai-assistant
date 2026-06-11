@@ -21,6 +21,7 @@ final readonly class NovaSeoMetaFieldsProvider implements SeoMetaFieldsProviderI
 {
     public function __construct(
         private ConfigResolverInterface $configResolver,
+        private FallbackSeoMetaFieldsProvider $fallback,
     ) {
     }
 
@@ -29,11 +30,11 @@ final readonly class NovaSeoMetaFieldsProvider implements SeoMetaFieldsProviderI
         try {
             $config = $this->configResolver->getParameter('fieldtype_metas', 'nova_ezseo');
         } catch (Throwable) {
-            return (new FallbackSeoMetaFieldsProvider())->getTextMetaFields();
+            return $this->fallback->getTextMetaFields();
         }
 
         if (!is_array($config) || $config === []) {
-            return (new FallbackSeoMetaFieldsProvider())->getTextMetaFields();
+            return $this->fallback->getTextMetaFields();
         }
 
         $textFields = [];
@@ -52,6 +53,6 @@ final readonly class NovaSeoMetaFieldsProvider implements SeoMetaFieldsProviderI
             ];
         }
 
-        return $textFields !== [] ? $textFields : (new FallbackSeoMetaFieldsProvider())->getTextMetaFields();
+        return $textFields !== [] ? $textFields : $this->fallback->getTextMetaFields();
     }
 }

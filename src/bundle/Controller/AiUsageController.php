@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\Controller;
 
+use DateTimeImmutable;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
+use Masilia\AiAssistant\UsageWindow;
 use Masilia\Bundle\AiAssistant\Repository\AiRequestLogRepository;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -26,28 +29,28 @@ class AiUsageController extends Controller
     }
 
     #[Route('/data', name: 'app.admin.ai_usage.api.data', methods: ['GET'])]
-    public function getData(): \Symfony\Component\HttpFoundation\JsonResponse
+    public function getData(): JsonResponse
     {
         if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
             return $denied;
         }
 
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
 
         $data = [
             'windows' => [
-                '24h' => $this->buildWindow($now, '-24 hours'),
-                '7d'  => $this->buildWindow($now, '-7 days'),
-                '30d' => $this->buildWindow($now, '-30 days'),
+                UsageWindow::Last24Hours->value => $this->buildWindow($now, UsageWindow::Last24Hours),
+                UsageWindow::Last7Days->value   => $this->buildWindow($now, UsageWindow::Last7Days),
+                UsageWindow::Last30Days->value  => $this->buildWindow($now, UsageWindow::Last30Days),
             ],
         ];
 
-        return new \Symfony\Component\HttpFoundation\JsonResponse($data);
+        return new JsonResponse($data);
     }
 
-    private function buildWindow(\DateTimeImmutable $now, string $interval): array
+    private function buildWindow(DateTimeImmutable $now, UsageWindow $window): array
     {
-        $since = $now->modify($interval);
+        $since = $now->modify($window->modifier());
         $totals = $this->logRepository->aggregateSince($since);
         $perProvider = $this->logRepository->perProviderSince($since);
 

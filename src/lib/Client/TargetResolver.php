@@ -81,9 +81,13 @@ class TargetResolver
 
         // Ollama typically runs locally without an API key
         if (empty($apiKey) && $providerIdentifier !== ProviderId::OLLAMA) {
+            $siteaccess = $this->getCurrentSiteaccess();
             throw new RuntimeException(
-                'No active AI provider is configured and no API key is set for the current siteaccess. '
-                . 'Configure a provider in the admin dashboard or set masilia_ai_assistant.system.{scope}.api_key in YAML.'
+                sprintf(
+                    'No AI provider configured for siteaccess "%s". '
+                    . 'Assign a provider in the admin dashboard for this siteaccess.',
+                    $siteaccess,
+                )
             );
         }
 

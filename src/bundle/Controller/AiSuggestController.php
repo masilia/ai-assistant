@@ -148,7 +148,7 @@ readonly class AiSuggestController
             ]);
 
             return new JsonResponse(
-                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
+                AiError::serviceUnavailable($e->getMessage())->toArray(),
                 Response::HTTP_SERVICE_UNAVAILABLE
             );
         }
@@ -328,7 +328,7 @@ readonly class AiSuggestController
             ]);
 
             return $this->streamError(
-                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR),
+                AiError::serviceUnavailable($e->getMessage()),
                 Response::HTTP_SERVICE_UNAVAILABLE
             );
         }
@@ -352,7 +352,7 @@ readonly class AiSuggestController
                     'exception' => $e,
                 ]);
 
-                echo 'data: ' . json_encode(AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray()) . "\n\n";
+                echo 'data: ' . json_encode(AiError::serviceUnavailable($e->getMessage())->toArray()) . "\n\n";
                 flush();
             }
         }, Response::HTTP_OK, ['Content-Type' => 'text/event-stream']);

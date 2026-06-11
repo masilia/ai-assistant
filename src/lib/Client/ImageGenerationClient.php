@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
+use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use RuntimeException;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -21,9 +22,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 readonly class ImageGenerationClient
 {
     public function __construct(
-        private HttpClientInterface  $httpClient,
-        private ImageTargetResolver  $targetResolver,
-        private ImageAdapterRegistry $adapterRegistry,
+        private HttpClientInterface         $httpClient,
+        private ImageTargetResolver         $targetResolver,
+        private ImageAdapterRegistry        $adapterRegistry,
+        private SiteAccessServiceInterface  $siteAccessService,
     ) {
     }
 
@@ -43,9 +45,13 @@ readonly class ImageGenerationClient
     ): ImageGenerationResult {
         $target = $this->targetResolver->resolve();
         if ($target === null) {
+            $siteaccess = $this->siteAccessService->getCurrent()?->name ?? 'default';
             throw new RuntimeException(
-                'No image generation provider is configured. '
-                . 'Set an image model identifier in the admin dashboard or configure masilia_ai_assistant.system.{scope}.image_model in YAML.'
+                sprintf(
+                    'No image generation provider configured for siteaccess "%s". '
+                    . 'Assign an image model in the admin dashboard for this siteaccess.',
+                    $siteaccess,
+                )
             );
         }
 

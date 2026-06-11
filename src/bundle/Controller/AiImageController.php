@@ -63,7 +63,7 @@ readonly class AiImageController
             ]);
 
             return new JsonResponse(
-                ['error' => self::GENERIC_SERVICE_ERROR],
+                ['error' => $e->getMessage()],
                 Response::HTTP_SERVICE_UNAVAILABLE,
             );
         }

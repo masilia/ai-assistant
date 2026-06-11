@@ -90,11 +90,14 @@ readonly class ModelManager
      */
     private function deactivateOthers(AiModel $activeModel): void
     {
-        $this->entityManager->createQuery(
-            sprintf('UPDATE %s m SET m.isActive = false WHERE m.id != :id AND m.provider = :provider', AiModel::class)
-        )
+        $this->entityManager->createQueryBuilder()
+            ->update(AiModel::class, 'm')
+            ->set('m.isActive', 'false')
+            ->where('m.id != :id')
+            ->andWhere('m.provider = :providerId')
             ->setParameter('id', $activeModel->getId())
-            ->setParameter('provider', $activeModel->getProvider())
+            ->setParameter('providerId', $activeModel->getProvider()->getId())
+            ->getQuery()
             ->execute();
     }
 }

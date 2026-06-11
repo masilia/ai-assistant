@@ -11,12 +11,14 @@ use Masilia\AiAssistant\DTO\AiSuggestResponse;
 use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\AiPromptBuilder;
 use Masilia\AiAssistant\Client\AiClientInterface;
+use Masilia\AiAssistant\DTO\SuggestionEnrichment;
 use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\FieldContextExtractor;
 use Masilia\AiAssistant\FieldFormat;
 use Masilia\AiAssistant\FieldFormatResolver;
 use Masilia\AiAssistant\LanguageNormalizer;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
+use Masilia\AiAssistant\SystemPromptContext;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -152,9 +154,6 @@ readonly class AiSuggestController
         }
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     private function validate(AiSuggestRequest $aiRequest): ?AiError
     {
         if ($aiRequest->fieldType === '' || $aiRequest->prompt === '') {
@@ -176,6 +175,21 @@ readonly class AiSuggestController
      */
     private function prepareSuggestion(AiSuggestRequest $aiRequest): array
     {
+        $enrichment = $this->extractEnrichment($aiRequest);
+
+        return [
+            'systemPrompt' => $this->buildSystemPrompt($aiRequest, $enrichment),
+            'userPrompt'   => $this->buildUserPrompt($aiRequest, $enrichment),
+            'format'       => $enrichment->format,
+        ];
+    }
+
+    /**
+     * Single precomputation pass: resolve language, load content context,
+     * pull sibling fields, decide matrix context, resolve the output format.
+     */
+    private function extractEnrichment(AiSuggestRequest $aiRequest): SuggestionEnrichment
+    {
         $normalizedLanguage = $this->languageNormalizer->normalize($aiRequest->language);
 
         $enriched = $this->contextExtractor->extractFromContent($aiRequest, $normalizedLanguage);
@@ -194,65 +208,92 @@ readonly class AiSuggestController
             $matrixContext = $this->contextExtractor->extractMatrixContextForRequest($aiRequest, $normalizedLanguage);
         }
 
-        $currentValue = $aiRequest->currentValue;
-        $userPromptText = $aiRequest->prompt;
+        return new SuggestionEnrichment(
+            normalizedLanguage: $normalizedLanguage,
+            contentType:        $enriched['contentType'],
+            contentTitle:       $enriched['contentTitle'],
+            siblingFields:      $siblingFields,
+            matrixContext:      $matrixContext,
+            format:             $this->formatResolver->resolve($aiRequest->fieldType),
+        );
+    }
 
-        if ($aiRequest->sourceLanguage !== '') {
-            $normalizedSourceLang = $this->languageNormalizer->normalize($aiRequest->sourceLanguage);
-            $sourceValue = $this->contextExtractor->getFieldValueInLanguage(
-                $aiRequest,
-                $normalizedSourceLang,
-                $normalizedLanguage,
-            );
-
-            if ($sourceValue !== null && $sourceValue['value'] !== '') {
-                if ($aiRequest->fieldType === FieldType::EZMATRIX) {
-                    $userPromptText = sprintf(
-                        "Translate each cell of the following matrix from %s to %s. "
-                      . "Output ONLY a JSON object with shape {\"rows\": [{\"cells\": {<col_id>: \"<translated_value>\"}}, ...]}. "
-                      . "Preserve the original row order. Plain text only in each cell.\n\n%s",
-                        $normalizedSourceLang,
-                        $normalizedLanguage,
-                        $sourceValue['value']
-                    );
-                } else {
-                    $userPromptText = sprintf(
-                        "Translate the following %s content to %s. Only output the translated text, "
-                        . "nothing else. Preserve the tone and style of the original.\n\n%s",
-                        $normalizedSourceLang,
-                        $normalizedLanguage,
-                        $sourceValue['value']
-                    );
-                }
-                $currentValue = '';
-            }
-        }
-
-        $format = $this->formatResolver->resolve($aiRequest->fieldType);
-
-        $systemPrompt = $this->promptBuilder->buildSystemPrompt(
-            new \Masilia\AiAssistant\SystemPromptContext(
-                format: $format,
-                fieldName: $aiRequest->fieldName,
-                contentType: $enriched['contentType'],
-                language: $normalizedLanguage,
-                contentTitle: $enriched['contentTitle'],
-                siblingFields: $siblingFields,
-                fieldType: $aiRequest->fieldType,
-                subFieldKey: $aiRequest->subFieldKey,
-                metaKeys: $aiRequest->metaKeys,
+    /**
+     * Build the system prompt for the resolved enrichment.
+     */
+    private function buildSystemPrompt(AiSuggestRequest $aiRequest, SuggestionEnrichment $enrichment): string
+    {
+        return $this->promptBuilder->buildSystemPrompt(
+            new SystemPromptContext(
+                format:        $enrichment->format,
+                fieldName:     $aiRequest->fieldName,
+                contentType:   $enrichment->contentType,
+                language:      $enrichment->normalizedLanguage,
+                contentTitle:  $enrichment->contentTitle,
+                siblingFields: $enrichment->siblingFields,
+                fieldType:     $aiRequest->fieldType,
+                subFieldKey:   $aiRequest->subFieldKey,
+                metaKeys:      $aiRequest->metaKeys,
             ),
             $this->languageNormalizer,
-            $matrixContext,
+            $enrichment->matrixContext,
+        );
+    }
+
+    /**
+     * Build the user prompt: plain prompt + optional translation
+     * (matrix-aware). The current value is cleared when a translation
+     * source is found, so the AI doesn't see both the source and the
+     * editor's draft at once.
+     */
+    private function buildUserPrompt(AiSuggestRequest $aiRequest, SuggestionEnrichment $enrichment): string
+    {
+        $userPromptText = $aiRequest->prompt;
+        $currentValue = $aiRequest->currentValue;
+
+        if ($aiRequest->sourceLanguage === '') {
+            return $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
+        }
+
+        $normalizedSourceLang = $this->languageNormalizer->normalize($aiRequest->sourceLanguage);
+        $sourceValue = $this->contextExtractor->getFieldValueInLanguage(
+            $aiRequest,
+            $normalizedSourceLang,
+            $enrichment->normalizedLanguage,
         );
 
-        $userPrompt = $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
+        if ($sourceValue === null || $sourceValue['value'] === '') {
+            return $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
+        }
 
-        return [
-            'systemPrompt' => $systemPrompt,
-            'userPrompt' => $userPrompt,
-            'format' => $format,
-        ];
+        $userPromptText = $aiRequest->fieldType === FieldType::EZMATRIX
+            ? $this->translationMatrixPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue['value'])
+            : $this->translationTextPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue['value']);
+
+        return $this->promptBuilder->enrichUserPrompt($userPromptText, '');
+    }
+
+    private function translationTextPrompt(string $from, string $to, string $sourceValue): string
+    {
+        return sprintf(
+            "Translate the following %s content to %s. Only output the translated text, "
+            . "nothing else. Preserve the tone and style of the original.\n\n%s",
+            $from,
+            $to,
+            $sourceValue
+        );
+    }
+
+    private function translationMatrixPrompt(string $from, string $to, string $sourceValue): string
+    {
+        return sprintf(
+            "Translate each cell of the following matrix from %s to %s. "
+          . "Output ONLY a JSON object with shape {\"rows\": [{\"cells\": {<col_id>: \"<translated_value>\"}}, ...]}. "
+          . "Preserve the original row order. Plain text only in each cell.\n\n%s",
+            $from,
+            $to,
+            $sourceValue
+        );
     }
 
     #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]

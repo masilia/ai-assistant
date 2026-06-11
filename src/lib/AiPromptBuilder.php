@@ -91,15 +91,7 @@ class AiPromptBuilder
             return $this->matrixPrompt($base, $matrixContext);
         }
 
-        return match ($ctx->format) {
-            FieldFormat::PLAIN_TEXT => "$base\n\nRules:\n- Output ONLY plain text, single line.\n- No HTML tags, no markdown formatting, no line breaks.\n- Be concise and direct.\n- Tailor the content specifically to the context provided above.",
-
-            FieldFormat::TEXT_BLOCK => "$base\n\nRules:\n- Output ONLY plain text.\n- Line breaks are allowed for paragraphs.\n- No HTML tags, no markdown formatting.\n- Write in a clear, structured manner.\n- Tailor the content specifically to the context provided above.",
-
-            FieldFormat::HTML => "$base\n\nRules:\n- Output clean, semantic HTML.\n- Use ONLY these tags: <p>, <h2>, <h3>, <h4>, <h5>, <h6>, <ul>, <ol>, <li>, <strong>, <em>, <a>, <table>, <tr>, <td>, <th>, <thead>, <tbody>, <blockquote>.\n- Do NOT use <h1> (reserved for page title).\n- Do NOT use <div>, classes, IDs, inline styles, or scripts.\n- Do NOT wrap output in ```html code blocks or any markdown.\n- Do NOT include <!DOCTYPE>, <html>, <head>, or <body> tags.\n- Output ONLY the inner HTML content, starting directly with content tags.\n- Tailor the content specifically to the context provided above.",
-
-            FieldFormat::JSON => "$base\n\nRules:\n- Output ONLY a valid raw JSON object.\n- Do NOT wrap the JSON in markdown code blocks.\n- No extra keys, no trailing text.\n- Tailor the values specifically to the context provided above.",
-        };
+        return $base . FormatPromptRules::for($ctx->format);
     }
 
     private function escape(string $value): string

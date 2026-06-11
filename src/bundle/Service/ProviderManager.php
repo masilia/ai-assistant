@@ -91,16 +91,14 @@ readonly class ProviderManager
     {
         $siteaccess = $activeProvider->getSiteaccess();
 
-        if ($siteaccess === null) {
-            $this->entityManager->createQuery(
-                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess IS NULL', AiProvider::class)
-            )->setParameter('id', $activeProvider->getId())->execute();
-        } else {
-            $this->entityManager->createQuery(
-                sprintf('UPDATE %s p SET p.isActive = false WHERE p.id != :id AND p.siteaccess = :sa', AiProvider::class)
-            )->setParameter('id', $activeProvider->getId())
-                ->setParameter('sa', $siteaccess)
-                ->execute();
-        }
+        $this->entityManager->createQueryBuilder()
+            ->update(AiProvider::class, 'p')
+            ->set('p.isActive', 'false')
+            ->where('p.id != :id')
+            ->andWhere('p.siteaccess = :sa OR (p.siteaccess IS NULL AND :sa IS NULL)')
+            ->setParameter('id', $activeProvider->getId())
+            ->setParameter('sa', $siteaccess)
+            ->getQuery()
+            ->execute();
     }
 }

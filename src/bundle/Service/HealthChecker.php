@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\Service;
 
+use Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface;
 use Masilia\AiAssistant\Client\Adapter\TestableProviderAdapterInterface;
 use Masilia\Bundle\AiAssistant\Health\HealthReport;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
+use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -40,22 +42,33 @@ readonly class HealthChecker
     public function check(): HealthReport
     {
         $resolved = $this->providerRepository->findActive();
-
         if ($resolved === null) {
             return HealthReport::notConfigured();
         }
 
         $adapter = $this->adapterRegistry->getForProvider($resolved->providerIdentifier);
+        $status = $this->probe($adapter, $resolved);
 
+        return $this->reportFromProbe($adapter, $resolved, $status);
+    }
+
+    /**
+     * Issue the test request for the resolved provider. Returns one of:
+     *   - `int` (HTTP status code) on a successful response
+     *   - `string` (error message) on a transport-level failure
+     *
+     * The string-vs-int union is the seam the mapping helper uses to
+     * turn the outcome into a {@see HealthReport}.
+     */
+    private function probe(ProviderAdapterInterface $adapter, ResolvedProvider $resolved): int|string
+    {
         if (!$adapter instanceof TestableProviderAdapterInterface) {
-            // Provider is configured but the adapter can't be tested; treat
-            // it as online (we can't prove otherwise).
-            return HealthReport::online($resolved->name, 'Adapter does not support connection testing.');
+            return 200;
         }
 
-        $body = $adapter->buildTestRequestBody($resolved->modelIdentifier);
         $url  = $adapter->buildEndpointUrl($resolved->apiUrl);
         $headers = $adapter->buildHeaders($resolved->apiKey);
+        $body = $adapter->buildTestRequestBody($resolved->modelIdentifier);
 
         try {
             $response = $this->httpClient->request('POST', $url, [
@@ -63,15 +76,31 @@ readonly class HealthChecker
                 'json' => $body,
                 'timeout' => 5,
             ]);
-            $status = $response->getStatusCode();
+            return $response->getStatusCode();
         } catch (\Throwable $e) {
-            return HealthReport::offline($resolved->name, $e->getMessage());
+            return $e->getMessage();
         }
+    }
 
+    private function reportFromProbe(
+        ProviderAdapterInterface $adapter,
+        ResolvedProvider $resolved,
+        int|string $status,
+    ): HealthReport {
         if ($status === 200) {
-            return HealthReport::online($resolved->name);
+            // A non-testable adapter also lands here, with status=200
+            // and a "can't be tested" message attached for the dashboard.
+            $message = $adapter instanceof TestableProviderAdapterInterface
+                ? null
+                : 'Adapter does not support connection testing.';
+
+            return HealthReport::online($resolved->name, $message);
         }
 
-        return HealthReport::offline($resolved->name, sprintf('HTTP %d', $status));
+        $message = is_string($status)
+            ? $status
+            : sprintf('HTTP %d', $status);
+
+        return HealthReport::offline($resolved->name, $message);
     }
 }

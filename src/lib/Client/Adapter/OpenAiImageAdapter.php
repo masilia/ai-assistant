@@ -14,6 +14,9 @@ use Masilia\AiAssistant\Client\ProviderId;
  */
 class OpenAiImageAdapter implements ImageProviderAdapterInterface
 {
+    use EndpointUrlHelperTrait;
+
+    private const DEFAULT_HOST = 'https://api.openai.com';
     private const SUPPORTED_SIZES = [
         '1024x1024',
         '1792x1024',
@@ -30,12 +33,13 @@ class OpenAiImageAdapter implements ImageProviderAdapterInterface
         string  $model,
         ?string $size = null,
         ?string $quality = null,
-    ): array {
+    ): array
+    {
         $body = [
-            'model'  => $model,
+            'model' => $model,
             'prompt' => $prompt,
-            'n'      => 1,
-            'size'   => $size ?: '1024x1024',
+            'n' => 1,
+            'size' => $size ?: '1024x1024',
         ];
 
         if ($quality !== null) {
@@ -47,13 +51,9 @@ class OpenAiImageAdapter implements ImageProviderAdapterInterface
 
     public function buildEndpointUrl(?string $customApiUrl): string
     {
-        $base = rtrim($customApiUrl ?: 'https://api.openai.com/v1', '/');
+        $host = self::extractHost($customApiUrl ?: self::DEFAULT_HOST);
 
-        if (!str_ends_with($base, '/images/generations')) {
-            $base .= '/images/generations';
-        }
-
-        return $base;
+        return $host . '/v1/images/generations';
     }
 
     public function buildHeaders(?string $apiKey): array
@@ -79,8 +79,8 @@ class OpenAiImageAdapter implements ImageProviderAdapterInterface
         // OpenAI returns either url or b64_json
         if (isset($dataItem['b64_json'])) {
             return [
-                'imageData'     => $dataItem['b64_json'],
-                'mimeType'      => 'image/png',
+                'imageData' => $dataItem['b64_json'],
+                'mimeType' => 'image/png',
                 'revisedPrompt' => $dataItem['revised_prompt'] ?? null,
             ];
         }
@@ -97,8 +97,8 @@ class OpenAiImageAdapter implements ImageProviderAdapterInterface
             $mimeType = mime_content_type($dataItem['url']) ?: 'image/png';
 
             return [
-                'imageData'     => base64_encode($imageContent),
-                'mimeType'      => $mimeType,
+                'imageData' => base64_encode($imageContent),
+                'mimeType' => $mimeType,
                 'revisedPrompt' => $dataItem['revised_prompt'] ?? null,
             ];
         }

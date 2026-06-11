@@ -28,14 +28,14 @@ class AiModel
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $identifier;
 
-    #[ORM\Column(type: Types::BOOLEAN)]
-    private bool $isActive = false;
-
     #[ORM\Column(type: Types::FLOAT)]
     private float $temperature = AiDefaults::TEMPERATURE;
 
     #[ORM\Column(type: Types::INTEGER)]
     private int $maxTokens = AiDefaults::LEGACY_MAX_TOKENS;
+
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $supportsImage = false;
 
     public function getId(): ?int
     {
@@ -75,17 +75,6 @@ class AiModel
         return $this;
     }
 
-    public function isActive(): bool
-    {
-        return $this->isActive;
-    }
-
-    public function setIsActive(bool $isActive): self
-    {
-        $this->isActive = $isActive;
-        return $this;
-    }
-
     public function getTemperature(): float
     {
         return $this->temperature;
@@ -105,6 +94,17 @@ class AiModel
     public function setMaxTokens(int $maxTokens): self
     {
         $this->maxTokens = $maxTokens;
+        return $this;
+    }
+
+    public function isSupportsImage(): bool
+    {
+        return $this->supportsImage;
+    }
+
+    public function setSupportsImage(bool $supportsImage): self
+    {
+        $this->supportsImage = $supportsImage;
         return $this;
     }
 }

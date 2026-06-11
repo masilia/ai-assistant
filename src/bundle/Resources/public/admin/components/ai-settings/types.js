@@ -12,13 +12,14 @@
 
 /**
  * @typedef {Object} Provider
- * @property {number}      id          Auto-increment primary key
- * @property {string}      name        Display name (e.g. "OpenAI Production")
- * @property {string}      identifier  Provider identifier: openai|anthropic|mistral|ollama|minimax
- * @property {?string}     siteaccess  null = global, otherwise scoped to this siteaccess
- * @property {?string}     apiKey      '••••••••' if a key is set, null otherwise
- * @property {?string}     apiUrl      Custom endpoint URL or null
- * @property {boolean}     isActive    Whether this provider is the active one
+ * @property {number}      id                Auto-increment primary key
+ * @property {string}      name              Display name (e.g. "OpenAI Production")
+ * @property {string}      identifier        Provider identifier: openai|anthropic|mistral|ollama|minimax|qwen
+ * @property {string[]}    siteaccesses      Siteaccess names this provider is assigned to
+ * @property {?string}     apiKey            '••••••••' if a key is set, null otherwise
+ * @property {?string}     apiUrl            Custom endpoint URL or null
+ * @property {?number}     activeChatModelId  FK → Model.id for the active chat model, or null
+ * @property {?number}     activeImageModelId FK → Model.id for the active image model, or null
  */
 
 /**
@@ -30,7 +31,7 @@
  * @property {string}  identifier    API model identifier (e.g. "gpt-4o", "claude-3-5-sonnet-20241022")
  * @property {number}  temperature   0.0..2.0
  * @property {number}  maxTokens     1..
- * @property {boolean} isActive      Whether this model is the active one for its provider
+ * @property {boolean} supportsImage Whether this model supports image generation
  */
 
 /**
@@ -43,8 +44,6 @@
  * @typedef {Object} DashboardData
  * @property {Provider[]} providers         All configured providers
  * @property {Model[]}    models            All configured models
- * @property {?number}    activeProviderId  Currently active provider, if any
- * @property {?number}    activeModelId     Currently active model, if any
  * @property {string[]}   siteaccesses      All available siteaccess names (for the form dropdown)
  * @property {string}     currentSiteaccess Name of the siteaccess the admin is currently in
  */

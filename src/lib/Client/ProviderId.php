@@ -12,6 +12,7 @@ final class ProviderId
     public const OLLAMA    = 'ollama';
     public const MINIMAX   = 'minimax';
     public const QWEN      = 'qwen';
+    public const GEMINI    = 'gemini';
 
     public const ALL = [
         self::OPENAI,
@@ -20,6 +21,7 @@ final class ProviderId
         self::OLLAMA,
         self::MINIMAX,
         self::QWEN,
+        self::GEMINI,
     ];
 
     public static function isValid(string $identifier): bool
@@ -36,6 +38,7 @@ final class ProviderId
             self::OLLAMA    => 'Ollama',
             self::MINIMAX   => 'MiniMax',
             self::QWEN      => 'Qwen',
+            self::GEMINI    => 'Google Gemini',
             default         => ucfirst($identifier),
         };
     }

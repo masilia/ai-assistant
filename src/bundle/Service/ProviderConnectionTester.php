@@ -70,7 +70,7 @@ readonly class ProviderConnectionTester
         $response = $this->httpClient->request('POST', $url, [
             'headers' => $headers,
             'json' => $body,
-            'timeout' => 10,
+            'timeout' => 30,
         ]);
 
         $statusCode = $response->getStatusCode();
@@ -131,7 +131,7 @@ readonly class ProviderConnectionTester
                 'headers' => $headers,
                 'json' => $body,
                 'buffer' => false,
-                'timeout' => 10,
+                'timeout' => 30,
             ]);
 
             // Read up to 2 chunks, return true as soon as we get a real token.

@@ -22,16 +22,17 @@ import { notify, cleanErrorMessage } from './constants.js';
  *   fetchData: () => Promise<DashboardData|undefined>,
  *   saveProvider: (e: Event, editing: Provider|'new'|null) => Promise<boolean>,
  *   deleteProvider: (id: number) => Promise<void>,
- *   activateProvider: (id: number) => Promise<void>,
  *   testProvider: (id: number) => Promise<void>,
  *   saveModel: (e: Event, editing: Model|'new'|null) => Promise<boolean>,
  *   deleteModel: (id: number) => Promise<void>,
- *   activateModel: (id: number) => Promise<void>,
+ *   setSiteaccesses: (providerId: number, siteaccesses: string[]) => Promise<void>,
+ *   setChatModel: (providerId: number, modelId: number|null) => Promise<void>,
+ *   setImageModel: (providerId: number, modelId: number|null) => Promise<void>,
  * }}
  */
 export function useAiSettings() {
     const [data, setData]           = useState(/** @type {DashboardData} */ ({
-        providers: [], models: [], activeProviderId: null, activeModelId: null, siteaccesses: [], currentSiteaccess: '',
+        providers: [], models: [], siteaccesses: [], currentSiteaccess: '',
     }));
     const [loading, setLoading]     = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -65,10 +66,8 @@ export function useAiSettings() {
             id:         editingProvider && editingProvider !== 'new' ? editingProvider.id : null,
             name:       fd.get('name'),
             identifier: fd.get('identifier'),
-            siteaccess: fd.get('siteaccess') || null,
             apiKey:     fd.get('apiKey'),
             apiUrl:     fd.get('apiUrl'),
-            isActive:   fd.get('isActive') === 'true',
         };
         try {
             const res = await fetch(AI_ROUTES.saveProvider, {
@@ -100,44 +99,10 @@ export function useAiSettings() {
         }
     }, [fetchData]);
 
-    const activateProvider = useCallback(async (id) => {
-        // Optimistic update: flip the active flag locally and deactivate
-        // siblings within the same scope, before the network round-trip.
-        // On error, the catch path reverts by re-fetching from the server.
-        const previous = data;
-        setData((prev) => ({
-            ...prev,
-            activeProviderId: id,
-            providers: prev.providers.map((p) => {
-                if (p.id === id) return { ...p, isActive: true };
-                if (p.siteaccess === previous.providers.find((x) => x.id === id)?.siteaccess) {
-                    return { ...p, isActive: false };
-                }
-                return p;
-            }),
-        }));
-
-        try {
-            const res = await fetch(AI_ROUTES.activateProvider(id), { method: 'POST' });
-            if (!res.ok) throw new Error('Failed to activate provider.');
-            notify('success', 'Active provider routing updated.');
-            await fetchData();
-        } catch (err) {
-            // Revert to the pre-optimistic state, then re-sync from server
-            // to make sure any server-side state changes aren't lost.
-            setData(previous);
-            await fetchData();
-            notify('error', cleanErrorMessage(err.message));
-        }
-    }, [data, fetchData]);
-
     const testProvider = useCallback(async (id) => {
         setTestingId(id);
         setTestResults(prev => ({ ...prev, [id]: null }));
         try {
-            // Always exercise the streaming path too — catches the
-            // "non-streaming works but streaming is misconfigured" case
-            // (wrong endpoint suffix, missing stream flag, etc.).
             const res = await fetch(AI_ROUTES.testProviderStream(id), { method: 'POST' });
             const result = await res.json();
             const success = res.ok && result.success;
@@ -162,6 +127,77 @@ export function useAiSettings() {
         }
     }, []);
 
+    // ── Siteaccess / model assignment ──────────────────────────────────────
+    const setSiteaccesses = useCallback(async (providerId, siteaccesses) => {
+        const previous = data;
+        // Optimistic: update local state immediately
+        setData((prev) => ({
+            ...prev,
+            providers: prev.providers.map((p) =>
+                p.id === providerId ? { ...p, siteaccesses } : p
+            ),
+        }));
+        try {
+            const res = await fetch(AI_ROUTES.setSiteaccesses(providerId), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ siteaccesses }),
+            });
+            if (!res.ok) throw new Error('Failed to update siteaccess assignments.');
+            await fetchData();
+        } catch (err) {
+            setData(previous);
+            await fetchData();
+            notify('error', cleanErrorMessage(err.message));
+        }
+    }, [data, fetchData]);
+
+    const setChatModel = useCallback(async (providerId, modelId) => {
+        const previous = data;
+        setData((prev) => ({
+            ...prev,
+            providers: prev.providers.map((p) =>
+                p.id === providerId ? { ...p, activeChatModelId: modelId } : p
+            ),
+        }));
+        try {
+            const res = await fetch(AI_ROUTES.setChatModel(providerId), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId }),
+            });
+            if (!res.ok) throw new Error('Failed to update chat model.');
+            await fetchData();
+        } catch (err) {
+            setData(previous);
+            await fetchData();
+            notify('error', cleanErrorMessage(err.message));
+        }
+    }, [data, fetchData]);
+
+    const setImageModel = useCallback(async (providerId, modelId) => {
+        const previous = data;
+        setData((prev) => ({
+            ...prev,
+            providers: prev.providers.map((p) =>
+                p.id === providerId ? { ...p, activeImageModelId: modelId } : p
+            ),
+        }));
+        try {
+            const res = await fetch(AI_ROUTES.setImageModel(providerId), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId }),
+            });
+            if (!res.ok) throw new Error('Failed to update image model.');
+            await fetchData();
+        } catch (err) {
+            setData(previous);
+            await fetchData();
+            notify('error', cleanErrorMessage(err.message));
+        }
+    }, [data, fetchData]);
+
     // ── Model CRUD ─────────────────────────────────────────────────────────
     const saveModel = useCallback(async (formEvent, editingModel) => {
         formEvent.preventDefault();
@@ -174,7 +210,7 @@ export function useAiSettings() {
             identifier:  fd.get('identifier'),
             temperature: parseFloat(fd.get('temperature')),
             maxTokens:   parseInt(fd.get('maxTokens'), 10),
-            isActive:    fd.get('isActive') === 'true',
+            supportsImage: fd.get('supportsImage') === 'true',
         };
         try {
             const res = await fetch(AI_ROUTES.saveModel, {
@@ -206,36 +242,6 @@ export function useAiSettings() {
         }
     }, [fetchData]);
 
-    const activateModel = useCallback(async (id) => {
-        // Same optimistic pattern as activateProvider: flip the local
-        // isActive flag and deactivate sibling models on the same provider,
-        // then reconcile with the server. Reverts on error.
-        const previous = data;
-        setData((prev) => ({
-            ...prev,
-            activeModelId: id,
-            models: prev.models.map((m) => {
-                if (m.id === id) return { ...m, isActive: true };
-                const target = previous.models.find((x) => x.id === id);
-                if (target && m.providerId === target.providerId) {
-                    return { ...m, isActive: false };
-                }
-                return m;
-            }),
-        }));
-
-        try {
-            const res = await fetch(AI_ROUTES.activateModel(id), { method: 'POST' });
-            if (!res.ok) throw new Error('Failed to activate model.');
-            notify('success', 'Active model routing updated.');
-            await fetchData();
-        } catch (err) {
-            setData(previous);
-            await fetchData();
-            notify('error', cleanErrorMessage(err.message));
-        }
-    }, [data, fetchData]);
-
     return {
         data,
         loading,
@@ -245,10 +251,11 @@ export function useAiSettings() {
         fetchData,
         saveProvider,
         deleteProvider,
-        activateProvider,
         testProvider,
         saveModel,
         deleteModel,
-        activateModel,
+        setSiteaccesses,
+        setChatModel,
+        setImageModel,
     };
 }

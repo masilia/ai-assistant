@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
-use Masilia\AiAssistant\Client\Adapter\ImageProviderAdapterInterface;
 use Masilia\AiAssistant\Client\Resolved\ResolvedImageTarget;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 
 /**
- * Resolves the active image generation provider + model for the current siteaccess.
+ * Resolves the image generation provider + model for the current siteaccess.
  *
  * Resolution priority:
- *   1. DB provider with image_model_identifier set (siteaccess-scoped → global)
+ *   1. DB provider assigned to the current siteaccess (via siteaccess join table + activeImageModel FK)
  *   2. YAML config fallback
  *
  * Returns a {@see ResolvedImageTarget} ready to be used by {@see ImageGenerationClient}.

@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
-use Masilia\AiAssistant\Client\Adapter\ImageProviderAdapterInterface;
+use RuntimeException;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -25,8 +30,11 @@ readonly class ImageGenerationClient
     /**
      * Generate an image from a text prompt.
      *
-     * @throws \RuntimeException When no image generation provider is configured
-     * @throws \RuntimeException When the API call fails
+     * @throws ClientExceptionInterface
+     * @throws DecodingExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws TransportExceptionInterface
      */
     public function generate(
         string  $prompt,
@@ -35,7 +43,7 @@ readonly class ImageGenerationClient
     ): ImageGenerationResult {
         $target = $this->targetResolver->resolve();
         if ($target === null) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'No image generation provider is configured. '
                 . 'Set an image model identifier in the admin dashboard or configure masilia_ai_assistant.system.{scope}.image_model in YAML.'
             );
@@ -59,7 +67,7 @@ readonly class ImageGenerationClient
 
         $statusCode = $response->getStatusCode();
         if ($statusCode !== 200) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf(
                     '%s image API returned HTTP %d: %s',
                     ProviderId::displayName($target->providerIdentifier),

@@ -12,8 +12,9 @@ import { useAiSettings } from './useAiSettings.js';
 export default function AiSettingsDashboard() {
     const {
         data, loading, submitting, testingId, testResults,
-        saveProvider, deleteProvider, activateProvider, testProvider,
-        saveModel, deleteModel, activateModel,
+        saveProvider, deleteProvider, testProvider,
+        saveModel, deleteModel,
+        setSiteaccesses, setChatModel, setImageModel,
     } = useAiSettings();
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -23,13 +24,6 @@ export default function AiSettingsDashboard() {
     const [modelPreselectedProviderId, setModelPreselectedProviderId] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
     const [activeTab, setActiveTab] = useState('providers');
-
-    // Auto-expand the active provider on first successful load
-    useEffect(() => {
-        if (data.activeProviderId) {
-            setExpandedIds(prev => new Set(prev).add(data.activeProviderId));
-        }
-    }, [data.activeProviderId]);
 
     // ── UI handlers ────────────────────────────────────────────────────────
     const handleSaveProvider = async (e) => {
@@ -74,11 +68,8 @@ export default function AiSettingsDashboard() {
     };
 
     // Search matches:
-    //   - Provider name / identifier / siteaccess
+    //   - Provider name / identifier / siteaccesses
     //   - Model name / identifier belonging to that provider
-    // Providers with no match (and no matching model) are hidden.
-    // Providers with a matching model but not matching the search
-    // themselves are auto-expanded so the match is visible.
     const query = searchQuery.trim().toLowerCase();
     const matchingModelIdsByProvider = new Map();
     if (query) {
@@ -92,19 +83,15 @@ export default function AiSettingsDashboard() {
             }
         }
     }
-    const totalMatchingModels = Array.from(matchingModelIdsByProvider.values())
-        .reduce((sum, arr) => sum + arr.length, 0);
 
     const filteredProviders = query
         ? data.providers.filter((p) => {
-            const providerHaystack = `${p.name} ${p.identifier} ${p.siteaccess || 'global'}`.toLowerCase();
+            const providerHaystack = `${p.name} ${p.identifier} ${(p.siteaccesses || []).join(' ')}`.toLowerCase();
             return providerHaystack.includes(query) || matchingModelIdsByProvider.has(p.id);
         })
         : data.providers;
 
     // Auto-expand any provider card whose model matched the search
-    // (so the user actually sees the hit). Additive with the user's
-    // manual expansion state.
     useEffect(() => {
         if (!query || matchingModelIdsByProvider.size === 0) return;
         setExpandedIds((prev) => {
@@ -132,8 +119,6 @@ export default function AiSettingsDashboard() {
             <ActiveBanner
                 providers={data.providers}
                 models={data.models}
-                activeProviderId={data.activeProviderId}
-                activeModelId={data.activeModelId}
                 currentSiteaccess={data.currentSiteaccess}
             />
 
@@ -207,16 +192,18 @@ export default function AiSettingsDashboard() {
                                     key={p.id}
                                     provider={p}
                                     models={data.models}
+                                    siteaccesses={data.siteaccesses || []}
                                     currentSiteaccess={data.currentSiteaccess}
                                     isExpanded={expandedIds.has(p.id)}
                                     onToggleExpand={() => toggleExpand(p.id)}
-                                    onActivateProvider={activateProvider}
+                                    onSetSiteaccesses={setSiteaccesses}
+                                    onSetChatModel={setChatModel}
+                                    onSetImageModel={setImageModel}
                                     onEditProvider={setEditingProvider}
                                     onDeleteProvider={handleDeleteProvider}
                                     onTestProvider={testProvider}
                                     testingId={testingId}
                                     testResult={testResults[p.id] || null}
-                                    onActivateModel={activateModel}
                                     onEditModel={(m) => { setModelPreselectedProviderId(null); setEditingModel(m); }}
                                     onDeleteModel={handleDeleteModel}
                                     onAddModel={openAddModel}
@@ -232,7 +219,6 @@ export default function AiSettingsDashboard() {
             {editingProvider && (
                 <ProviderDrawer
                     provider={editingProvider}
-                    siteaccesses={data.siteaccesses || []}
                     onClose={() => setEditingProvider(null)}
                     onSave={handleSaveProvider}
                     submitting={submitting}
@@ -262,4 +248,3 @@ export default function AiSettingsDashboard() {
         </div>
     );
 }
-

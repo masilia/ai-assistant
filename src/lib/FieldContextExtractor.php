@@ -31,12 +31,13 @@ use Throwable;
 readonly class FieldContextExtractor
 {
     public function __construct(
-        private ContentService           $contentService,
+        private ContentService                $contentService,
         private FieldValueStringifierRegistry $stringifierRegistry,
-        private FieldIdentifierResolver  $identifierResolver,
-        private SiblingFieldsExtractor   $siblingExtractor,
-        private LoggerInterface          $aiLogger,
-    ) {
+        private FieldIdentifierResolver       $identifierResolver,
+        private SiblingFieldsExtractor        $siblingExtractor,
+        private LoggerInterface               $aiLogger,
+    )
+    {
     }
 
     /**
@@ -45,7 +46,8 @@ readonly class FieldContextExtractor
     public function extractFromContent(
         AiSuggestRequest $request,
         string           $normalizedLanguage,
-    ): array {
+    ): array
+    {
         if ($request->contentId <= 0) {
             return $this->emptyContext($request);
         }
@@ -73,11 +75,52 @@ readonly class FieldContextExtractor
         ];
     }
 
+    /**
+     * @return array{contentTitle: string, contentType: string, siblingFields: SiblingField[]}
+     */
+    private function emptyContext(AiSuggestRequest $request): array
+    {
+        return [
+            'contentTitle' => $request->contentTitle,
+            'contentType' => $request->contentType,
+            'siblingFields' => [],
+        ];
+    }
+
+    /**
+     * Load content by id, or null on any failure (not found, not
+     * accessible, deleted, etc.) with a warning logged.
+     *
+     * Centralises what used to be a 4×-inlined try/catch around
+     * {@see ContentService::loadContent()} — the only point in the
+     * package that knows how to talk to the Ibexa content service.
+     */
+    public function loadOrLog(int $contentId, string $reason): ?Content
+    {
+        try {
+            return $this->contentService->loadContent($contentId);
+        } catch (Throwable $e) {
+            $this->aiLogger->warning(
+                '[AI] Failed to load content {contentId} {reason}: {message}',
+                ['contentId' => $contentId, 'reason' => $reason, 'message' => $e->getMessage()]
+            );
+
+            return null;
+        }
+    }
+
+    private function resolveTitle(Content $content, string $language): ?string
+    {
+        $name = $content->getName($language) ?? $content->getName();
+        return ($name !== null && $name !== '') ? $name : null;
+    }
+
     public function getFieldValueInLanguage(
         AiSuggestRequest $request,
-        string $sourceLanguage,
-        string $targetLanguage,
-    ): ?FieldStringValue {
+        string           $sourceLanguage,
+        string           $targetLanguage,
+    ): ?FieldStringValue
+    {
         if ($request->contentId <= 0 || $sourceLanguage === '') {
             return null;
         }
@@ -122,46 +165,6 @@ readonly class FieldContextExtractor
     }
 
     /**
-     * Pulls matrix-specific context (column headers + current row count) for
-     * the AI system prompt. Returns null for non-matrix field types so
-     * the controller can branch cleanly.
-     *
-     * @return array{headers: array<string,string>, rowCount: int}|null
-     */
-    public function extractMatrixContext(
-        Content     $content,
-        ContentType $contentType,
-        string      $fieldIdentifier,
-        string      $language,
-    ): ?array {
-        $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
-        if ($fieldDef === null || $fieldDef->fieldTypeIdentifier !== FieldType::EZMATRIX) {
-            return null;
-        }
-
-        $columns = $fieldDef->getFieldSettings()['columns'] ?? [];
-        $headers = [];
-        foreach ($columns as $col) {
-            if (!isset($col['identifier'])) {
-                continue;
-            }
-            $headers[(string) $col['identifier']] = (string) ($col['name'] ?? $col['identifier']);
-        }
-
-        $field = ContentFieldAccessor::getWithFallback($content, $fieldIdentifier, $language);
-
-        $rowCount = 0;
-        if ($field !== null && $field->value instanceof Value) {
-            $rowCount = $field->value->getRows()->count();
-        }
-
-        return [
-            'headers'  => $headers,
-            'rowCount' => $rowCount,
-        ];
-    }
-
-    /**
      * One-shot matrix-context extraction for a request payload: loads the
      * content, resolves the field identifier from the AI request's display
      * label (reusing the same fuzzy match used by the sibling extractor),
@@ -176,7 +179,8 @@ readonly class FieldContextExtractor
     public function extractMatrixContextForRequest(
         AiSuggestRequest $request,
         string           $normalizedLanguage,
-    ): ?array {
+    ): ?array
+    {
         $content = $this->loadOrLog($request->contentId, 'for matrix context');
         if ($content === null) {
             return null;
@@ -192,42 +196,43 @@ readonly class FieldContextExtractor
     }
 
     /**
-     * @return array{contentTitle: string, contentType: string, siblingFields: SiblingField[]}
-     */
-    private function emptyContext(AiSuggestRequest $request): array
-    {
-        return [
-            'contentTitle' => $request->contentTitle,
-            'contentType' => $request->contentType,
-            'siblingFields' => [],
-        ];
-    }
-
-    private function resolveTitle(Content $content, string $language): ?string
-    {
-        $name = $content->getName($language) ?? $content->getName();
-        return ($name !== null && $name !== '') ? $name : null;
-    }
-
-    /**
-     * Load content by id, or null on any failure (not found, not
-     * accessible, deleted, etc.) with a warning logged.
+     * Pulls matrix-specific context (column headers + current row count) for
+     * the AI system prompt. Returns null for non-matrix field types so
+     * the controller can branch cleanly.
      *
-     * Centralises what used to be a 4×-inlined try/catch around
-     * {@see ContentService::loadContent()} — the only point in the
-     * package that knows how to talk to the Ibexa content service.
+     * @return array{headers: array<string,string>, rowCount: int}|null
      */
-    public function loadOrLog(int $contentId, string $reason): ?Content
+    public function extractMatrixContext(
+        Content     $content,
+        ContentType $contentType,
+        string      $fieldIdentifier,
+        string      $language,
+    ): ?array
     {
-        try {
-            return $this->contentService->loadContent($contentId);
-        } catch (Throwable $e) {
-            $this->aiLogger->warning(
-                '[AI] Failed to load content {contentId} {reason}: {message}',
-                ['contentId' => $contentId, 'reason' => $reason, 'message' => $e->getMessage()]
-            );
-
+        $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
+        if ($fieldDef === null || $fieldDef->fieldTypeIdentifier !== FieldType::EZMATRIX) {
             return null;
         }
+
+        $columns = $fieldDef->getFieldSettings()['columns'] ?? [];
+        $headers = [];
+        foreach ($columns as $col) {
+            if (!isset($col['identifier'])) {
+                continue;
+            }
+            $headers[(string)$col['identifier']] = (string)($col['name'] ?? $col['identifier']);
+        }
+
+        $field = ContentFieldAccessor::getWithFallback($content, $fieldIdentifier, $language);
+
+        $rowCount = 0;
+        if ($field !== null && $field->value instanceof Value) {
+            $rowCount = $field->value->getRows()->count();
+        }
+
+        return [
+            'headers' => $headers,
+            'rowCount' => $rowCount,
+        ];
     }
 }

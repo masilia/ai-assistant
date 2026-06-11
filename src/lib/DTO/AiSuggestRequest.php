@@ -8,7 +8,7 @@ readonly class AiSuggestRequest
 {
     /**
      * @param string[] $siblingFields
-     * @param string[] $metaKeys      For multi-value fields (e.g. novaseometas):
+     * @param string[] $metaKeys For multi-value fields (e.g. novaseometas):
      *                                the exact set of editable, AI-eligible meta
      *                                keys present on the form. Drives the
      *                                whole-block schema so it matches the UI.
@@ -26,7 +26,9 @@ readonly class AiSuggestRequest
         public string $sourceLanguage = '',
         public string $subFieldKey = '',
         public array  $metaKeys = [],
-    ) {}
+    )
+    {
+    }
 
     public static function fromArray(array $data): self
     {
@@ -52,6 +54,6 @@ readonly class AiSuggestRequest
 
     private static function toIntOrZero(mixed $value): int
     {
-        return is_numeric($value) ? (int) $value : 0;
+        return is_numeric($value) ? (int)$value : 0;
     }
 }

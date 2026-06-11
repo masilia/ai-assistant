@@ -4,21 +4,13 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\DTO;
 
-class AiError
+readonly class AiError
 {
     public function __construct(
-        public readonly string $code,
-        public readonly string $message,
-    ) {}
-
-    public function toArray(): array
+        public string $code,
+        public string $message,
+    )
     {
-        return [
-            'error' => [
-                'code' => $this->code,
-                'message' => $this->message,
-            ],
-        ];
     }
 
     public static function accessDenied(): self
@@ -44,5 +36,15 @@ class AiError
     public static function internalError(string $message): self
     {
         return new self('INTERNAL_ERROR', $message);
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'error' => [
+                'code' => $this->code,
+                'message' => $this->message,
+            ],
+        ];
     }
 }

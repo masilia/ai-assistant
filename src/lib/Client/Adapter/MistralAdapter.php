@@ -8,18 +8,18 @@ use Masilia\AiAssistant\Client\ProviderId;
 
 class MistralAdapter extends AbstractOpenAiAdapter
 {
+    public function getDefaultTestModel(): string
+    {
+        return 'mistral-small-latest';
+    }
+
     protected function getProviderIdentifier(): string
     {
         return ProviderId::MISTRAL;
     }
 
-    protected function getDefaultBaseUrl(): string
+    protected function getDefaultHost(): string
     {
-        return 'https://api.mistral.ai/v1';
-    }
-
-    public function getDefaultTestModel(): string
-    {
-        return 'mistral-small-latest';
+        return 'https://api.mistral.ai';
     }
 }

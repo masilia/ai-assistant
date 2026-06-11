@@ -6,8 +6,10 @@ namespace Masilia\AiAssistant\Client;
 
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface;
 use Masilia\AiAssistant\Client\Adapter\StreamingProviderAdapterInterface;
+use RuntimeException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
+use Throwable;
 
 /**
  * Provider-agnostic AI client. Thin orchestration layer that delegates:
@@ -30,7 +32,8 @@ class AiClient implements AiClientInterface
         private readonly TargetResolver      $resolver,
         private readonly StreamConsumer      $streamConsumer,
         ?RequestLoggerInterface              $requestLogger = null,
-    ) {
+    )
+    {
         $this->requestLogger = $requestLogger ?? new NullRequestLogger();
     }
 
@@ -40,7 +43,7 @@ class AiClient implements AiClientInterface
 
         try {
             $target = $this->resolver->resolve();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logResolutionFailure($start, $e);
             throw $e;
         }
@@ -67,10 +70,88 @@ class AiClient implements AiClientInterface
             $this->logSuccess($target, $start, $usage);
 
             return $result;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logFailure($target, $start, $e);
             throw $e;
         }
+    }
+
+    /**
+     * Logs a failure that happened BEFORE we had an AiTarget (i.e. during
+     * target resolution). The provider/model are unknown, but the failure
+     * is still worth recording so the Usage tab can show config errors.
+     */
+    private function logResolutionFailure(float $startMs, Throwable $e): void
+    {
+        $this->requestLogger->log([
+            'providerIdentifier' => 'unknown',
+            'modelIdentifier' => 'unknown',
+            'success' => false,
+            'latencyMs' => $this->elapsedMs($startMs),
+            'errorCode' => $this->extractErrorCode($e),
+            'tokensIn' => null,
+            'tokensOut' => null,
+            'siteaccess' => null,
+            'finishReason' => null
+        ]);
+    }
+
+    private function elapsedMs(float $start): int
+    {
+        return (int)round((microtime(true) - $start) * 1000);
+    }
+
+    private function extractErrorCode(Throwable $e): string
+    {
+        if ($e instanceof HttpRequestException) {
+            return 'HTTP_' . $e->statusCode;
+        }
+
+        $parts = explode('\\', $e::class);
+        return end($parts) ?: 'UnknownError';
+    }
+
+    private function assertOk(ResponseInterface $response, string $providerIdentifier): void
+    {
+        $statusCode = $response->getStatusCode();
+
+        if ($statusCode !== 200) {
+            throw new HttpRequestException(
+                ProviderId::displayName($providerIdentifier),
+                $statusCode,
+                $response->getContent(false),
+            );
+        }
+    }
+
+    private function logSuccess(AiTarget $target, float $startMs, ?array $usage = null): void
+    {
+        $this->requestLogger->log([
+            'providerIdentifier' => $target->providerIdentifier,
+            'modelIdentifier' => $target->modelIdentifier,
+            'success' => true,
+            'latencyMs' => $this->elapsedMs($startMs),
+            'errorCode' => null,
+            'tokensIn' => $usage['input'] ?? 0,
+            'tokensOut' => $usage['output'] ?? 0,
+            'finishReason' => $usage['finishReason'] ?? null,
+            'siteaccess' => $target->siteaccess,
+        ]);
+    }
+
+    private function logFailure(AiTarget $target, float $startMs, Throwable $e): void
+    {
+        $this->requestLogger->log([
+            'providerIdentifier' => $target->providerIdentifier,
+            'modelIdentifier' => $target->modelIdentifier,
+            'success' => false,
+            'latencyMs' => $this->elapsedMs($startMs),
+            'errorCode' => $this->extractErrorCode($e),
+            'tokensIn' => null,
+            'tokensOut' => null,
+            'siteaccess' => $target->siteaccess,
+            'finishReason' => null
+        ]);
     }
 
     public function suggestStream(string $systemPrompt, string $userPrompt): \Generator
@@ -79,13 +160,13 @@ class AiClient implements AiClientInterface
 
         try {
             $target = $this->resolver->resolve();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logResolutionFailure($start, $e);
             throw $e;
         }
 
         if (!$target->adapter instanceof StreamingProviderAdapterInterface) {
-            $e = new \RuntimeException(sprintf(
+            $e = new RuntimeException(sprintf(
                 'Provider "%s" does not support streaming (adapter %s).',
                 $target->providerIdentifier,
                 $target->adapter::class
@@ -110,7 +191,7 @@ class AiClient implements AiClientInterface
             ]);
 
             $this->assertOk($response, $target->providerIdentifier);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logFailure($target, $start, $e);
             throw $e;
         }
@@ -134,86 +215,10 @@ class AiClient implements AiClientInterface
                     yield $event->token;
                 }
                 $this->logSuccess($target, $start, $usage);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->logFailure($target, $start, $e);
                 throw $e;
             }
         })();
-    }
-
-    private function assertOk(ResponseInterface $response, string $providerIdentifier): void
-    {
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode !== 200) {
-            throw new HttpRequestException(
-                ProviderId::displayName($providerIdentifier),
-                $statusCode,
-                $response->getContent(false),
-            );
-        }
-    }
-
-    private function logSuccess(AiTarget $target, float $startMs, ?array $usage = null): void
-    {
-        $this->requestLogger->log([
-            'providerIdentifier' => $target->providerIdentifier,
-            'modelIdentifier'    => $target->modelIdentifier,
-            'success'             => true,
-            'latencyMs'           => $this->elapsedMs($startMs),
-            'errorCode'           => null,
-            'tokensIn'            => $usage['input']  ?? null,
-            'tokensOut'           => $usage['output'] ?? null,
-            'finishReason'        => $usage['finishReason'] ?? null,
-            'siteaccess'          => $target->siteaccess,
-        ]);
-    }
-
-    private function logFailure(AiTarget $target, float $startMs, \Throwable $e): void
-    {
-        $this->requestLogger->log([
-            'providerIdentifier' => $target->providerIdentifier,
-            'modelIdentifier'    => $target->modelIdentifier,
-            'success'             => false,
-            'latencyMs'           => $this->elapsedMs($startMs),
-            'errorCode'           => $this->extractErrorCode($e),
-            'tokensIn'            => null,
-            'tokensOut'           => null,
-            'siteaccess'          => $target->siteaccess,
-        ]);
-    }
-
-    /**
-     * Logs a failure that happened BEFORE we had an AiTarget (i.e. during
-     * target resolution). The provider/model are unknown, but the failure
-     * is still worth recording so the Usage tab can show config errors.
-     */
-    private function logResolutionFailure(float $startMs, \Throwable $e): void
-    {
-        $this->requestLogger->log([
-            'providerIdentifier' => 'unknown',
-            'modelIdentifier'    => 'unknown',
-            'success'             => false,
-            'latencyMs'           => $this->elapsedMs($startMs),
-            'errorCode'           => $this->extractErrorCode($e),
-            'tokensIn'            => null,
-            'tokensOut'           => null,
-            'siteaccess'          => null,
-        ]);
-    }
-
-    private function elapsedMs(float $start): int
-    {
-        return (int) round((microtime(true) - $start) * 1000);
-    }
-
-    private function extractErrorCode(\Throwable $e): string
-    {
-        if ($e instanceof HttpRequestException) {
-            return 'HTTP_' . $e->statusCode;
-        }
-
-        $parts = explode('\\', $e::class);
-        return end($parts) ?: 'UnknownError';
     }
 }

@@ -1,40 +1,54 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { getProviderLabel } from './constants.js';
 import { ChevronIcon, BotIcon } from './icons.jsx';
 import EmptyState from './EmptyState.jsx';
 import ModelCard from './ModelCard.jsx';
+import IbexaDropdown from './IbexaDropdown.jsx';
+import IbexaTagViewSelect from './IbexaTagViewSelect.jsx';
 
 export default function ProviderCard({
     provider,
     models,
+    siteaccesses,
     currentSiteaccess = '',
     isExpanded,
     onToggleExpand,
-    onActivateProvider,
+    onSetSiteaccesses,
+    onSetChatModel,
+    onSetImageModel,
     onEditProvider,
     onDeleteProvider,
     onTestProvider,
     testingId,
     testResult,
-    onActivateModel,
     onEditModel,
     onDeleteModel,
     onAddModel,
 }) {
     const providerModels = models.filter(m => m.providerId === provider.id);
 
-    // The row whose siteaccess matches the admin's current siteaccess
-    // is the one actually driving requests. Highlight it; flag others
-    // as 'not in your scope' so a misconfig is visually obvious.
-    const matchesCurrentScope = provider.siteaccess === currentSiteaccess
-        || (!provider.siteaccess && currentSiteaccess && false); // global never matches "your" scope as primary
+    const matchesCurrentScope = provider.siteaccesses.includes(currentSiteaccess);
+
+    const assignedBadge = provider.siteaccesses.length > 0
+        ? provider.siteaccesses.join(', ')
+        : 'No siteaccess assigned';
+
+    const chatModelOptions = [
+        { value: '', label: 'None' },
+        ...providerModels.map(m => ({ value: m.id, label: `${m.name} (${m.identifier})` })),
+    ];
+
+    const imageModelOptions = [
+        { value: '', label: 'None' },
+        ...providerModels.filter(m => m.supportsImage).map(m => ({ value: m.id, label: `${m.name} (${m.identifier})` })),
+    ];
+
+    const siteaccessOptions = siteaccesses.map(sa => ({ value: sa, label: sa }));
 
     return (
         <div
-            className={`ai-provider-card ${provider.isActive ? 'ai-provider-card--active' : ''} ${
-                matchesCurrentScope ? 'ai-provider-card--your-scope' : ''
-            }`}
-            data-scope={provider.siteaccess || 'global'}
+            className={`ai-provider-card ${matchesCurrentScope ? 'ai-provider-card--your-scope' : ''}`}
+            data-scope={provider.siteaccesses.length > 0 ? provider.siteaccesses.join(',') : 'none'}
         >
             {/* Clickable header */}
             <div
@@ -54,8 +68,8 @@ export default function ProviderCard({
                     <div className="ai-provider-card__name">{provider.name}</div>
                     <div className="ai-provider-card__meta">
                         <span className="ai-provider-card__type-badge">{getProviderLabel(provider.identifier)}</span>
-                        <span className={`ai-provider-card__scope-badge ${provider.siteaccess ? 'ai-provider-card__scope-badge--scoped' : ''}`}>
-                            {provider.siteaccess || 'Global'}
+                        <span className={`ai-provider-card__scope-badge ${provider.siteaccesses.length > 0 ? 'ai-provider-card__scope-badge--scoped' : ''}`}>
+                            {assignedBadge}
                         </span>
                         <span>{provider.apiUrl || 'Default endpoint'}</span>
                         <span>{providerModels.length} model{providerModels.length !== 1 ? 's' : ''}</span>
@@ -63,21 +77,6 @@ export default function ProviderCard({
                 </div>
 
                 <div className="ai-provider-card__actions" onClick={(e) => e.stopPropagation()}>
-                    <div
-                        className={`ibexa-toggle ibexa-toggle--small ${provider.isActive ? 'ibexa-toggle--is-checked' : ''}`}
-                        onClick={() => onActivateProvider(provider.id)}
-                    >
-                        <label className="ibexa-toggle__switcher" aria-label={`Toggle ${provider.name} active`}>
-                            <input
-                                className="ibexa-toggle__input"
-                                type="checkbox"
-                                checked={provider.isActive}
-                                onChange={() => onActivateProvider(provider.id)}
-                            />
-                            <span className="ibexa-toggle__indicator" />
-                        </label>
-                    </div>
-
                     <button
                         type="button"
                         className="ibexa-btn ibexa-btn--secondary ibexa-btn--small"
@@ -119,6 +118,40 @@ export default function ProviderCard({
                         <span><strong>API Key:</strong> {provider.apiKey || 'Not set'}</span>
                     </div>
 
+                    {/* Configuration section */}
+                    <div className="ai-provider-card__config-section">
+                        {/* Siteaccess assignments */}
+                        <div className="ai-provider-card__config-row">
+                            <IbexaTagViewSelect
+                                label="Assigned Siteaccesses"
+                                values={provider.siteaccesses}
+                                options={siteaccessOptions}
+                                placeholder="No siteaccess assigned"
+                                onChange={(next) => onSetSiteaccesses(provider.id, next)}
+                            />
+                        </div>
+
+                        {/* Active model selectors */}
+                        <div className="ai-provider-card__config-row ai-provider-card__config-row--inline">
+                            <IbexaDropdown
+                                label="Chat Model"
+                                id={`chat-model-${provider.id}`}
+                                value={provider.activeChatModelId ?? ''}
+                                options={chatModelOptions}
+                                placeholder="None"
+                                onChange={(val) => onSetChatModel(provider.id, val ? parseInt(val, 10) : null)}
+                            />
+                            <IbexaDropdown
+                                label="Image Model"
+                                id={`image-model-${provider.id}`}
+                                value={provider.activeImageModelId ?? ''}
+                                options={imageModelOptions}
+                                placeholder="None"
+                                onChange={(val) => onSetImageModel(provider.id, val ? parseInt(val, 10) : null)}
+                            />
+                        </div>
+                    </div>
+
                     {/* Models section */}
                     <div className="ai-provider-card__models-section">
                         <div className="ai-provider-card__models-header">
@@ -147,7 +180,8 @@ export default function ProviderCard({
                                     <ModelCard
                                         key={m.id}
                                         model={m}
-                                        onActivate={onActivateModel}
+                                        isChatActive={m.id === provider.activeChatModelId}
+                                        isImageActive={m.id === provider.activeImageModelId}
                                         onEdit={onEditModel}
                                         onDelete={onDeleteModel}
                                     />

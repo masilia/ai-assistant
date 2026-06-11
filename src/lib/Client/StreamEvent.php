@@ -21,8 +21,9 @@ final readonly class StreamEvent
     public function __construct(
         public ?string $token,
         public bool    $isFinal,
-        public ?array  $usage        = null,
+        public ?array  $usage = null,
         public ?string $finishReason = null,
-    ) {
+    )
+    {
     }
 }

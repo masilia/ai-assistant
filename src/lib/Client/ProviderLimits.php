@@ -14,11 +14,12 @@ namespace Masilia\AiAssistant\Client;
 final readonly class ProviderLimits
 {
     public function __construct(
-        public float  $minTemperature   = 0.0,
-        public float  $maxTemperature   = 2.0,
-        public ?int   $defaultMaxTokens = null,
+        public float   $minTemperature = 0.0,
+        public float   $maxTemperature = 2.0,
+        public ?int    $defaultMaxTokens = null,
         public ?string $defaultTestModel = null,
-    ) {
+    )
+    {
     }
 
     /**

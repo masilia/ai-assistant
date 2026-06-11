@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\DTO;
 
-class AiSuggestResponse
+readonly class AiSuggestResponse
 {
     public function __construct(
-        public readonly string $suggestion,
-        public readonly string $format,
-    ) {}
+        public string $suggestion,
+        public string $format,
+    )
+    {
+    }
 
     public function toArray(): array
     {

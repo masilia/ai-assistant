@@ -8,7 +8,6 @@ use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\DTO\SiblingField;
-use Masilia\AiAssistant\Field\ContentFieldAccessor;
 
 /**
  * Walks every other field in the same content item and produces a list of
@@ -22,7 +21,8 @@ readonly class SiblingFieldsExtractor
 {
     public function __construct(
         private FieldValueStringifierRegistry $stringifierRegistry,
-    ) {
+    )
+    {
     }
 
     /**
@@ -33,7 +33,8 @@ readonly class SiblingFieldsExtractor
         ContentType $contentType,
         string      $currentFieldIdentifier,
         string      $language,
-    ): array {
+    ): array
+    {
         $siblingFields = [];
 
         foreach ($contentType->getFieldDefinitions() as $fieldDef) {

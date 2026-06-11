@@ -1,8 +1,8 @@
 import React from 'react';
 
-export default function ModelCard({ model, onActivate, onEdit, onDelete }) {
+export default function ModelCard({ model, isChatActive, isImageActive, onEdit, onDelete }) {
     return (
-        <div className={`ai-model-row ${model.isActive ? 'ai-model-row--active' : ''}`}>
+        <div className={`ai-model-row ${isChatActive ? 'ai-model-row--active-chat' : ''} ${isImageActive ? 'ai-model-row--active-image' : ''}`}>
             <div className="ai-model-row__info">
                 <div className="ai-model-row__name">{model.name}</div>
                 <div className="ai-model-row__details">
@@ -10,21 +10,11 @@ export default function ModelCard({ model, onActivate, onEdit, onDelete }) {
                     <span>Temp: {model.temperature}</span>
                     <span>Tokens: {model.maxTokens}</span>
                 </div>
-            </div>
-
-            <div
-                className={`ibexa-toggle ibexa-toggle--small ${model.isActive ? 'ibexa-toggle--is-checked' : ''}`}
-                onClick={() => onActivate(model.id)}
-            >
-                <label className="ibexa-toggle__switcher" aria-label={`Toggle ${model.name} active`}>
-                    <input
-                        className="ibexa-toggle__input"
-                        type="checkbox"
-                        checked={model.isActive}
-                        onChange={() => onActivate(model.id)}
-                    />
-                    <span className="ibexa-toggle__indicator" />
-                </label>
+                <div className="ai-model-row__badges">
+                    {isChatActive && <span className="ai-model-row__badge ai-model-row__badge--chat">Chat</span>}
+                    {isImageActive && <span className="ai-model-row__badge ai-model-row__badge--image">Image</span>}
+                    {model.supportsImage && !isImageActive && <span className="ai-model-row__badge ai-model-row__badge--image">Image Capable</span>}
+                </div>
             </div>
 
             <div className="ai-model-row__actions">

@@ -26,6 +26,8 @@ export const PROVIDER_TYPES = [
     { value: 'ollama',    label: 'Ollama' },
     { value: 'mistral',   label: 'Mistral' },
     { value: 'minimax',   label: 'MiniMax' },
+    { value: 'qwen',      label: 'Qwen' },
+    { value: 'gemini',    label: 'Google Gemini' },
 ];
 
 export function getProviderLabel(identifier) {

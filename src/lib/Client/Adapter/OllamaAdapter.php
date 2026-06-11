@@ -8,18 +8,18 @@ use Masilia\AiAssistant\Client\ProviderId;
 
 class OllamaAdapter extends AbstractOpenAiAdapter
 {
+    public function getDefaultTestModel(): string
+    {
+        return 'llama3.1';
+    }
+
     protected function getProviderIdentifier(): string
     {
         return ProviderId::OLLAMA;
     }
 
-    protected function getDefaultBaseUrl(): string
+    protected function getDefaultHost(): string
     {
-        return 'http://localhost:11434/v1';
-    }
-
-    public function getDefaultTestModel(): string
-    {
-        return 'llama3.1';
+        return 'http://localhost:11434';
     }
 }

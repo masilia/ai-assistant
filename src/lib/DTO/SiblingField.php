@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\DTO;
 
-class SiblingField
+readonly class SiblingField
 {
     public function __construct(
-        public readonly string $label,
-        public readonly string $value,
+        public string $label,
+        public string $value,
     ) {}
 
     public function toArray(): array

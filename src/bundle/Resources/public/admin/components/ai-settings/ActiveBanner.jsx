@@ -2,30 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { AI_ROUTES } from './api-routes.js';
 import { cleanErrorMessage } from './constants.js';
 
-const STATE_LABELS = {
-    not_configured: 'Not configured',
-    online:         'Online',
-    offline:        'Offline',
-};
-
-const STATE_DESCRIPTIONS = {
-    not_configured: 'No active AI provider is configured. Add one to start using AI-assisted content editing.',
-    online:         'The active provider is reachable and ready.',
-    offline:        'The active provider is configured but unreachable. Check the connection.',
-};
-
 /**
- * ActiveBanner — shows the current state of the AI engine.
- *
- * Three visual states (matches the /api/health endpoint):
- *   - not_configured: gray dot, "Not configured", with CTA to add a provider
- *   - online:         green dot, "Online"
- *   - offline:        red dot, "Offline" + reason, with a "Test again" CTA
- *
- * The banner fetches /api/health on mount and exposes an imperative
- * refresh() so the parent can re-check after activating a provider.
+ * ActiveBanner — shows the current state of the AI engine for the
+ * active siteaccess. Displays chat provider/model, image provider/model,
+ * and contextual guidance per state.
  */
-export default function ActiveBanner({ providers, models, activeProviderId, activeModelId, currentSiteaccess = 'default', onRefresh }) {
+export default function ActiveBanner({ providers, models, currentSiteaccess = 'default', onRefresh }) {
     const [health, setHealth] = useState(null);
 
     useEffect(() => {
@@ -39,45 +21,135 @@ export default function ActiveBanner({ providers, models, activeProviderId, acti
                 if (data) setHealth(data);
             })
             .catch((err) => {
-                // Silent: the banner already shows "Not configured" or the
-                // last-known state. Operator can investigate the JS console.
                 console.error('[AI] Health check failed:', cleanErrorMessage(err?.message));
             });
     };
 
-    const state = health?.state ?? 'not_configured';
-    const label = STATE_LABELS[state] ?? state;
-    const description = health?.message ? `${STATE_DESCRIPTIONS[state]} (${health.message})` : STATE_DESCRIPTIONS[state];
+    // Resolve active provider for this siteaccess
+    const chatProvider = providers.find(
+        (p) => p.siteaccesses.includes(currentSiteaccess) && p.activeChatModelId
+    );
+    const chatModel = chatProvider
+        ? models.find((m) => m.id === chatProvider.activeChatModelId)
+        : null;
 
-    // Backwards-compat: when no health data is loaded yet but the
-    // legacy activeProviderId/activeModelId indicate one, show 'online'.
-    const legacyActive = !health && activeProviderId && providers.find((p) => p.id === activeProviderId);
-    const effectiveState = legacyActive ? 'online' : state;
+    const imageProvider = providers.find(
+        (p) => p.siteaccesses.includes(currentSiteaccess) && p.activeImageModelId
+    );
+    const imageModel = imageProvider
+        ? models.find((m) => m.id === imageProvider.activeImageModelId)
+        : null;
+
+    const hasChat = chatProvider && chatModel;
+    const hasImage = imageProvider && imageModel;
+
+    // Determine state
+    const state = health?.state ?? (hasChat ? 'online' : 'not_configured');
+
+    const renderContent = () => {
+        if (state === 'online' && hasChat) {
+            return (
+                <>
+                    <div className="ai-banner__row">
+                        <span className="ai-banner__label">Chat</span>
+                        <span className="ai-banner__value">
+                            {chatProvider.name}
+                            <span className="ai-banner__divider"> / </span>
+                            {chatModel.name}
+                        </span>
+                    </div>
+                    {hasImage && (
+                        <div className="ai-banner__row">
+                            <span className="ai-banner__label">Image</span>
+                            <span className="ai-banner__value">
+                                {imageProvider.name}
+                                <span className="ai-banner__divider"> / </span>
+                                {imageModel.name}
+                            </span>
+                        </div>
+                    )}
+                    {!hasImage && (
+                        <div className="ai-banner__row">
+                            <span className="ai-banner__label">Image</span>
+                            <span className="ai-banner__value ai-banner__value--muted">Not configured</span>
+                        </div>
+                    )}
+                    {health?.message && (
+                        <p className="ai-banner__desc">{health.message}</p>
+                    )}
+                </>
+            );
+        }
+
+        if (state === 'offline') {
+            return (
+                <>
+                    <div className="ai-banner__row">
+                        <span className="ai-banner__label">Provider</span>
+                        <span className="ai-banner__value">{health?.providerName ?? 'Unknown'}</span>
+                    </div>
+                    <p className="ai-banner__desc ai-banner__desc--error">
+                        {health?.message ?? 'Connection failed.'}
+                    </p>
+                    <p className="ai-banner__desc">
+                        Verify the API key and endpoint URL in the provider settings, then test the connection.
+                    </p>
+                </>
+            );
+        }
+
+        // not_configured
+        const assignedCount = providers.filter((p) => p.siteaccesses.includes(currentSiteaccess)).length;
+        const configuredCount = providers.filter(
+            (p) => p.siteaccesses.includes(currentSiteaccess) && p.activeChatModelId
+        ).length;
+
+        if (assignedCount === 0) {
+            return (
+                <p className="ai-banner__desc">
+                    No providers are assigned to <code>{currentSiteaccess}</code>.
+                    Add a provider and assign it to this siteaccess, then select a chat model.
+                </p>
+            );
+        }
+
+        if (configuredCount === 0) {
+            return (
+                <p className="ai-banner__desc">
+                    {assignedCount} provider{assignedCount !== 1 ? 's' : ''} assigned to <code>{currentSiteaccess}</code>,
+                    but none have a chat model selected. Open a provider card and choose a chat model.
+                </p>
+            );
+        }
+
+        return (
+            <p className="ai-banner__desc">
+                No active AI provider found for <code>{currentSiteaccess}</code>.
+            </p>
+        );
+    };
 
     return (
         <div
-            className={`ibexa-alert ai-banner ai-banner--${effectiveState}`}
+            className={`ibexa-alert ai-banner ai-banner--${state}`}
             role="status"
             aria-label="Active AI engine status"
         >
             <div className="ibexa-alert__content">
-                <span className="ai-banner__label">
-                    Currently Active LLM Engine
-                    {currentSiteaccess && (
-                        <small className="ai-banner__siteaccess">For siteaccess: <code>{currentSiteaccess}</code></small>
-                    )}
+                <span className="ai-banner__title-row">
+                    <span className="ai-banner__title">AI Engine</span>
+                    <small className="ai-banner__siteaccess">
+                        siteaccess: <code>{currentSiteaccess}</code>
+                    </small>
                 </span>
-                <h4 className="ai-banner__title">
-                    {health?.providerName ?? providers.find((p) => p.id === activeProviderId)?.name ?? 'None'}
-                    <span className="ai-banner__divider">/</span>
-                    {models.find((m) => m.id === activeModelId)?.name ?? 'No Active Model'}
-                </h4>
-                <p className="ai-banner__desc">{description}</p>
+                <div className="ai-banner__body">
+                    {renderContent()}
+                </div>
             </div>
-            <div className={`ai-banner__status ai-banner__status--${effectiveState}`}>
-                <span className={`ai-banner__dot ai-banner__dot--${effectiveState}`} />
-                <span>{STATE_LABELS[effectiveState]}</span>
-                {effectiveState !== 'not_configured' && (
+            <div className={`ai-banner__status ai-banner__status--${state}`}>
+                <span className={`ai-banner__dot ai-banner__dot--${state}`} />
+                <span>{state === 'online' ? 'Online' : state === 'offline' ? 'Offline' : 'Not Configured'}</span>
+                {state !== 'not_configured' && (
                     <button
                         type="button"
                         className="ai-banner__refresh"

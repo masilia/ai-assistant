@@ -15,24 +15,27 @@ use Masilia\AiAssistant\Client\ProviderId;
  */
 abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
-    abstract protected function getProviderIdentifier(): string;
-
-    abstract protected function getDefaultBaseUrl(): string;
+    use EndpointUrlHelperTrait;
 
     public function supports(string $providerIdentifier): bool
     {
         return $providerIdentifier === $this->getProviderIdentifier();
     }
 
+    abstract protected function getProviderIdentifier(): string;
+
     public function buildEndpointUrl(?string $customApiUrl): string
     {
-        $base = rtrim($customApiUrl ?: $this->getDefaultBaseUrl(), '/');
+        $host = self::extractHost($customApiUrl ?: $this->getDefaultHost());
 
-        if (!str_ends_with($base, '/chat/completions')) {
-            $base .= '/chat/completions';
-        }
+        return $host . $this->getChatEndpointPath();
+    }
 
-        return $base;
+    abstract protected function getDefaultHost(): string;
+
+    protected function getChatEndpointPath(): string
+    {
+        return '/v1/chat/completions';
     }
 
     public function buildHeaders(?string $apiKey): array
@@ -44,25 +47,6 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         }
 
         return $headers;
-    }
-
-    public function buildRequestBody(
-        string $modelIdentifier,
-        float  $temperature,
-        int    $maxTokens,
-        string $systemPrompt,
-        string $userPrompt,
-    ): array
-    {
-        return [
-            'model' => $modelIdentifier,
-            'temperature' => $this->getLimits()->clampTemperature($temperature),
-            'max_tokens' => $maxTokens,
-            'messages' => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $userPrompt],
-            ],
-        ];
     }
 
     public function parseResponse(array $data): string
@@ -108,6 +92,30 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         return $body;
     }
 
+    public function buildRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        string $systemPrompt,
+        string $userPrompt,
+    ): array
+    {
+        return [
+            'model' => $modelIdentifier,
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
+            'max_tokens' => $maxTokens,
+            'messages' => [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userPrompt],
+            ],
+        ];
+    }
+
+    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
+    {
+        return \Masilia\AiAssistant\Client\ProviderLimits::openAiCompatible();
+    }
+
     public function parseStreamChunk(string $line): ?string
     {
         if (!str_starts_with($line, 'data: ')) {
@@ -136,11 +144,6 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         return $trimmed === 'data: [DONE]' || $trimmed === '[DONE]' || $trimmed === 'DONE';
     }
 
-    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
-    {
-        return \Masilia\AiAssistant\Client\ProviderLimits::openAiCompatible();
-    }
-
     public function extractUsage(array $data): ?array
     {
         $usage = $data['usage'] ?? null;
@@ -149,9 +152,9 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         }
 
         return [
-            'input'        => isset($usage['prompt_tokens']) ? (int) $usage['prompt_tokens'] : null,
-            'output'       => isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
-            'finishReason' => isset($data['choices'][0]['finish_reason']) ? (string) $data['choices'][0]['finish_reason'] : null,
+            'input' => isset($usage['prompt_tokens']) ? (int)$usage['prompt_tokens'] : null,
+            'output' => isset($usage['completion_tokens']) ? (int)$usage['completion_tokens'] : null,
+            'finishReason' => isset($data['choices'][0]['finish_reason']) ? (string)$data['choices'][0]['finish_reason'] : null,
         ];
     }
 
@@ -165,8 +168,8 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         }
 
         return [
-            'input'        => isset($usage['prompt_tokens'])     ? (int) $usage['prompt_tokens']     : null,
-            'output'       => isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
+            'input' => isset($usage['prompt_tokens']) ? (int)$usage['prompt_tokens'] : null,
+            'output' => isset($usage['completion_tokens']) ? (int)$usage['completion_tokens'] : null,
             'finishReason' => $finish,
         ];
     }

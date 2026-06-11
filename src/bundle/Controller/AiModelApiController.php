@@ -60,20 +60,4 @@ class AiModelApiController extends Controller
             return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
-
-    #[Route('/model/{id}/activate', name: 'app.admin.ai_model.api.activate', methods: ['POST'])]
-    public function activateModel(int $id): JsonResponse
-    {
-        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
-            return $denied;
-        }
-
-        try {
-            $this->modelManager->activate($id);
-
-            return new JsonResponse(['success' => true]);
-        } catch (\InvalidArgumentException $e) {
-            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
-        }
-    }
 }

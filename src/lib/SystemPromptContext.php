@@ -13,22 +13,23 @@ namespace Masilia\AiAssistant;
 final readonly class SystemPromptContext
 {
     /**
-     * @param string[]                     $siblingFields
-     * @param string[]                     $metaKeys      For novaseometas: the AI-eligible meta keys
+     * @param string[] $siblingFields
+     * @param string[] $metaKeys For novaseometas: the AI-eligible meta keys
      * @param string[]|array<int,array{label: string, value: string}> $rawSiblingFields
      *        Optional, the raw shape from AiSuggestController. When set and
      *        $siblingFields is empty, SiblingField::toArray() output is used.
      */
     public function __construct(
         public FieldFormat $format,
-        public string      $fieldName      = '',
-        public string      $contentType    = '',
-        public string      $language       = 'en',
-        public string      $contentTitle   = '',
-        public array       $siblingFields  = [],
-        public string      $fieldType      = '',
-        public string      $subFieldKey    = '',
-        public array       $metaKeys       = [],
-    ) {
+        public string      $fieldName = '',
+        public string      $contentType = '',
+        public string      $language = 'en',
+        public string      $contentTitle = '',
+        public array       $siblingFields = [],
+        public string      $fieldType = '',
+        public string      $subFieldKey = '',
+        public array       $metaKeys = [],
+    )
+    {
     }
 }

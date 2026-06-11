@@ -13,6 +13,9 @@ use Masilia\AiAssistant\Client\ProviderId;
  */
 class MiniMaxImageAdapter implements ImageProviderAdapterInterface
 {
+    use EndpointUrlHelperTrait;
+
+    private const DEFAULT_HOST = 'https://api.minimax.io';
     private const SUPPORTED_ASPECT_RATIOS = [
         '1:1',
         '16:9',
@@ -34,11 +37,13 @@ class MiniMaxImageAdapter implements ImageProviderAdapterInterface
         string  $model,
         ?string $size = null,
         ?string $quality = null,
-    ): array {
+    ): array
+    {
         $body = [
-            'model'  => $model,
+            'model' => $model,
             'prompt' => $prompt,
-            'n'      => 1,
+            'n' => 1,
+            'response_format' => 'base64',
         ];
 
         // MiniMax uses aspect_ratio instead of size
@@ -54,18 +59,42 @@ class MiniMaxImageAdapter implements ImageProviderAdapterInterface
         return $body;
     }
 
-    public function buildEndpointUrl(?string $customApiUrl): string
+    /**
+     * Map a pixel size string to the closest MiniMax aspect ratio.
+     */
+    private static function pixelSizeToAspectRatio(string $size): string
     {
-        $base = rtrim($customApiUrl ?: 'https://api.minimax.io', '/');
-
-        // Strip any trailing path segments that might conflict
-        $base = rtrim($base, '/');
-
-        if (!str_ends_with($base, '/v1/image_generation')) {
-            $base .= '/v1/image_generation';
+        $parts = explode('x', $size);
+        if (count($parts) !== 2) {
+            return '1:1';
         }
 
-        return $base;
+        $w = (int)$parts[0];
+        $h = (int)$parts[1];
+        if ($h === 0) {
+            return '1:1';
+        }
+
+        $ratio = $w / $h;
+
+        return match (true) {
+            abs($ratio - 1.0) < 0.01 => '1:1',
+            abs($ratio - 16 / 9) < 0.05 => '16:9',
+            abs($ratio - 4 / 3) < 0.05 => '4:3',
+            abs($ratio - 3 / 2) < 0.05 => '3:2',
+            abs($ratio - 2 / 3) < 0.05 => '2:3',
+            abs($ratio - 3 / 4) < 0.05 => '3:4',
+            abs($ratio - 9 / 16) < 0.05 => '9:16',
+            abs($ratio - 21 / 9) < 0.05 => '21:9',
+            default => '1:1',
+        };
+    }
+
+    public function buildEndpointUrl(?string $customApiUrl): string
+    {
+        $host = self::extractHost($customApiUrl ?: self::DEFAULT_HOST);
+
+        return $host . '/v1/image_generation';
     }
 
     public function buildHeaders(?string $apiKey): array
@@ -81,42 +110,51 @@ class MiniMaxImageAdapter implements ImageProviderAdapterInterface
 
     public function parseImageResponse(array $data): array
     {
-        $dataItem = $data['data'][0] ?? null;
-        if ($dataItem === null) {
+        // Check for API-level errors
+        $statusCode = $data['base_resp']['status_code'] ?? 0;
+        if ($statusCode !== 0) {
             throw new \RuntimeException(
-                sprintf('MiniMax image API returned no data. Raw: %s', json_encode($data))
+                sprintf(
+                    'MiniMax image API error %d: %s',
+                    $statusCode,
+                    $data['base_resp']['status_msg'] ?? 'Unknown error'
+                )
             );
         }
 
-        // MiniMax returns a URL
-        if (isset($dataItem['url'])) {
-            $imageContent = file_get_contents($dataItem['url']);
-            if ($imageContent === false) {
-                throw new \RuntimeException(
-                    sprintf('Failed to download image from URL: %s', $dataItem['url'])
-                );
-            }
+        // MiniMax returns: { "data": { "image_base64": ["base64..."] } }
+        // or:             { "data": { "image_urls": ["https://..."] } }
+        $imageBase64 = $data['data']['image_base64'] ?? null;
+        $imageUrls = $data['data']['image_urls'] ?? null;
 
-            $mimeType = mime_content_type($dataItem['url']) ?: 'image/png';
-
+        if (!empty($imageBase64)) {
             return [
-                'imageData'     => base64_encode($imageContent),
-                'mimeType'      => $mimeType,
-                'revisedPrompt' => $dataItem['revised_prompt'] ?? null,
+                'imageData' => $imageBase64[0],
+                'mimeType' => 'image/png',
+                'revisedPrompt' => null,
             ];
         }
 
-        // Also handle base64 response
-        if (isset($dataItem['b64_json'])) {
+        if (!empty($imageUrls)) {
+            $url = $imageUrls[0];
+            $imageContent = file_get_contents($url);
+            if ($imageContent === false) {
+                throw new \RuntimeException(
+                    sprintf('Failed to download image from URL: %s', $url)
+                );
+            }
+
+            $mimeType = mime_content_type($url) ?: 'image/png';
+
             return [
-                'imageData'     => $dataItem['b64_json'],
-                'mimeType'      => 'image/png',
-                'revisedPrompt' => $dataItem['revised_prompt'] ?? null,
+                'imageData' => base64_encode($imageContent),
+                'mimeType' => $mimeType,
+                'revisedPrompt' => null,
             ];
         }
 
         throw new \RuntimeException(
-            sprintf('MiniMax image API returned unexpected data structure. Raw: %s', json_encode($data))
+            sprintf('MiniMax image API returned no image data. Raw: %s', json_encode($data))
         );
     }
 
@@ -128,36 +166,5 @@ class MiniMaxImageAdapter implements ImageProviderAdapterInterface
     public function getDefaultImageModel(): string
     {
         return 'image-01';
-    }
-
-    /**
-     * Map a pixel size string to the closest MiniMax aspect ratio.
-     */
-    private static function pixelSizeToAspectRatio(string $size): string
-    {
-        $parts = explode('x', $size);
-        if (count($parts) !== 2) {
-            return '1:1';
-        }
-
-        $w = (int) $parts[0];
-        $h = (int) $parts[1];
-        if ($h === 0) {
-            return '1:1';
-        }
-
-        $ratio = $w / $h;
-
-        return match (true) {
-            abs($ratio - 1.0) < 0.01   => '1:1',
-            abs($ratio - 16 / 9) < 0.05 => '16:9',
-            abs($ratio - 4 / 3) < 0.05  => '4:3',
-            abs($ratio - 3 / 2) < 0.05  => '3:2',
-            abs($ratio - 2 / 3) < 0.05  => '2:3',
-            abs($ratio - 3 / 4) < 0.05  => '3:4',
-            abs($ratio - 9 / 16) < 0.05 => '9:16',
-            abs($ratio - 21 / 9) < 0.05 => '21:9',
-            default                      => '1:1',
-        };
     }
 }

@@ -65,6 +65,9 @@ services:
     Masilia\AiAssistant\Client\Adapter\QwenAdapter:
         tags: [masilia.ai.provider_adapter]
 
+    Masilia\AiAssistant\Client\Adapter\GeminiAdapter:
+        tags: [masilia.ai.provider_adapter]
+
     Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry:
         arguments:
             $adapters: !tagged_iterator masilia.ai.provider_adapter

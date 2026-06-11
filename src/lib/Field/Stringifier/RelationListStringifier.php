@@ -18,7 +18,8 @@ final class RelationListStringifier implements FieldValueStringifierInterface
 
     public function __construct(
         private readonly ContentService $contentService,
-    ) {
+    )
+    {
     }
 
     public static function getSupportedFieldTypes(): array

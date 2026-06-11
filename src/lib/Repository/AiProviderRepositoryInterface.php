@@ -16,27 +16,22 @@ use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
 interface AiProviderRepositoryInterface
 {
     /**
-     * Finds the active provider for a given siteaccess, plus the active
-     * model already merged in (so callers don't have to do a second hop).
+     * Finds the provider assigned to a given siteaccess that has a chat model configured.
      *
-     * Resolution order:
-     *   1. Active provider scoped to this specific siteaccess
-     *   2. Active provider scoped globally (siteaccess = null)
-     *
-     * Returns null if no active provider (or no active model for it)
-     * exists for the given siteaccess.
+     * Returns null if no provider is assigned to the siteaccess
+     * (or none has a chat model configured) for the given siteaccess.
      */
     public function findActiveForSiteaccess(string $siteaccess): ?ResolvedProvider;
 
     /**
-     * Finds any active provider (regardless of siteaccess scope).
-     * Returns null if none. Used by the admin dashboard's GET /api/data.
+     * Finds any provider with a chat model configured (regardless of siteaccess).
+     * Returns null if none. Used by the health checker.
      */
     public function findActive(): ?ResolvedProvider;
 
     /**
-     * Finds the active image generation target for a given siteaccess.
-     * Returns null if no active provider has an image model configured.
+     * Finds the image generation target for a given siteaccess.
+     * Returns null if no provider assigned to the siteaccess has an image model configured.
      */
     public function findActiveImageTarget(string $siteaccess): ?ResolvedImageTarget;
 }

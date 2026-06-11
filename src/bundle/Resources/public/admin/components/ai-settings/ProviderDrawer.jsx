@@ -2,7 +2,7 @@ import React from 'react';
 import { PROVIDER_TYPES } from './constants.js';
 import { CloseIcon } from './icons.jsx';
 
-export default function ProviderDrawer({ provider, siteaccesses = [], onClose, onSave, submitting }) {
+export default function ProviderDrawer({ provider, onClose, onSave, submitting }) {
     return (
         <div className="ai-drawer-overlay" onClick={onClose}>
             <div className="ibexa-side-panel ai-drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Provider configuration">
@@ -45,21 +45,6 @@ export default function ProviderDrawer({ provider, siteaccesses = [], onClose, o
                             </select>
                         </div>
                         <div className="ai-drawer__field">
-                            <label className="ibexa-label" htmlFor="provider-siteaccess">Siteaccess Scope</label>
-                            <select
-                                id="provider-siteaccess"
-                                className="ibexa-input form-control"
-                                name="siteaccess"
-                                defaultValue={provider !== 'new' ? (provider.siteaccess || '') : ''}
-                            >
-                                <option value="">All siteaccesses (global)</option>
-                                {siteaccesses.map(sa => (
-                                    <option key={sa} value={sa}>{sa}</option>
-                                ))}
-                            </select>
-                            <small className="ai-drawer__hint">Restrict this provider to a specific siteaccess, or leave as global.</small>
-                        </div>
-                        <div className="ai-drawer__field">
                             <label className="ibexa-label" htmlFor="provider-key">API Key</label>
                             <input
                                 id="provider-key"
@@ -82,18 +67,6 @@ export default function ProviderDrawer({ provider, siteaccesses = [], onClose, o
                                 placeholder="e.g. http://localhost:11434/v1"
                             />
                             <small className="ai-drawer__hint">Optional. Custom endpoint for self-hosted or proxy setups.</small>
-                        </div>
-                        <div className="ai-drawer__field">
-                            <label className="form-check-inline ai-drawer__checkbox-row">
-                                <input
-                                    className="ibexa-input ibexa-input--checkbox"
-                                    type="checkbox"
-                                    name="isActive"
-                                    value="true"
-                                    defaultChecked={provider !== 'new' ? provider.isActive : false}
-                                />
-                                <span className="ibexa-label ibexa-label--checkbox-radio">Activate Immediately</span>
-                            </label>
                         </div>
                         <div className="ai-drawer__actions">
                             <button type="submit" className="ibexa-btn ibexa-btn--primary" disabled={submitting}>

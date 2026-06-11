@@ -26,6 +26,7 @@ final readonly class AiTarget
         public string                   $url,
         public array                    $headers,
         public ?string                  $siteaccess = null,
-    ) {
+    )
+    {
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Client;
 
 use Masilia\AiAssistant\Client\Adapter\ImageProviderAdapterInterface;
+use Traversable;
 
 /**
  * Registry for image generation adapters. Resolves a provider identifier
@@ -20,7 +21,7 @@ class ImageAdapterRegistry
      */
     public function __construct(iterable $adapters)
     {
-        $list = $adapters instanceof \Traversable
+        $list = $adapters instanceof Traversable
             ? iterator_to_array($adapters)
             : $adapters;
 

@@ -13,9 +13,14 @@ class QwenAdapter extends AbstractOpenAiAdapter
         return ProviderId::QWEN;
     }
 
-    protected function getDefaultBaseUrl(): string
+    protected function getDefaultHost(): string
     {
-        return 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+        return 'https://dashscope.aliyuncs.com';
+    }
+
+    protected function getChatEndpointPath(): string
+    {
+        return '/compatible-mode/v1/chat/completions';
     }
 
     public function getDefaultTestModel(): string

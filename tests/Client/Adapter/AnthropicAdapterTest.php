@@ -28,6 +28,22 @@ final class AnthropicAdapterTest extends TestCase
         self::assertSame('https://api.anthropic.com/v1/messages', $this->adapter->buildEndpointUrl(null));
     }
 
+    public function testBuildEndpointUrlExtractsHostFromCustomUrl(): void
+    {
+        self::assertSame(
+            'https://custom-proxy.example.com/v1/messages',
+            $this->adapter->buildEndpointUrl('https://custom-proxy.example.com/v1')
+        );
+    }
+
+    public function testBuildEndpointUrlFromHostOnly(): void
+    {
+        self::assertSame(
+            'https://custom-proxy.example.com/v1/messages',
+            $this->adapter->buildEndpointUrl('https://custom-proxy.example.com')
+        );
+    }
+
     public function testBuildHeadersUsesApiKeyHeader(): void
     {
         $headers = $this->adapter->buildHeaders('key-123');

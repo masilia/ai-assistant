@@ -16,11 +16,12 @@ use Throwable;
  * Registered with the special `_fallback` pseudo-type so the registry uses it
  * when no field-type-specific stringifier matches.
  */
-final class GenericStringifier implements FieldValueStringifierInterface
+final readonly class GenericStringifier implements FieldValueStringifierInterface
 {
     public function __construct(
-        private readonly FieldTypeService $fieldTypeService,
-    ) {
+        private FieldTypeService $fieldTypeService,
+    )
+    {
     }
 
     public static function getSupportedFieldTypes(): array
@@ -43,7 +44,7 @@ final class GenericStringifier implements FieldValueStringifierInterface
             return $this->hashToString($hash);
         } catch (Throwable) {
             if (method_exists($value, '__toString')) {
-                return trim((string) $value);
+                return trim((string)$value);
             }
 
             return '';
@@ -67,7 +68,7 @@ final class GenericStringifier implements FieldValueStringifierInterface
         }
 
         if (is_scalar($hash)) {
-            return trim((string) $hash);
+            return trim((string)$hash);
         }
 
         if (is_array($hash)) {

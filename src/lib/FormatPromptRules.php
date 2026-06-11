@@ -27,13 +27,13 @@ final class FormatPromptRules
     public static function for(FieldFormat $format): string
     {
         return "\n\nRules:" . match ($format) {
-            FieldFormat::PLAIN_TEXT => "\n- Output ONLY plain text, single line.\n- No HTML tags, no markdown formatting, no line breaks.\n- Be concise and direct.",
+                FieldFormat::PLAIN_TEXT => "\n- Output ONLY plain text, single line.\n- No HTML tags, no markdown formatting, no line breaks.\n- Be concise and direct.",
 
-            FieldFormat::TEXT_BLOCK => "\n- Output ONLY plain text.\n- Line breaks are allowed for paragraphs.\n- No HTML tags, no markdown formatting.\n- Write in a clear, structured manner.",
+                FieldFormat::TEXT_BLOCK => "\n- Output ONLY plain text.\n- Line breaks are allowed for paragraphs.\n- No HTML tags, no markdown formatting.\n- Write in a clear, structured manner.",
 
-            FieldFormat::HTML => "\n- Output clean, semantic HTML.\n- Use ONLY these tags: " . FieldFormat::HTML_ALLOWED_TAGS . ".\n- Do NOT use <h1> (reserved for page title).\n- Do NOT use <div>, classes, IDs, inline styles, or scripts.\n- Do NOT wrap output in ```html code blocks or any markdown.\n- Do NOT include <!DOCTYPE>, <html>, <head>, or <body> tags.\n- Output ONLY the inner HTML content, starting directly with content tags.",
+                FieldFormat::HTML => "\n- Output clean, semantic HTML.\n- Use ONLY these tags: " . FieldFormat::HTML_ALLOWED_TAGS . ".\n- Do NOT use <h1> (reserved for page title).\n- Do NOT use <div>, classes, IDs, inline styles, or scripts.\n- Do NOT wrap output in ```html code blocks or any markdown.\n- Do NOT include <!DOCTYPE>, <html>, <head>, or <body> tags.\n- Output ONLY the inner HTML content, starting directly with content tags.",
 
-            FieldFormat::JSON => "\n- Output ONLY a valid raw JSON object.\n- Do NOT wrap the JSON in markdown code blocks.\n- No extra keys, no trailing text.",
-        } . self::TAIL;
+                FieldFormat::JSON => "\n- Output ONLY a valid raw JSON object.\n- Do NOT wrap the JSON in markdown code blocks.\n- No extra keys, no trailing text.",
+            } . self::TAIL;
     }
 }

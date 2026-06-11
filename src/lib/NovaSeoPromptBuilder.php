@@ -72,7 +72,7 @@ class NovaSeoPromptBuilder
      * Whole-block prompt: instructs the model to return a JSON object whose
      * keys are the editable, AI-eligible metas.
      *
-     * @param string   $base     The shared context/intro produced by AiPromptBuilder.
+     * @param string $base The shared context/intro produced by AiPromptBuilder.
      * @param string[] $metaKeys Explicit set of editable, AI-eligible meta keys.
      *                           When provided, the schema is restricted to these
      *                           keys so it matches the UI exactly.
@@ -120,6 +120,40 @@ class NovaSeoPromptBuilder
         return "$base\n\n$seoRules";
     }
 
+    private function fieldHint(string $key, ?int $maxLength): string
+    {
+        $charLimit = $this->defaultCharLimit($key) ?? $maxLength;
+        $description = self::KEY_HINTS[$key] ?? $this->resolvePrefixHint($key);
+
+        if ($charLimit !== null) {
+            return sprintf('%s, under %d characters', $description, $charLimit);
+        }
+
+        return $description;
+    }
+
+    private function defaultCharLimit(string $key): ?int
+    {
+        foreach (self::RECOMMENDED_CHAR_LIMITS as $suffix => $limit) {
+            if ($key === $suffix || str_ends_with($key, ':' . $suffix)) {
+                return $limit;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolvePrefixHint(string $key): string
+    {
+        foreach (self::KEY_HINT_PREFIXES as $prefix => $hint) {
+            if (str_starts_with($key, $prefix)) {
+                return $hint;
+            }
+        }
+
+        return 'metadata value';
+    }
+
     /**
      * Single-value prompt for one meta key (e.g. "title", "description").
      */
@@ -136,39 +170,5 @@ class NovaSeoPromptBuilder
         };
 
         return "$base\n\nRules:\n$seoRules\n- Output ONLY the generated metadata, nothing else.\n- Return plain text only — NO JSON, NO markdown code blocks, NO quotes around the value, NO \"value:\" or \"content:\" prefixes.\n- No HTML tags, no line breaks.";
-    }
-
-    private function fieldHint(string $key, ?int $maxLength): string
-    {
-        $charLimit = $this->defaultCharLimit($key) ?? $maxLength;
-        $description = self::KEY_HINTS[$key] ?? $this->resolvePrefixHint($key);
-
-        if ($charLimit !== null) {
-            return sprintf('%s, under %d characters', $description, $charLimit);
-        }
-
-        return $description;
-    }
-
-    private function resolvePrefixHint(string $key): string
-    {
-        foreach (self::KEY_HINT_PREFIXES as $prefix => $hint) {
-            if (str_starts_with($key, $prefix)) {
-                return $hint;
-            }
-        }
-
-        return 'metadata value';
-    }
-
-    private function defaultCharLimit(string $key): ?int
-    {
-        foreach (self::RECOMMENDED_CHAR_LIMITS as $suffix => $limit) {
-            if ($key === $suffix || str_ends_with($key, ':' . $suffix)) {
-                return $limit;
-            }
-        }
-
-        return null;
     }
 }

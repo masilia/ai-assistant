@@ -10,8 +10,9 @@ use Masilia\AiAssistant\Client\ProviderLimits;
 class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
     use AnthropicMessagesResponseTrait;
+    use EndpointUrlHelperTrait;
 
-    private const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1';
+    private const DEFAULT_HOST = 'https://api.anthropic.com';
     private const DEFAULT_TEST_MODEL = 'claude-sonnet-4-5';
 
     public function supports(string $providerIdentifier): bool
@@ -21,13 +22,9 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
 
     public function buildEndpointUrl(?string $customApiUrl): string
     {
-        $base = rtrim($customApiUrl ?: self::DEFAULT_BASE_URL, '/');
+        $host = self::extractHost($customApiUrl ?: self::DEFAULT_HOST);
 
-        if (!str_ends_with($base, '/messages')) {
-            $base .= '/messages';
-        }
-
-        return $base;
+        return $host . '/v1/messages';
     }
 
     public function buildHeaders(?string $apiKey): array
@@ -42,25 +39,6 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         }
 
         return $headers;
-    }
-
-    public function buildRequestBody(
-        string $modelIdentifier,
-        float  $temperature,
-        int    $maxTokens,
-        string $systemPrompt,
-        string $userPrompt,
-    ): array
-    {
-        return [
-            'model' => $modelIdentifier,
-            'temperature' => $this->getLimits()->clampTemperature($temperature),
-            'max_tokens' => $maxTokens,
-            'system' => $systemPrompt,
-            'messages' => [
-                ['role' => 'user', 'content' => $userPrompt],
-            ],
-        ];
     }
 
     public function parseResponse(array $data): string
@@ -104,6 +82,30 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         return $body;
     }
 
+    public function buildRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        string $systemPrompt,
+        string $userPrompt,
+    ): array
+    {
+        return [
+            'model' => $modelIdentifier,
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
+            'max_tokens' => $maxTokens,
+            'system' => $systemPrompt,
+            'messages' => [
+                ['role' => 'user', 'content' => $userPrompt],
+            ],
+        ];
+    }
+
+    public function getLimits(): ProviderLimits
+    {
+        return ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
+    }
+
     public function parseStreamChunk(string $line): ?string
     {
         $trimmed = trim($line);
@@ -131,11 +133,6 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         return str_starts_with($trimmed, 'event: message_stop');
     }
 
-    public function getLimits(): ProviderLimits
-    {
-        return ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
-    }
-
     public function extractUsage(array $data): ?array
     {
         $usage = $data['usage'] ?? null;
@@ -144,9 +141,9 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
         }
 
         return [
-            'input'        => isset($usage['input_tokens']) ? (int) $usage['input_tokens'] : null,
-            'output'       => isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : null,
-            'finishReason' => isset($data['stop_reason']) ? (string) $data['stop_reason'] : null,
+            'input' => isset($usage['input_tokens']) ? (int)$usage['input_tokens'] : null,
+            'output' => isset($usage['output_tokens']) ? (int)$usage['output_tokens'] : null,
+            'finishReason' => isset($data['stop_reason']) ? (string)$data['stop_reason'] : null,
         ];
     }
 

@@ -30,6 +30,22 @@ final class MiniMaxAdapterTest extends TestCase
         );
     }
 
+    public function testBuildEndpointUrlExtractsHostFromCustomUrl(): void
+    {
+        self::assertSame(
+            'https://custom-proxy.example.com/anthropic/v1/messages',
+            $this->adapter->buildEndpointUrl('https://custom-proxy.example.com/v1')
+        );
+    }
+
+    public function testBuildEndpointUrlFromHostOnly(): void
+    {
+        self::assertSame(
+            'https://custom-proxy.example.com/anthropic/v1/messages',
+            $this->adapter->buildEndpointUrl('https://custom-proxy.example.com')
+        );
+    }
+
     public function testBuildHeadersUsesXApiKey(): void
     {
         $headers = $this->adapter->buildHeaders('mm-key');

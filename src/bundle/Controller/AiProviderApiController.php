@@ -10,7 +10,6 @@ use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\Bundle\AiAssistant\ApiKey;
 use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
-use Masilia\Bundle\AiAssistant\Repository\AiModelRepository;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Masilia\Bundle\AiAssistant\Service\HealthChecker;
 use Masilia\Bundle\AiAssistant\Service\ProviderConnectionTester;
@@ -30,7 +29,6 @@ class AiProviderApiController extends Controller
     public function __construct(
         private readonly PermissionResolver         $permissionResolver,
         private readonly AiProviderRepository       $providerRepository,
-        private readonly AiModelRepository          $modelRepository,
         private readonly ProviderManager            $providerManager,
         private readonly ProviderConnectionTester   $connectionTester,
         private readonly HealthChecker              $healthChecker,
@@ -46,32 +44,35 @@ class AiProviderApiController extends Controller
         }
 
         $providers = $this->providerRepository->findAll();
-        $models = $this->modelRepository->findAll();
 
         $providersData = array_map(static function (AiProvider $provider) {
             return [
                 'id' => $provider->getId(),
                 'name' => $provider->getName(),
                 'identifier' => $provider->getIdentifier(),
-                'siteaccess' => $provider->getSiteaccess(),
+                'siteaccesses' => $provider->getSiteaccesses(),
                 'apiKey' => $provider->getApiKey() ? ApiKey::MASK : null,
                 'apiUrl' => $provider->getApiUrl(),
-                'isActive' => $provider->isActive(),
+                'activeChatModelId' => $provider->getActiveChatModel()?->getId(),
+                'activeImageModelId' => $provider->getActiveImageModel()?->getId(),
             ];
         }, $providers);
 
-        $modelsData = array_map(static function (AiModel $model) {
-            return [
-                'id' => $model->getId(),
-                'providerId' => $model->getProvider()->getId(),
-                'providerName' => $model->getProvider()->getName(),
-                'name' => $model->getName(),
-                'identifier' => $model->getIdentifier(),
-                'temperature' => $model->getTemperature(),
-                'maxTokens' => $model->getMaxTokens(),
-                'isActive' => $model->isActive(),
-            ];
-        }, $models);
+        $modelsData = [];
+        foreach ($providers as $provider) {
+            foreach ($provider->getModels() as $model) {
+                $modelsData[] = [
+                    'id' => $model->getId(),
+                    'providerId' => $provider->getId(),
+                    'providerName' => $provider->getName(),
+                    'name' => $model->getName(),
+                    'identifier' => $model->getIdentifier(),
+                    'temperature' => $model->getTemperature(),
+                    'maxTokens' => $model->getMaxTokens(),
+                    'supportsImage' => $model->isSupportsImage(),
+                ];
+            }
+        }
 
         $siteaccesses = [];
         foreach ($this->siteAccessService->getAll() as $sa) {
@@ -81,22 +82,9 @@ class AiProviderApiController extends Controller
 
         $currentSiteaccess = $this->siteAccessService->getCurrent()?->name ?? 'default';
 
-        // Match the runtime resolution path: scoped → global, scoped
-        // to the current siteaccess. The previous findActiveEntity()
-        // returned the first active row across ALL siteaccess scopes,
-        // which made the dashboard's "active provider" highlight flip
-        // non-deterministically when two siteaccesses had different
-        // active providers.
-        $activeProvider = $this->providerRepository->findActiveEntityForSiteaccess($currentSiteaccess);
-        $activeModel = $activeProvider !== null
-            ? $this->modelRepository->findActiveForProvider($activeProvider)
-            : null;
-
         return new JsonResponse([
             'providers' => $providersData,
             'models' => $modelsData,
-            'activeProviderId' => $activeProvider?->getId(),
-            'activeModelId' => $activeModel?->getId(),
             'siteaccesses' => $siteaccesses,
             'currentSiteaccess' => $currentSiteaccess,
         ]);
@@ -139,15 +127,66 @@ class AiProviderApiController extends Controller
         }
     }
 
-    #[Route('/provider/{id}/activate', name: 'app.admin.ai_provider.api.activate', methods: ['POST'])]
-    public function activateProvider(int $id): JsonResponse
+    #[Route('/provider/{id}/siteaccesses', name: 'app.admin.ai_provider.api.siteaccesses', methods: ['PUT'])]
+    public function setSiteaccesses(int $id, Request $request): JsonResponse
     {
         if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
             return $denied;
         }
 
+        $data = $this->decodeJsonRequest($request);
+        if ($data === null || !isset($data['siteaccesses']) || !is_array($data['siteaccesses'])) {
+            return $this->validationError('siteaccesses array is required');
+        }
+
         try {
-            $this->providerManager->activate($id);
+            $this->providerManager->setSiteaccesses($id, $data['siteaccesses']);
+
+            return new JsonResponse(['success' => true]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    #[Route('/provider/{id}/chat-model', name: 'app.admin.ai_provider.api.chat_model', methods: ['PUT'])]
+    public function setChatModel(int $id, Request $request): JsonResponse
+    {
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
+
+        $data = $this->decodeJsonRequest($request);
+        if ($data === null) {
+            return $this->validationError('Invalid JSON payload');
+        }
+
+        $modelId = $data['modelId'] ?? null;
+
+        try {
+            $this->providerManager->setChatModel($id, $modelId !== null ? (int) $modelId : null);
+
+            return new JsonResponse(['success' => true]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    #[Route('/provider/{id}/image-model', name: 'app.admin.ai_provider.api.image_model', methods: ['PUT'])]
+    public function setImageModel(int $id, Request $request): JsonResponse
+    {
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
+
+        $data = $this->decodeJsonRequest($request);
+        if ($data === null) {
+            return $this->validationError('Invalid JSON payload');
+        }
+
+        $modelId = $data['modelId'] ?? null;
+
+        try {
+            $this->providerManager->setImageModel($id, $modelId !== null ? (int) $modelId : null);
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
@@ -162,9 +201,6 @@ class AiProviderApiController extends Controller
             return $denied;
         }
 
-        // ?stream=1 also exercises the SSE path. Useful for catching the
-        // "non-streaming works but streaming is misconfigured" failure
-        // mode (wrong endpoint suffix, missing stream flag, etc.).
         $testStream = $request->query->getBoolean('stream');
 
         try {

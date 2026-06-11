@@ -15,6 +15,7 @@ final readonly class ResolvedImageTarget
         public string  $apiKey,
         public ?string $apiUrl,
         public string  $imageModelIdentifier,
-    ) {
+    )
+    {
     }
 }

@@ -56,8 +56,8 @@ trait AnthropicMessagesResponseTrait
         }
 
         return [
-            'input'        => isset($usage['input_tokens'])  ? (int) $usage['input_tokens']  : null,
-            'output'       => isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : null,
+            'input' => isset($usage['input_tokens']) ? (int)$usage['input_tokens'] : null,
+            'output' => isset($usage['output_tokens']) ? (int)$usage['output_tokens'] : null,
             'finishReason' => $finish,
         ];
     }

@@ -8,16 +8,17 @@ use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\AiAssistant\AiDefaults;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
+use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
+use RuntimeException;
 
 /**
  * Resolves the active AI provider + model + endpoint for the current siteaccess.
  *
  * Resolution priority:
- *   1. DB provider scoped to the current siteaccess (isActive + siteaccess match)
- *   2. DB provider scoped globally (isActive + siteaccess IS NULL)
- *   3. YAML config via ConfigResolver (siteaccess-aware, with group/default inheritance)
- *   4. Env var fallback (referenced by YAML defaults)
+ *   1. DB provider assigned to the current siteaccess (via siteaccess join table)
+ *   2. YAML config via ConfigResolver (siteaccess-aware, with group/default inheritance)
+ *   3. Env var fallback (referenced by YAML defaults)
  *
  * Returns an {@see AiTarget} ready to be used by {@see AiClient}.
  */
@@ -47,7 +48,7 @@ class TargetResolver
         return $this->buildConfigTarget();
     }
 
-    private function buildTargetFromResolved(\Masilia\AiAssistant\Client\Resolved\ResolvedProvider $resolved): AiTarget
+    private function buildTargetFromResolved(ResolvedProvider $resolved): AiTarget
     {
         $adapter = $this->adapterRegistry->getForProvider($resolved->providerIdentifier);
 
@@ -80,7 +81,7 @@ class TargetResolver
 
         // Ollama typically runs locally without an API key
         if (empty($apiKey) && $providerIdentifier !== ProviderId::OLLAMA) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'No active AI provider is configured and no API key is set for the current siteaccess. '
                 . 'Configure a provider in the admin dashboard or set masilia_ai_assistant.system.{scope}.api_key in YAML.'
             );

@@ -6,15 +6,13 @@ namespace Masilia\Bundle\AiAssistant\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Masilia\Bundle\AiAssistant\ApiKey;
+use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 
 /**
- * Manages AI provider configuration: create / update / delete / activate.
- *
- * The "only one active" rule is enforced per-siteaccess scope: a global
- * provider only deactivates other global providers; a scoped provider
- * only deactivates other providers for the same siteaccess.
+ * Manages AI provider configuration: create / update / delete /
+ * siteaccess assignment / chat+image model selection.
  */
 readonly class ProviderManager
 {
@@ -40,23 +38,20 @@ readonly class ProviderManager
 
         $provider->setName($data['name']);
         $provider->setIdentifier($data['identifier']);
-        $provider->setSiteaccess(!empty($data['siteaccess']) ? $data['siteaccess'] : null);
 
-        // Only update the API key when a new one is provided (skip the
-        // masked value sent by the frontend for existing keys).
         if (isset($data['apiKey']) && $data['apiKey'] !== ApiKey::MASK && $data['apiKey'] !== '') {
             $provider->setApiKey($data['apiKey']);
         }
 
         $provider->setApiUrl($data['apiUrl'] ?? null);
-        $provider->setIsActive((bool)($data['isActive'] ?? false));
-
-        if ($provider->isActive()) {
-            $this->deactivateOthers($provider);
-        }
 
         $this->entityManager->persist($provider);
         $this->entityManager->flush();
+
+        // Handle siteaccess assignments if provided
+        if (isset($data['siteaccesses']) && is_array($data['siteaccesses'])) {
+            $this->setSiteaccesses($provider->getId(), $data['siteaccesses']);
+        }
 
         return $provider;
     }
@@ -70,35 +65,73 @@ readonly class ProviderManager
         $this->entityManager->flush();
     }
 
-    public function activate(int $id): AiProvider
+    /**
+     * Replace all siteaccess assignments for a provider.
+     *
+     * @param list<string> $siteaccesses
+     */
+    public function setSiteaccesses(int $providerId, array $siteaccesses): AiProvider
     {
-        $provider = $this->providerRepository->find($id)
+        $provider = $this->providerRepository->find($providerId)
             ?? throw new \InvalidArgumentException('Provider not found.');
 
-        $provider->setIsActive(true);
-        $this->deactivateOthers($provider);
+        $provider->setSiteaccesses($siteaccesses);
         $this->entityManager->flush();
 
         return $provider;
     }
 
     /**
-     * Deactivates other providers within the same siteaccess scope.
-     * A global provider (siteaccess = null) only deactivates other global providers.
-     * A scoped provider deactivates other providers for the same siteaccess.
+     * Set the active chat model for a provider. Pass null to clear.
      */
-    private function deactivateOthers(AiProvider $activeProvider): void
+    public function setChatModel(int $providerId, ?int $modelId): AiProvider
     {
-        $siteaccess = $activeProvider->getSiteaccess();
+        $provider = $this->providerRepository->find($providerId)
+            ?? throw new \InvalidArgumentException('Provider not found.');
 
-        $this->entityManager->createQueryBuilder()
-            ->update(AiProvider::class, 'p')
-            ->set('p.isActive', 'false')
-            ->where('p.id != :id')
-            ->andWhere('p.siteaccess = :sa OR (p.siteaccess IS NULL AND :sa IS NULL)')
-            ->setParameter('id', $activeProvider->getId())
-            ->setParameter('sa', $siteaccess)
-            ->getQuery()
-            ->execute();
+        if ($modelId !== null) {
+            $model = $provider->getModels()->filter(
+                fn (AiModel $m) => $m->getId() === $modelId
+            )->first() ?: null;
+
+            if ($model === null) {
+                throw new \InvalidArgumentException('Model does not belong to this provider.');
+            }
+
+            $provider->setActiveChatModel($model);
+        } else {
+            $provider->setActiveChatModel(null);
+        }
+
+        $this->entityManager->flush();
+
+        return $provider;
+    }
+
+    /**
+     * Set the active image model for a provider. Pass null to clear.
+     */
+    public function setImageModel(int $providerId, ?int $modelId): AiProvider
+    {
+        $provider = $this->providerRepository->find($providerId)
+            ?? throw new \InvalidArgumentException('Provider not found.');
+
+        if ($modelId !== null) {
+            $model = $provider->getModels()->filter(
+                fn (AiModel $m) => $m->getId() === $modelId
+            )->first() ?: null;
+
+            if ($model === null) {
+                throw new \InvalidArgumentException('Model does not belong to this provider.');
+            }
+
+            $provider->setActiveImageModel($model);
+        } else {
+            $provider->setActiveImageModel(null);
+        }
+
+        $this->entityManager->flush();
+
+        return $provider;
     }
 }

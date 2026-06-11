@@ -49,7 +49,7 @@ final class MatrixStringifier implements FieldValueStringifierInterface
             $cellLines = [];
             foreach ($row->getCells() as $colId => $cellValue) {
                 $colName = $headerByIdentifier[$colId] ?? $colId;
-                $trimmed = trim((string) $cellValue);
+                $trimmed = trim((string)$cellValue);
                 if ($trimmed === '') {
                     continue;
                 }

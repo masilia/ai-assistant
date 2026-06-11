@@ -13,7 +13,8 @@ final readonly class ImageGenerationResult
         public string  $imageData,
         public string  $mimeType,
         public ?string $revisedPrompt = null,
-    ) {
+    )
+    {
     }
 
     /**
@@ -22,8 +23,8 @@ final readonly class ImageGenerationResult
     public function toArray(): array
     {
         return [
-            'imageData'     => $this->imageData,
-            'mimeType'      => $this->mimeType,
+            'imageData' => $this->imageData,
+            'mimeType' => $this->mimeType,
             'revisedPrompt' => $this->revisedPrompt,
         ];
     }

@@ -12,7 +12,6 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: AiProviderRepository::class)]
 #[ORM\Table(name: 'app_ai_provider')]
-#[ORM\UniqueConstraint(name: 'uniq_provider_identifier_siteaccess', columns: ['identifier', 'siteaccess'])]
 class AiProvider
 {
     #[ORM\Id]
@@ -26,20 +25,19 @@ class AiProvider
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $identifier;
 
-    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
-    private ?string $siteaccess = null;
-
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $apiKey = null;
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $apiUrl = null;
 
-    #[ORM\Column(type: Types::BOOLEAN)]
-    private bool $isActive = false;
+    #[ORM\ManyToOne(targetEntity: AiModel::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?AiModel $activeChatModel = null;
 
-    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
-    private ?string $imageModelIdentifier = null;
+    #[ORM\ManyToOne(targetEntity: AiModel::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?AiModel $activeImageModel = null;
 
     /**
      * @var Collection<int, AiModel>
@@ -47,9 +45,16 @@ class AiProvider
     #[ORM\OneToMany(mappedBy: 'provider', targetEntity: AiModel::class, cascade: ['all'], orphanRemoval: true)]
     private Collection $models;
 
+    /**
+     * @var Collection<int, AiProviderSiteaccess>
+     */
+    #[ORM\OneToMany(mappedBy: 'provider', targetEntity: AiProviderSiteaccess::class, cascade: ['all'], orphanRemoval: true)]
+    private Collection $siteaccessAssignments;
+
     public function __construct()
     {
         $this->models = new ArrayCollection();
+        $this->siteaccessAssignments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -79,20 +84,6 @@ class AiProvider
         return $this;
     }
 
-    /**
-     * Returns the siteaccess this provider is scoped to, or null for global.
-     */
-    public function getSiteaccess(): ?string
-    {
-        return $this->siteaccess;
-    }
-
-    public function setSiteaccess(?string $siteaccess): self
-    {
-        $this->siteaccess = $siteaccess;
-        return $this;
-    }
-
     public function getApiKey(): ?string
     {
         return $this->apiKey;
@@ -115,25 +106,25 @@ class AiProvider
         return $this;
     }
 
-    public function isActive(): bool
+    public function getActiveChatModel(): ?AiModel
     {
-        return $this->isActive;
+        return $this->activeChatModel;
     }
 
-    public function setIsActive(bool $isActive): self
+    public function setActiveChatModel(?AiModel $model): self
     {
-        $this->isActive = $isActive;
+        $this->activeChatModel = $model;
         return $this;
     }
 
-    public function getImageModelIdentifier(): ?string
+    public function getActiveImageModel(): ?AiModel
     {
-        return $this->imageModelIdentifier;
+        return $this->activeImageModel;
     }
 
-    public function setImageModelIdentifier(?string $imageModelIdentifier): self
+    public function setActiveImageModel(?AiModel $model): self
     {
-        $this->imageModelIdentifier = $imageModelIdentifier;
+        $this->activeImageModel = $model;
         return $this;
     }
 
@@ -157,6 +148,78 @@ class AiProvider
     public function removeModel(AiModel $model): self
     {
         $this->models->removeElement($model);
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, AiProviderSiteaccess>
+     */
+    public function getSiteaccessAssignments(): Collection
+    {
+        return $this->siteaccessAssignments;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getSiteaccesses(): array
+    {
+        return $this->siteaccessAssignments
+            ->map(fn (AiProviderSiteaccess $sa) => $sa->getSiteaccess())
+            ->toArray();
+    }
+
+    public function addSiteaccess(string $siteaccess): self
+    {
+        if ($this->hasSiteaccess($siteaccess)) {
+            return $this;
+        }
+
+        $assignment = new AiProviderSiteaccess();
+        $assignment->setProvider($this);
+        $assignment->setSiteaccess($siteaccess);
+        $this->siteaccessAssignments->add($assignment);
+
+        return $this;
+    }
+
+    public function removeSiteaccess(string $siteaccess): self
+    {
+        $toRemove = $this->siteaccessAssignments
+            ->filter(fn (AiProviderSiteaccess $sa) => $sa->getSiteaccess() === $siteaccess);
+
+        foreach ($toRemove as $assignment) {
+            $this->siteaccessAssignments->removeElement($assignment);
+        }
+
+        return $this;
+    }
+
+    public function hasSiteaccess(string $siteaccess): bool
+    {
+        return $this->siteaccessAssignments
+            ->exists(fn (int $i, AiProviderSiteaccess $sa) => $sa->getSiteaccess() === $siteaccess);
+    }
+
+    /**
+     * Replace all siteaccess assignments.
+     *
+     * @param list<string> $siteaccesses
+     */
+    public function setSiteaccesses(array $siteaccesses): self
+    {
+        // Remove assignments no longer in the list
+        $toRemove = $this->siteaccessAssignments->filter(
+            fn (AiProviderSiteaccess $sa) => !in_array($sa->getSiteaccess(), $siteaccesses, true)
+        );
+        foreach ($toRemove as $assignment) {
+            $this->siteaccessAssignments->removeElement($assignment);
+        }
+
+        // Add new assignments (addSiteaccess skips duplicates)
+        foreach ($siteaccesses as $sa) {
+            $this->addSiteaccess($sa);
+        }
 
         return $this;
     }

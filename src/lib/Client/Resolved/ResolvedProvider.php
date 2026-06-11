@@ -13,13 +13,14 @@ namespace Masilia\AiAssistant\Client\Resolved;
 final readonly class ResolvedProvider
 {
     public function __construct(
-        public string $name,
-        public string $providerIdentifier,
+        public string  $name,
+        public string  $providerIdentifier,
         public ?string $apiKey,
         public ?string $apiUrl,
-        public string $modelIdentifier,
-        public float  $temperature,
-        public int    $maxTokens,
-    ) {
+        public string  $modelIdentifier,
+        public float   $temperature,
+        public int     $maxTokens,
+    )
+    {
     }
 }

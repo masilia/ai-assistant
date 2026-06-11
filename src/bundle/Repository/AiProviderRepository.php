@@ -23,74 +23,103 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
 
     public function findActiveForSiteaccess(string $siteaccess): ?ResolvedProvider
     {
-        // 1. Try siteaccess-specific provider
-        $provider = $this->findOneBy(['isActive' => true, 'siteaccess' => $siteaccess]);
-        if ($provider !== null) {
-            return $this->toResolved($provider);
-        }
+        $provider = $this->createQueryBuilder('p')
+            ->innerJoin('p.siteaccessAssignments', 'sa')
+            ->innerJoin('p.activeChatModel', 'm')
+            ->where('sa.siteaccess = :siteaccess')
+            ->setParameter('siteaccess', $siteaccess)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
 
-        // 2. Fall back to global provider (siteaccess = null)
-        $global = $this->findOneBy(['isActive' => true, 'siteaccess' => null]);
-        return $global !== null ? $this->toResolved($global) : null;
+        return $provider !== null ? $this->toResolved($provider) : null;
     }
 
     public function findActive(): ?ResolvedProvider
     {
-        $provider = $this->findOneBy(['isActive' => true]);
+        $provider = $this->createQueryBuilder('p')
+            ->innerJoin('p.activeChatModel', 'm')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
         return $provider !== null ? $this->toResolved($provider) : null;
     }
 
     public function findActiveImageTarget(string $siteaccess): ?ResolvedImageTarget
     {
-        // 1. Try siteaccess-specific provider with image model configured
-        $provider = $this->findOneBy(['isActive' => true, 'siteaccess' => $siteaccess]);
-        if ($provider !== null && $provider->getImageModelIdentifier() !== null) {
-            return $this->toResolvedImageTarget($provider);
-        }
+        $provider = $this->createQueryBuilder('p')
+            ->innerJoin('p.siteaccessAssignments', 'sa')
+            ->innerJoin('p.activeImageModel', 'm')
+            ->where('sa.siteaccess = :siteaccess')
+            ->setParameter('siteaccess', $siteaccess)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
 
-        // 2. Fall back to global provider (siteaccess = null)
-        $global = $this->findOneBy(['isActive' => true, 'siteaccess' => null]);
-        if ($global !== null && $global->getImageModelIdentifier() !== null) {
-            return $this->toResolvedImageTarget($global);
-        }
-
-        return null;
+        return $provider !== null ? $this->toResolvedImageTarget($provider) : null;
     }
 
     /**
      * Returns the raw AiProvider entity for the active row (any
-     * siteaccess scope). Used by the admin dashboard controller
-     * which needs the DB primary keys of the provider and its
-     * active model to highlight them in the response payload.
-     *
-     * Do not use this from runtime code (TargetResolver). The lib
-     * interface is the only public contract for that path.
+     * siteaccess scope). Used by the admin dashboard controller.
      */
     public function findActiveEntity(): ?AiProvider
     {
-        return $this->findOneBy(['isActive' => true]);
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.activeChatModel', 'm')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /**
      * Siteaccess-scoped counterpart of {@see findActiveEntity()}.
-     * Mirrors the scoped → global fallback in {@see findActiveForSiteaccess()}
-     * but returns the raw entity so callers (the admin dashboard) can
-     * use the primary key.
      */
     public function findActiveEntityForSiteaccess(string $siteaccess): ?AiProvider
     {
-        $scoped = $this->findOneBy(['isActive' => true, 'siteaccess' => $siteaccess]);
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.siteaccessAssignments', 'sa')
+            ->where('sa.siteaccess = :siteaccess')
+            ->setParameter('siteaccess', $siteaccess)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 
-        return $scoped ?? $this->findOneBy(['isActive' => true, 'siteaccess' => null]);
+    /**
+     * Find all providers assigned to a given siteaccess.
+     *
+     * @return AiProvider[]
+     */
+    public function findBySiteaccess(string $siteaccess): array
+    {
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.siteaccessAssignments', 'sa')
+            ->where('sa.siteaccess = :siteaccess')
+            ->setParameter('siteaccess', $siteaccess)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find all providers that have at least one siteaccess assignment.
+     *
+     * @return AiProvider[]
+     */
+    public function findAllWithSiteaccess(): array
+    {
+        return $this->createQueryBuilder('p')
+            ->innerJoin('p.siteaccessAssignments', 'sa')
+            ->groupBy('p.id')
+            ->getQuery()
+            ->getResult();
     }
 
     private function toResolved(AiProvider $provider): ?ResolvedProvider
     {
-        $activeModel = $provider->getModels()->filter(
-            static fn($m) => $m->isActive()
-        )->first() ?: null;
-
-        if ($activeModel === null) {
+        $chatModel = $provider->getActiveChatModel();
+        if ($chatModel === null) {
             return null;
         }
 
@@ -99,15 +128,15 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
             providerIdentifier: $provider->getIdentifier(),
             apiKey: $provider->getApiKey(),
             apiUrl: $provider->getApiUrl(),
-            modelIdentifier: $activeModel->getIdentifier(),
-            temperature: $activeModel->getTemperature(),
-            maxTokens: $activeModel->getMaxTokens(),
+            modelIdentifier: $chatModel->getIdentifier(),
+            temperature: $chatModel->getTemperature(),
+            maxTokens: $chatModel->getMaxTokens(),
         );
     }
 
     private function toResolvedImageTarget(AiProvider $provider): ?ResolvedImageTarget
     {
-        $imageModel = $provider->getImageModelIdentifier();
+        $imageModel = $provider->getActiveImageModel();
         if ($imageModel === null || $provider->getApiKey() === null) {
             return null;
         }
@@ -116,7 +145,7 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
             providerIdentifier: $provider->getIdentifier(),
             apiKey: $provider->getApiKey(),
             apiUrl: $provider->getApiUrl(),
-            imageModelIdentifier: $imageModel,
+            imageModelIdentifier: $imageModel->getIdentifier(),
         );
     }
 }

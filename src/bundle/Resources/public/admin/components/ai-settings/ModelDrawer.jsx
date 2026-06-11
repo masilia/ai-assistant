@@ -112,12 +112,13 @@ export default function ModelDrawer({ model, providers, preselectedProviderId, o
                                 <input
                                     className="ibexa-input ibexa-input--checkbox"
                                     type="checkbox"
-                                    name="isActive"
+                                    name="supportsImage"
                                     value="true"
-                                    defaultChecked={isNew ? false : model.isActive}
+                                    defaultChecked={isNew ? false : model.supportsImage}
                                 />
-                                <span className="ibexa-label ibexa-label--checkbox-radio">Activate Globally</span>
+                                <span className="ibexa-label ibexa-label--checkbox-radio">Supports Image Generation</span>
                             </label>
+                            <small className="ai-drawer__hint">Enable this if the model can generate images (e.g. gpt-image-2, image-01).</small>
                         </div>
                         <div className="ai-drawer__actions">
                             <button type="submit" className="ibexa-btn ibexa-btn--primary" disabled={submitting}>

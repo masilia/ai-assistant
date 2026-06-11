@@ -31,7 +31,7 @@ final class OpenAiAdapterTest extends TestCase
         );
     }
 
-    public function testBuildEndpointUrlAppendsPathToCustomBase(): void
+    public function testBuildEndpointUrlExtractsHostFromCustomUrl(): void
     {
         self::assertSame(
             'http://localhost:1234/v1/chat/completions',
@@ -39,11 +39,19 @@ final class OpenAiAdapterTest extends TestCase
         );
     }
 
-    public function testBuildEndpointUrlKeepsExistingPath(): void
+    public function testBuildEndpointUrlExtractsHostAndAppendsPath(): void
     {
         self::assertSame(
             'http://localhost:1234/v1/chat/completions',
             $this->adapter->buildEndpointUrl('http://localhost:1234/v1/chat/completions')
+        );
+    }
+
+    public function testBuildEndpointUrlFromHostOnly(): void
+    {
+        self::assertSame(
+            'http://localhost:1234/v1/chat/completions',
+            $this->adapter->buildEndpointUrl('http://localhost:1234')
         );
     }
 

@@ -15,7 +15,8 @@ final readonly class RelationStringifier implements FieldValueStringifierInterfa
 {
     public function __construct(
         private ContentService $contentService,
-    ) {
+    )
+    {
     }
 
     public static function getSupportedFieldTypes(): array
@@ -32,7 +33,7 @@ final readonly class RelationStringifier implements FieldValueStringifierInterfa
         }
 
         try {
-            return $this->contentService->loadContentInfo((int) $relId)->getName();
+            return $this->contentService->loadContentInfo((int)$relId)->getName();
         } catch (Throwable) {
             return '';
         }

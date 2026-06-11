@@ -22,15 +22,15 @@ interface ImageProviderAdapterInterface
     /**
      * Build the request body for the image generation API call.
      *
-     * @param string $prompt       The text prompt describing the desired image
-     * @param string $model        The model identifier (e.g. "gpt-image-2")
-     * @param string|null $size    Image size (e.g. "1024x1024", "1792x1024")
+     * @param string $prompt The text prompt describing the desired image
+     * @param string $model The model identifier (e.g. "gpt-image-2")
+     * @param string|null $size Image size (e.g. "1024x1024", "1792x1024")
      * @param string|null $quality Image quality (e.g. "standard", "high")
      * @return array<string, mixed> The request body to send as JSON
      */
     public function buildImageRequestBody(
-        string $prompt,
-        string $model,
+        string  $prompt,
+        string  $model,
         ?string $size = null,
         ?string $quality = null,
     ): array;

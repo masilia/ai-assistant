@@ -12,7 +12,8 @@ class AiPromptBuilder
 
     public function __construct(
         ?NovaSeoPromptBuilder $novaSeo = null,
-    ) {
+    )
+    {
         $this->novaSeo = $novaSeo ?? new NovaSeoPromptBuilder();
     }
 
@@ -29,8 +30,9 @@ class AiPromptBuilder
     public function buildSystemPrompt(
         SystemPromptContext $ctx,
         ?LanguageNormalizer $languageNormalizer = null,
-        ?array $matrixContext = null,
-    ): string {
+        ?array              $matrixContext = null,
+    ): string
+    {
         // Resolve the SEO meta key explicitly. Fall back to deriving it from the
         // legacy "Meta: <key>" display label only when no explicit key is given.
         $subFieldKey = $ctx->subFieldKey;
@@ -98,22 +100,6 @@ class AiPromptBuilder
         return $base . FormatPromptRules::for($ctx->format);
     }
 
-    /**
-     * Build the system prompt for an ezimage alt text field.
-     */
-    private function ezimagePrompt(string $base): string
-    {
-        return $base
-            . "\n\nAlt text generation rules:"
-            . "\n- Generate concise, descriptive alt text for screen readers."
-            . "\n- Keep it under 125 characters."
-            . "\n- Be specific and factual about the image content."
-            . "\n- Do not start with \"Image of\" or \"Photo of\"."
-            . "\n- Focus on what the image shows, not its style."
-            . "\n- Output ONLY the alt text, no quotes, no commentary."
-            . "\n- Plain text only. No HTML.";
-    }
-
     private function scrubForPrompt(string $value): string
     {
         return str_replace(['"', "\n", "\r"], ['\\"', ' ', ''], $value);
@@ -130,7 +116,7 @@ class AiPromptBuilder
     private function matrixPrompt(string $base, array $matrixContext): string
     {
         $headers = $matrixContext['headers'] ?? [];
-        $rowCount = max(1, (int) ($matrixContext['rowCount'] ?? 0));
+        $rowCount = max(1, (int)($matrixContext['rowCount'] ?? 0));
 
         $columnLines = '';
         foreach ($headers as $colId => $colName) {
@@ -139,7 +125,7 @@ class AiPromptBuilder
             // hint. The previous "Display Name (\"id\")" ordering made the
             // AI use the display name (often uppercased by CSS) as the
             // key, which then failed to match the lowercase DOM identifier.
-            $columnLines .= "\n  - key: \"" . $this->scrubForPrompt((string) $colId) . "\" (human label: " . $this->scrubForPrompt((string) $colName) . ")";
+            $columnLines .= "\n  - key: \"" . $this->scrubForPrompt((string)$colId) . "\" (human label: " . $this->scrubForPrompt((string)$colName) . ")";
         }
         if ($columnLines === '') {
             $columnLines = "\n  - (no columns defined; use a single \"value\" key)";
@@ -154,6 +140,22 @@ class AiPromptBuilder
             . "\n- Preserve the original row order."
             . "\n- Each cell value is plain text only. No HTML."
             . "\n- Output ONLY the raw JSON, no markdown code fences, no commentary.";
+    }
+
+    /**
+     * Build the system prompt for an ezimage alt text field.
+     */
+    private function ezimagePrompt(string $base): string
+    {
+        return $base
+            . "\n\nAlt text generation rules:"
+            . "\n- Generate concise, descriptive alt text for screen readers."
+            . "\n- Keep it under 125 characters."
+            . "\n- Be specific and factual about the image content."
+            . "\n- Do not start with \"Image of\" or \"Photo of\"."
+            . "\n- Focus on what the image shows, not its style."
+            . "\n- Output ONLY the alt text, no quotes, no commentary."
+            . "\n- Plain text only. No HTML.";
     }
 
     public function enrichUserPrompt(string $userPrompt, string $currentValue = ''): string

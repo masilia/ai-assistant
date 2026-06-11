@@ -19,8 +19,9 @@ use Masilia\AiAssistant\Client\ProviderId;
 class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
 {
     use AnthropicMessagesResponseTrait;
+    use EndpointUrlHelperTrait;
 
-    private const DEFAULT_BASE_URL = 'https://api.minimax.io/anthropic/v1';
+    private const DEFAULT_HOST = 'https://api.minimax.io';
     private const DEFAULT_TEST_MODEL = 'MiniMax-M2.5';
 
     public function supports(string $providerIdentifier): bool
@@ -30,13 +31,9 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
 
     public function buildEndpointUrl(?string $customApiUrl): string
     {
-        $base = rtrim($customApiUrl ?: self::DEFAULT_BASE_URL, '/');
+        $host = self::extractHost($customApiUrl ?: self::DEFAULT_HOST);
 
-        if (!str_ends_with($base, '/messages')) {
-            $base .= '/messages';
-        }
-
-        return $base;
+        return $host . '/anthropic/v1/messages';
     }
 
     public function buildHeaders(?string $apiKey): array
@@ -48,24 +45,6 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
         }
 
         return $headers;
-    }
-
-    public function buildRequestBody(
-        string $modelIdentifier,
-        float  $temperature,
-        int    $maxTokens,
-        string $systemPrompt,
-        string $userPrompt,
-    ): array {
-        return [
-            'model' => $modelIdentifier,
-            'temperature' => $this->getLimits()->clampTemperature($temperature),
-            'max_tokens' => $maxTokens,
-            'system' => $systemPrompt,
-            'messages' => [
-                ['role' => 'user', 'content' => $userPrompt],
-            ],
-        ];
     }
 
     public function parseResponse(array $data): string
@@ -102,11 +81,36 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
         int    $maxTokens,
         string $systemPrompt,
         string $userPrompt,
-    ): array {
+    ): array
+    {
         $body = $this->buildRequestBody($modelIdentifier, $temperature, $maxTokens, $systemPrompt, $userPrompt);
         $body['stream'] = true;
 
         return $body;
+    }
+
+    public function buildRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        string $systemPrompt,
+        string $userPrompt,
+    ): array
+    {
+        return [
+            'model' => $modelIdentifier,
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
+            'max_tokens' => $maxTokens,
+            'system' => $systemPrompt,
+            'messages' => [
+                ['role' => 'user', 'content' => $userPrompt],
+            ],
+        ];
+    }
+
+    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
+    {
+        return \Masilia\AiAssistant\Client\ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
     }
 
     public function parseStreamChunk(string $line): ?string
@@ -136,11 +140,6 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
         return str_starts_with($trimmed, 'event: message_stop');
     }
 
-    public function getLimits(): \Masilia\AiAssistant\Client\ProviderLimits
-    {
-        return \Masilia\AiAssistant\Client\ProviderLimits::anthropicMessages(self::DEFAULT_TEST_MODEL);
-    }
-
     public function extractUsage(array $data): ?array
     {
         // MiniMax uses the same Anthropic Messages response shape.
@@ -150,9 +149,9 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
         }
 
         return [
-            'input'        => isset($usage['input_tokens']) ? (int) $usage['input_tokens'] : null,
-            'output'       => isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : null,
-            'finishReason' => isset($data['stop_reason']) ? (string) $data['stop_reason'] : null,
+            'input' => isset($usage['input_tokens']) ? (int)$usage['input_tokens'] : null,
+            'output' => isset($usage['output_tokens']) ? (int)$usage['output_tokens'] : null,
+            'finishReason' => isset($data['stop_reason']) ? (string)$data['stop_reason'] : null,
         ];
     }
 

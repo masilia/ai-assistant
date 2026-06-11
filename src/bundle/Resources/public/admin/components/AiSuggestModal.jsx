@@ -7,6 +7,7 @@ import PromptSection from './AiSuggestModal/PromptSection.jsx';
 import QuickActions from './AiSuggestModal/QuickActions.jsx';
 import SourceLanguageInput from './AiSuggestModal/SourceLanguageInput.jsx';
 import ModeSelector from './AiSuggestModal/ModeSelector.jsx';
+import AspectRatioSelector from './AiSuggestModal/AspectRatioSelector.jsx';
 import ErrorBanner from './AiSuggestModal/ErrorBanner.jsx';
 import SuggestionPreview from './AiSuggestModal/SuggestionPreview.jsx';
 import { SparklesIcon, BrainIcon, CloseIcon } from './ai-settings/icons.jsx';
@@ -177,10 +178,28 @@ function AiSuggestModal() {
         }
     }, [stream.suggestion, imageGenResult, handleApply, handleGenerate]);
 
-    const handleImageGeneration = useCallback(async () => {
+    const handleImageGeneration = useCallback(async (selectedAspectRatio) => {
         setImageGenLoading(true);
         setImageGenResult(null);
         stream.setError(null);
+
+        // Build a contextual prompt that includes field/content info
+        const contextParts = [];
+        if (fieldContext?.contentTypeName) {
+            contextParts.push(fieldContext.contentTypeName);
+        }
+        if (fieldContext?.contentTitle) {
+            contextParts.push(`"${fieldContext.contentTitle}"`);
+        }
+        if (fieldContext?.fieldName) {
+            contextParts.push(`for the "${fieldContext.fieldName}" field`);
+        }
+
+        const contextPrefix = contextParts.length > 0 ? contextParts.join(' ') + ' — ' : '';
+        const userPrompt = prompt.trim();
+        const finalPrompt = userPrompt
+            ? contextPrefix + userPrompt
+            : contextPrefix + 'Generate a relevant image for this content';
 
         try {
             const response = await fetch(AI_ROUTES.generateImage, {
@@ -190,7 +209,8 @@ function AiSuggestModal() {
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: prompt.trim() || 'Generate an image',
+                    prompt: finalPrompt,
+                    size: selectedAspectRatio || '1:1',
                 }),
             });
 
@@ -209,7 +229,7 @@ function AiSuggestModal() {
         } finally {
             setImageGenLoading(false);
         }
-    }, [prompt, stream]);
+    }, [prompt, fieldContext, stream]);
 
     const handleQuickAction = useCallback((quickAction) => {
         setSelectedQuickAction(quickAction.id);
@@ -220,7 +240,6 @@ function AiSuggestModal() {
         }
 
         if (quickAction.isImageGeneration) {
-            handleImageGeneration();
             return;
         }
 
@@ -299,6 +318,11 @@ function AiSuggestModal() {
                                 onSelect={handleQuickAction}
                                 disabled={stream.loading}
                                 isTranslationDisabled={isNovaSeo}
+                            />
+
+                            <AspectRatioSelector
+                                visible={selectedQuickAction === 'generate_image'}
+                                onSelect={handleImageGeneration}
                             />
 
                             {showSourceLangInput && (

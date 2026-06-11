@@ -16,11 +16,12 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * captures the last decoded chunk + last finish reason for the
  * adapter to inspect via extractStreamUsage().
  */
-class StreamConsumer
+readonly class StreamConsumer
 {
     public function __construct(
-        private readonly HttpClientInterface $httpClient,
-    ) {
+        private HttpClientInterface $httpClient,
+    )
+    {
     }
 
     /**
@@ -28,8 +29,8 @@ class StreamConsumer
      */
     public function consume(ResponseInterface $response, StreamingProviderAdapterInterface $adapter): \Generator
     {
-        $buffer     = '';
-        $lastChunk  = null;
+        $buffer = '';
+        $lastChunk = null;
         $lastFinish = null;
 
         foreach ($this->httpClient->stream($response) as $chunk) {
@@ -71,16 +72,35 @@ class StreamConsumer
     }
 
     /**
+     * Build the final event. The adapter inspects the last decoded
+     * chunk + last finish reason to extract usage data.
+     */
+    private function finalEvent(
+        StreamingProviderAdapterInterface $adapter,
+        ?array                            $lastChunk,
+        ?string                           $lastFinish,
+    ): StreamEvent
+    {
+        return new StreamEvent(
+            token: null,
+            isFinal: true,
+            usage: $adapter->extractStreamUsage($lastChunk ?? [], $lastFinish),
+            finishReason: $lastFinish,
+        );
+    }
+
+    /**
      * Process one SSE line: decode its JSON payload (updating $lastChunk
      * / $lastFinish by reference) and return the token the adapter
      * extracted, or null for non-data lines.
      */
     private function processLine(
-        string $line,
+        string                            $line,
         StreamingProviderAdapterInterface $adapter,
-        ?array &$lastChunk,
-        ?string &$lastFinish,
-    ): ?string {
+        ?array                            &$lastChunk,
+        ?string                           &$lastFinish,
+    ): ?string
+    {
         $parsed = $this->decodeIfDataLine($line);
         if ($parsed !== null) {
             $lastChunk = $parsed;
@@ -89,28 +109,11 @@ class StreamConsumer
                 ?? $parsed['stop_reason']
                 ?? null;
             if ($finishInChunk !== null) {
-                $lastFinish = (string) $finishInChunk;
+                $lastFinish = (string)$finishInChunk;
             }
         }
 
         return $adapter->parseStreamChunk($line);
-    }
-
-    /**
-     * Build the final event. The adapter inspects the last decoded
-     * chunk + last finish reason to extract usage data.
-     */
-    private function finalEvent(
-        StreamingProviderAdapterInterface $adapter,
-        ?array $lastChunk,
-        ?string $lastFinish,
-    ): StreamEvent {
-        return new StreamEvent(
-            token:        null,
-            isFinal:      true,
-            usage:        $adapter->extractStreamUsage($lastChunk ?? [], $lastFinish),
-            finishReason: $lastFinish,
-        );
     }
 
     /**

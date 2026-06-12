@@ -53,6 +53,27 @@
 
 // ── Modal (positioning + width — shell styled by .ibexa-modal) ─
 .ai-suggest-modal {
+    --bs-modal-zindex: 2180;
+    --bs-modal-width: 500px;
+    --bs-modal-padding: 1.5rem;
+    --bs-modal-margin: 0.5rem;
+    --bs-modal-color: var(--bs-body-color);
+    --bs-modal-bg: var(--bs-body-bg);
+    --bs-modal-border-color: var(--bs-border-color-translucent);
+    --bs-modal-border-width: 0;
+    --bs-modal-border-radius: 0.625rem;
+    --bs-modal-box-shadow: var(--bs-box-shadow-sm);
+    --bs-modal-inner-border-radius: 0.625rem;
+    --bs-modal-header-padding-x: 0;
+    --bs-modal-header-padding-y: 1.625rem;
+    --bs-modal-header-padding: 1.625rem 0;
+    --bs-modal-header-border-color: #e6e6ed;
+    --bs-modal-header-border-width: 0.0625rem;
+    --bs-modal-title-line-height: 1.5;
+    --bs-modal-footer-gap: 0.5rem;
+    --bs-modal-footer-bg: ;
+    --bs-modal-footer-border-color: #e6e6ed;
+    --bs-modal-footer-border-width: 0;
     position: fixed;
     top: 50%;
     left: 50%;

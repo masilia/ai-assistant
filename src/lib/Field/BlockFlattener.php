@@ -10,6 +10,7 @@ use Ibexa\Contracts\Core\Repository\LanguageService;
 use Ibexa\Contracts\Core\Repository\LocationService;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
+use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\Content\Location;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
@@ -229,6 +230,7 @@ class BlockFlattener
 
             $output .= sprintf("\n- %s (Block %d):\n", $blockType, $index);
 
+
             foreach ($block->fields as $field) {
                 // Skip novaseometas in blocks too
                 if ($field->fieldDefinition->fieldTypeIdentifier === FieldType::NOVASEOMETAS) {
@@ -266,7 +268,7 @@ class BlockFlattener
         Content $content,
         string $fieldIdentifier,
         string $languageCode,
-    ): ?\Ibexa\Contracts\Core\Repository\Values\Content\Field {
+    ): ?Field {
         // Try the requested language first
         $field = $content->getField($fieldIdentifier, $languageCode);
         if ($field !== null && $field->value !== null) {

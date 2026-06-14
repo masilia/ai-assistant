@@ -125,21 +125,12 @@ class BlockFlattener
         // Load all locations in the path
         $locations = $this->locationService->loadLocationList($pathIds);
 
-        // Batch-load content info for name resolution
-        $contentIds = [];
-        foreach ($locations as $loc) {
-            $contentIds[] = $loc->contentId;
-        }
-        $contentInfoList = $this->contentService->loadContentInfoList(array_unique($contentIds));
-
         $pathParts = [];
         foreach ($pathIds as $pathId) {
             $loc = $locations[$pathId] ?? null;
-            if ($loc === null) {
-                continue;
+            if ($loc !== null) {
+                $pathParts[] = $loc->contentInfo->getName() ?? (string)$pathId;
             }
-            $info = $contentInfoList[$loc->contentId] ?? null;
-            $pathParts[] = $info?->getName() ?? (string)$pathId;
         }
 
         return '/' . implode('/', $pathParts);

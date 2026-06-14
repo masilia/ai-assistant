@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Field;
 
 use Ibexa\Contracts\Core\Repository\ContentServiceInterface;
 use Ibexa\Contracts\Core\Repository\ContentTypeServiceInterface;
+use Ibexa\Contracts\Core\Repository\LanguageServiceInterface;
 use Ibexa\Contracts\Core\Repository\LocationServiceInterface;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;

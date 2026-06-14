@@ -16,4 +16,20 @@ module.exports = (eZConfig, eZConfigManager) => {
             path.resolve(__dirname, '../public/admin/scss/_ai-suggest.scss'),
         ],
     });
+
+    eZConfigManager.add({
+        eZConfig,
+        entryName: 'ibexa-admin-ui-layout-js',
+        newItems: [
+            path.resolve(__dirname, '../public/admin/js/ai-agent-chat.js'),
+        ],
+    });
+
+    eZConfigManager.add({
+        eZConfig,
+        entryName: 'ibexa-admin-ui-layout-css',
+        newItems: [
+            path.resolve(__dirname, '../public/admin/scss/_ai-agent-chat.scss'),
+        ],
+    });
 };

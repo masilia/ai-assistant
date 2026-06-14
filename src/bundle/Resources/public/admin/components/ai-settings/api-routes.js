@@ -22,4 +22,6 @@ export const AI_ROUTES = {
     generateImage:     '/admin/api/ai/generate-image',
     fieldTypes:        '/admin/api/ai/field-types',
     languages:         (contentId) => `/admin/api/ai/languages/${contentId}`,
+    agentChat:         '/admin/api/ai/agent/chat',
+    agentExecute:      '/admin/api/ai/agent/execute',
 };

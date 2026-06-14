@@ -1,0 +1,180 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Masilia\AiAssistant\Agent\Block;
+
+use Ibexa\Contracts\Core\Repository\ContentTypeService;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
+use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
+
+class BlockCatalog
+{
+    private const BLOCK_GROUP = 'Blocks';
+
+    /**
+     * Semantic capabilities mapped to block type identifiers.
+     *
+     * @var array<string, string[]>
+     */
+    private const CAPABILITIES = [
+        'hero'    => ['hero_banner', 'hero_carousel', 'hero_stats_split', 'hero_images_grid'],
+        'text'    => ['paragraph', 'richtext', 'symbol_text'],
+        'cards'   => ['grid_cards', 'info_cards', 'category_grid_cards'],
+        'media'   => ['image_text', 'slider', 'logo_display'],
+        'cta'     => ['cta'],
+        'listing' => ['all_posts'],
+        'faq'     => ['faq_accordion'],
+        'form'    => ['form', 'steps_form'],
+        'map'     => ['map', 'interactive_map'],
+        'social'  => ['social_networks'],
+        'tabs'    => ['tabs'],
+        'team'    => ['team_join', 'openings_list'],
+        'process' => ['processing_steps', 'checklist_image'],
+        'partners'=> ['partners'],
+        'data'    => ['chart_set'],
+    ];
+
+    /** @var array<string, array>|null */
+    private ?array $cache = null;
+
+    public function __construct(
+        private readonly ContentTypeService $contentTypeService,
+    ) {
+    }
+
+    /**
+     * Get all available block content types.
+     *
+     * @return array<string, array{identifier: string, name: string, fields: array<string, string>}>
+     */
+    public function getAvailableBlocks(): array
+    {
+        if ($this->cache !== null) {
+            return $this->cache;
+        }
+
+        $blocks = [];
+        foreach ($this->loadBlockTypes() as $type) {
+            $fields = [];
+            foreach ($type->fieldDefinitions as $fieldDef) {
+                $fields[$fieldDef->identifier] = $fieldDef->fieldTypeIdentifier;
+            }
+
+            $blocks[$type->identifier] = [
+                'identifier' => $type->identifier,
+                'name' => $type->getName(),
+                'fields' => $fields,
+            ];
+        }
+
+        $this->cache = $blocks;
+
+        return $blocks;
+    }
+
+    /**
+     * Get field definitions for a specific block type.
+     *
+     * @return array<string, string> field_identifier => field_type_identifier
+     */
+    public function getBlockFields(string $blockTypeId): array
+    {
+        $blocks = $this->getAvailableBlocks();
+
+        return $blocks[$blockTypeId]['fields'] ?? [];
+    }
+
+    /**
+     * Get the block item types (child content types) for a block.
+     *
+     * @return string[] item type identifiers
+     */
+    public function getBlockItemTypes(string $blockTypeId): array
+    {
+        $blocks = $this->loadBlockTypes();
+        foreach ($blocks as $type) {
+            if ($type->identifier === $blockTypeId) {
+                return $this->extractItemTypes($type);
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Find block types that match a given capability.
+     *
+     * @return string[] block type identifiers
+     */
+    public function findBlocksByCapability(string $capability): array
+    {
+        return self::CAPABILITIES[$capability] ?? [];
+    }
+
+    /**
+     * Get all capabilities and their block types.
+     *
+     * @return array<string, string[]>
+     */
+    public function getCapabilities(): array
+    {
+        return self::CAPABILITIES;
+    }
+
+    /**
+     * Resolve a natural language keyword to a capability string.
+     */
+    public function resolveCapability(string $keyword): ?string
+    {
+        $keyword = strtolower(trim($keyword));
+
+        foreach (self::CAPABILITIES as $cap => $types) {
+            if ($cap === $keyword) {
+                return $cap;
+            }
+            if (in_array($keyword, $types, true)) {
+                return $cap;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return ContentType[]
+     */
+    private function loadBlockTypes(): array
+    {
+        try {
+            $group = $this->contentTypeService->loadContentTypeGroupByIdentifier(self::BLOCK_GROUP);
+        } catch (NotFoundException $e) {
+            return [];
+        }
+
+        return array_values(
+            $this->contentTypeService->loadContentTypes($group)
+        );
+    }
+
+    /**
+     * Extract item type identifiers from a block type's relation list fields.
+     *
+     * @return string[]
+     */
+    private function extractItemTypes(ContentType $type): array
+    {
+        $itemTypes = [];
+        foreach ($type->fieldDefinitions as $fieldDef) {
+            $settings = $fieldDef->fieldSettings;
+            if (isset($settings['selectionContentTypes']) && is_array($settings['selectionContentTypes'])) {
+                foreach ($settings['selectionContentTypes'] as $itemType) {
+                    $itemTypes[] = (string) $itemType;
+                }
+            }
+        }
+
+        return array_unique($itemTypes);
+    }
+}

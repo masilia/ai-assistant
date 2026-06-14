@@ -9,6 +9,10 @@ services:
     _instanceof:
         Masilia\AiAssistant\Field\FieldValueStringifierInterface:
             tags: ['masilia.ai.field_value_stringifier']
+        Masilia\AiAssistant\Agent\Tool\ToolInterface:
+            tags: ['masilia.ai.agent_tool']
+        Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface:
+            tags: ['masilia.ai.field_value_transformer']
 
     Masilia\AiAssistant\Client\AiClientInterface:
         alias: Masilia\AiAssistant\Client\AiClient
@@ -89,6 +93,35 @@ services:
     Masilia\AiAssistant\Field\FieldValueStringifierRegistry:
         arguments:
             $stringifiers: !tagged_iterator masilia.ai.field_value_stringifier
+
+    Masilia\AiAssistant\Agent\Tool\ToolRegistry:
+        arguments:
+            $tools: !tagged_iterator masilia.ai.agent_tool
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry:
+        arguments:
+            $transformers: !tagged_iterator masilia.ai.field_value_transformer
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\RichTextTransformer:
+        arguments:
+            $inputHandler: '@Ibexa\Contracts\FieldTypeRichText\RichText\InputHandlerInterface'
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\MatrixTransformer: ~
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\RelationTransformer: ~
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\RelationListTransformer: ~
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\UrlTransformer: ~
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\KeywordTransformer: ~
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\MapLocationTransformer: ~
+
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\DateTransformer:
+        tags:
+            - { name: masilia.ai.field_value_transformer, key: ezdate }
+            - { name: masilia.ai.field_value_transformer, key: ezdatetime }
 
     # Lib-layer SEO meta field provider: reads from the Novactive eZ SEO bundle
     # config (bundle-layer adapter) so the lib stays free of Novactive deps.

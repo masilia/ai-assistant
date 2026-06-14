@@ -8,6 +8,11 @@ use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\ContentTypeService;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
@@ -245,8 +250,16 @@ readonly class CreatePageStructureTool implements ToolInterface
                 sprintf('Created page "%s" with %d blocks', $params['title'], count($result['blocks'])),
                 $result,
             );
+        } catch (ContentFieldValidationException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create page structure');
+        } catch (BadStateException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create page structure');
+        } catch (UnauthorizedException $e) {
+            return AgentErrorHelper::unauthorized('create page structure');
+        } catch (NotFoundException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create page structure');
         } catch (\Throwable $e) {
-            return ToolResult::error(sprintf('Failed to create page structure: %s', $e->getMessage()));
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create page structure');
         } finally {
             foreach ($tempFiles as $path) {
                 if (file_exists($path)) {

@@ -6,14 +6,17 @@ namespace Masilia\AiAssistant\Agent\Tool\Site;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Psr\Log\LoggerInterface;
 
 readonly class LoadSiteaccessTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
         private ConfigResolverInterface $configResolver,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -57,7 +60,7 @@ readonly class LoadSiteaccessTool implements ToolInterface
                 ],
             );
         } catch (\Throwable $e) {
-            return ToolResult::error(sprintf('Failed to load siteaccess: %s', $e->getMessage()));
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'load siteaccess');
         }
     }
 }

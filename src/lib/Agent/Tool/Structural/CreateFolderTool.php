@@ -5,13 +5,20 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Psr\Log\LoggerInterface;
 
 readonly class CreateFolderTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -78,8 +85,16 @@ readonly class CreateFolderTool implements ToolInterface
                     'location_id' => $location->id,
                 ],
             );
+        } catch (ContentFieldValidationException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
+        } catch (BadStateException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
+        } catch (UnauthorizedException $e) {
+            return AgentErrorHelper::unauthorized('create folder');
+        } catch (NotFoundException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
         } catch (\Throwable $e) {
-            return ToolResult::error(sprintf('Failed to create folder: %s', $e->getMessage()));
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
         }
     }
 }

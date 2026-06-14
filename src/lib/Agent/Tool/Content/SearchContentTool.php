@@ -8,13 +8,18 @@ use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion\LogicalAnd;
+use Ibexa\Contracts\Core\Repository\Exceptions\InvalidArgumentException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Psr\Log\LoggerInterface;
 
 readonly class SearchContentTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -121,8 +126,10 @@ readonly class SearchContentTool implements ToolInterface
                 sprintf('Found %d results', $searchResult->totalCount),
                 ['count' => $searchResult->totalCount, 'results' => $results],
             );
+        } catch (InvalidArgumentException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'search content');
         } catch (\Throwable $e) {
-            return ToolResult::error(sprintf('Failed to search content: %s', $e->getMessage()));
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'search content');
         }
     }
 }

@@ -53,14 +53,14 @@ class AgentChatController
             $response = $this->orchestrator->chat($message);
 
             return new JsonResponse($response->toArray());
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             $this->aiLogger->error('[AI Agent] Chat failed: {message}', [
                 'message' => $e->getMessage(),
                 'exception' => $e,
             ]);
 
             return new JsonResponse(
-                ['error' => $e->getMessage()],
+                ['error' => self::GENERIC_SERVICE_ERROR],
                 Response::HTTP_SERVICE_UNAVAILABLE,
             );
         }
@@ -99,14 +99,14 @@ class AgentChatController
             $response = $this->orchestrator->executePlan($plan);
 
             return new JsonResponse($response->toArray());
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             $this->aiLogger->error('[AI Agent] Execution failed: {message}', [
                 'message' => $e->getMessage(),
                 'exception' => $e,
             ]);
 
             return new JsonResponse(
-                ['error' => $e->getMessage()],
+                ['error' => self::GENERIC_SERVICE_ERROR],
                 Response::HTTP_SERVICE_UNAVAILABLE,
             );
         }

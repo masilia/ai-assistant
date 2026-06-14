@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Psr\Log\LoggerInterface;
 
 readonly class UpdateContentTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
         private FieldValueTransformerRegistry $transformerRegistry,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -99,8 +106,16 @@ readonly class UpdateContentTool implements ToolInterface
                     'version_no' => $published->versionInfo->versionNo,
                 ],
             );
+        } catch (ContentFieldValidationException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'update content');
+        } catch (BadStateException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'update content');
+        } catch (UnauthorizedException $e) {
+            return AgentErrorHelper::unauthorized('update content');
+        } catch (NotFoundException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'update content');
         } catch (\Throwable $e) {
-            return ToolResult::error(sprintf('Failed to update content: %s', $e->getMessage()));
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'update content');
         }
     }
 }

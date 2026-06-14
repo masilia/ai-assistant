@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Client\ImageGenerationClient;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
-use Throwable;
 
 readonly class GenerateImageTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
         private ImageGenerationClient $imageClient,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -113,8 +119,23 @@ readonly class GenerateImageTool implements ToolInterface
             }
 
             return ToolResult::ok($message, $result);
-        } catch (Throwable $e) {
-            return ToolResult::error(sprintf('Failed to generate image: %s', $e->getMessage()));
+        } catch (RuntimeException $e) {
+            $this->aiLogger->error('[Agent] generate image: {message}', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return ToolResult::error('Image generation failed: provider returned an error');
+        } catch (ContentFieldValidationException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
+        } catch (BadStateException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
+        } catch (UnauthorizedException $e) {
+            return AgentErrorHelper::unauthorized('generate image');
+        } catch (NotFoundException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
+        } catch (\Throwable $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
         }
     }
 
@@ -140,7 +161,7 @@ readonly class GenerateImageTool implements ToolInterface
         }
 
         if (file_put_contents($path, $decoded) === false) {
-            throw new RuntimeException(sprintf('Failed to write temp file: %s', $path));
+            throw new RuntimeException('Failed to save generated image');
         }
 
         return $path;

@@ -8,6 +8,7 @@ use Masilia\AiAssistant\Agent\IntentClassifier;
 use Masilia\AiAssistant\Agent\LlmPromptBuilder;
 use Masilia\AiAssistant\Client\AiClientInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 final class IntentClassifierTest extends TestCase
 {
@@ -23,7 +24,7 @@ final class IntentClassifierTest extends TestCase
         $blockCatalog->method('getCapabilities')->willReturn([]);
 
         $promptBuilder = new LlmPromptBuilder($blockCatalog);
-        $classifier = new IntentClassifier($aiClient, $promptBuilder);
+        $classifier = new IntentClassifier($aiClient, $promptBuilder, new NullLogger());
 
         $result = $classifier->classify('create a page');
 
@@ -42,7 +43,7 @@ final class IntentClassifierTest extends TestCase
         $blockCatalog->method('getCapabilities')->willReturn([]);
 
         $promptBuilder = new LlmPromptBuilder($blockCatalog);
-        $classifier = new IntentClassifier($aiClient, $promptBuilder);
+        $classifier = new IntentClassifier($aiClient, $promptBuilder, new NullLogger());
 
         $result = $classifier->classify('hello');
 
@@ -59,7 +60,7 @@ final class IntentClassifierTest extends TestCase
         $blockCatalog->method('getCapabilities')->willReturn([]);
 
         $promptBuilder = new LlmPromptBuilder($blockCatalog);
-        $classifier = new IntentClassifier($aiClient, $promptBuilder);
+        $classifier = new IntentClassifier($aiClient, $promptBuilder, new NullLogger());
 
         $result = $classifier->classify('hello');
 
@@ -74,7 +75,7 @@ final class IntentClassifierTest extends TestCase
         $blockCatalog->method('getCapabilities')->willReturn([]);
 
         $promptBuilder = new LlmPromptBuilder($blockCatalog);
-        $classifier = new IntentClassifier($aiClient, $promptBuilder);
+        $classifier = new IntentClassifier($aiClient, $promptBuilder, new NullLogger());
 
         $intents = $classifier->getSupportedIntents();
 

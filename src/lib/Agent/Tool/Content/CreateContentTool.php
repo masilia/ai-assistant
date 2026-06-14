@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
-use Ibexa\Contracts\Core\Repository\ContentService;
-use Ibexa\Contracts\Core\Repository\LocationService;
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
-use Throwable;
+use Psr\Log\LoggerInterface;
 
 readonly class CreateContentTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
         private FieldValueTransformerRegistry $transformerRegistry,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -126,8 +130,16 @@ readonly class CreateContentTool implements ToolInterface
                 sprintf('Created %s (ID: %d)', $contentTypeIdentifier, $result['content_id']),
                 $result,
             );
-        } catch (Throwable $e) {
-            return ToolResult::error(sprintf('Failed to create content: %s', $e->getMessage()));
+        } catch (ContentFieldValidationException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
+        } catch (BadStateException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
+        } catch (UnauthorizedException $e) {
+            return AgentErrorHelper::unauthorized('create content');
+        } catch (NotFoundException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
+        } catch (\Throwable $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
         }
     }
 }

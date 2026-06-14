@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent;
 
 use Masilia\AiAssistant\Client\AiClientInterface;
+use Psr\Log\LoggerInterface;
 
 readonly class IntentClassifier
 {
@@ -22,6 +23,7 @@ readonly class IntentClassifier
     public function __construct(
         private AiClientInterface $aiClient,
         private LlmPromptBuilder $promptBuilder,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -39,7 +41,12 @@ readonly class IntentClassifier
             $response = $this->aiClient->suggest($systemPrompt, $userMessage);
 
             return $this->promptBuilder->parseLlmResponse($response);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $this->aiLogger->warning('[Agent] Intent classification failed: {message}', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
             return null;
         }
     }

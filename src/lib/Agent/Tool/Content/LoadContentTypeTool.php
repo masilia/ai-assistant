@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Psr\Log\LoggerInterface;
 
 readonly class LoadContentTypeTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -65,8 +70,12 @@ readonly class LoadContentTypeTool implements ToolInterface
                     'fields' => $fields,
                 ],
             );
+        } catch (UnauthorizedException $e) {
+            return AgentErrorHelper::unauthorized('load content type');
+        } catch (NotFoundException $e) {
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'load content type');
         } catch (\Throwable $e) {
-            return ToolResult::error(sprintf('Failed to load content type: %s', $e->getMessage()));
+            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'load content type');
         }
     }
 }

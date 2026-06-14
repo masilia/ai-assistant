@@ -8,3 +8,9 @@ parameters:
     masilia_ai_assistant.default.temperature: 0.7
     masilia_ai_assistant.default.max_tokens: 4096
     masilia_ai_assistant.default.image_model: ~
+    masilia_ai_assistant.default.site_content_type: 'site'
+    masilia_ai_assistant.default.home_page_content_type: 'home_page'
+    masilia_ai_assistant.default.page_content_type: 'page'
+    masilia_ai_assistant.default.layout_content_type: 'layout_config'
+    masilia_ai_assistant.default.folder_content_type: 'folder'
+    masilia_ai_assistant.default.media_root_location_id: 43

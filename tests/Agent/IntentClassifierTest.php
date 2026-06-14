@@ -83,6 +83,6 @@ final class IntentClassifierTest extends TestCase
         self::assertContains('search_content', $intents);
         self::assertContains('undo', $intents);
         self::assertContains('list_blocks', $intents);
-        self::assertCount(8, $intents);
+        self::assertCount(10, $intents);
     }
 }

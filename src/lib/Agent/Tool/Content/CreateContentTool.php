@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
 use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
 use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
@@ -20,6 +21,7 @@ readonly class CreateContentTool implements ToolInterface
     public function __construct(
         private Repository $repository,
         private FieldValueTransformerRegistry $transformerRegistry,
+        private ConfigResolverInterface $configResolver,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -47,6 +49,10 @@ readonly class CreateContentTool implements ToolInterface
                     'type' => 'integer',
                     'description' => 'Parent location ID where the content will be created',
                 ],
+                'siteaccess' => [
+                    'type' => 'string',
+                    'description' => 'Siteaccess name — resolves parent from siteaccess root',
+                ],
                 'attributes' => [
                     'type' => 'object',
                     'description' => 'Field values as key-value pairs',
@@ -65,7 +71,7 @@ readonly class CreateContentTool implements ToolInterface
                     'default' => 'eng-GB',
                 ],
             ],
-            'required' => ['content_type', 'parent_location_id', 'attributes'],
+            'required' => ['content_type', 'attributes'],
         ];
     }
 
@@ -73,11 +79,19 @@ readonly class CreateContentTool implements ToolInterface
     {
         try {
             $contentTypeIdentifier = $params['content_type'];
-            $parentLocationId = (int) $params['parent_location_id'];
             $attributes = $params['attributes'] ?? [];
             $languageCode = $params['language'] ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
             $remoteId = $params['remote_id'] ?? null;
             $locationRemoteId = $params['location_remote_id'] ?? null;
+
+            // Resolve parent_location_id from siteaccess if not provided directly
+            $parentLocationId = isset($params['parent_location_id'])
+                ? (int) $params['parent_location_id']
+                : $this->resolveParentLocation($params['siteaccess'] ?? '');
+
+            if ($parentLocationId === null) {
+                return ToolResult::error('Provide either parent_location_id or a siteaccess name to resolve the parent location.');
+            }
 
             $contentService = $this->repository->getContentService();
             $locationService = $this->repository->getLocationService();
@@ -140,6 +154,28 @@ readonly class CreateContentTool implements ToolInterface
             return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
         } catch (\Throwable $e) {
             return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
+        }
+    }
+
+    private function resolveParentLocation(string $siteaccess): ?int
+    {
+        if ($siteaccess === '') {
+            // Current request siteaccess
+            try {
+                return (int) $this->configResolver->getParameter('content.tree_root.location_id');
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        try {
+            return (int) $this->configResolver->getParameter(
+                'content.tree_root.location_id',
+                null,
+                $siteaccess,
+            );
+        } catch (\Throwable) {
+            return null;
         }
     }
 }

@@ -18,6 +18,8 @@ readonly class IntentClassifier
         'list_blocks',
         'undo',
         'set_site',
+        'browse_site_structure',
+        'create_site_structure',
     ];
 
     public function __construct(

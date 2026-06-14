@@ -44,6 +44,11 @@ readonly class CreatePageStructureTool implements ToolInterface
         return [
             'type' => 'object',
             'properties' => [
+                'content_type' => [
+                    'type' => 'string',
+                    'description' => 'Content type identifier (default: "page", also supports "home_page")',
+                    'default' => 'page',
+                ],
                 'title' => [
                     'type' => 'string',
                     'description' => 'Page title',
@@ -87,6 +92,7 @@ readonly class CreatePageStructureTool implements ToolInterface
             $contentTypeService = $this->repository->getContentTypeService();
 
             $languageCode = $params['language'] ?? 'eng-GB';
+            $contentTypeIdentifier = $params['content_type'] ?? 'page';
             $parentLocationId = (int) $params['parent_location_id'];
             $createdBlocks = [];
             $blockContentIds = [];
@@ -99,7 +105,7 @@ readonly class CreatePageStructureTool implements ToolInterface
             );
 
             // 1. Create page with inline location
-            $pageType = $contentTypeService->loadContentTypeByIdentifier('page');
+            $pageType = $contentTypeService->loadContentTypeByIdentifier($contentTypeIdentifier);
             $pageCreateStruct = $contentService->newContentCreateStruct($pageType, $languageCode);
             $pageCreateStruct->setField('title', $params['title'], $languageCode);
             $pageCreateStruct->setField('description', $params['description'] ?? '', $languageCode);

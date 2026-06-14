@@ -38,7 +38,7 @@ readonly class AgentOrchestrator
         // 2. Route to appropriate handler
         return match ($intent) {
             'create_page' => $this->handleCreatePage($params),
-            'create_content' => $this->executeTool('create_content', $params),
+            'create_content' => $this->handleCreateContent($params),
             'update_content' => $this->handleUpdateContent($params),
             'delete_content' => $this->executeTool('trash_content', $params),
             'search_content' => $this->executeTool('search_content', $params),
@@ -46,6 +46,8 @@ readonly class AgentOrchestrator
             'list_blocks' => $this->handleListBlocks(),
             'undo' => $this->handleUndo($params),
             'set_site' => $this->handleSetSite($params),
+            'browse_site_structure' => $this->executeTool('browse_site_structure', $params),
+            'create_site_structure' => $this->executeTool('create_site_structure', $params),
             default => AgentResponse::error(sprintf('Unknown intent: %s', $intent)),
         };
     }
@@ -121,6 +123,20 @@ readonly class AgentOrchestrator
             $params['title'] ?? 'Untitled Page',
             $siteaccess ?: 'default',
         ));
+    }
+
+    private function handleCreateContent(array $params): AgentResponse
+    {
+        // Resolve siteaccess to root location if provided
+        $siteaccess = $params['siteaccess'] ?? '';
+        if ($siteaccess !== '' && !isset($params['parent_location_id'])) {
+            $rootLocationId = $this->resolveParentLocation($siteaccess, $params);
+            if ($rootLocationId !== null) {
+                $params['parent_location_id'] = $rootLocationId;
+            }
+        }
+
+        return $this->executeTool('create_content', $params);
     }
 
     private function handleUpdateContent(array $params): AgentResponse

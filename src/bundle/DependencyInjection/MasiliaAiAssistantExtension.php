@@ -71,6 +71,12 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
             $processor->mapSetting('temperature', $config);
             $processor->mapSetting('max_tokens', $config);
             $processor->mapSetting('image_model', $config);
+            $processor->mapSetting('site_content_type', $config);
+            $processor->mapSetting('home_page_content_type', $config);
+            $processor->mapSetting('page_content_type', $config);
+            $processor->mapSetting('layout_content_type', $config);
+            $processor->mapSetting('folder_content_type', $config);
+            $processor->mapSetting('media_root_location_id', $config);
         }
     }
 

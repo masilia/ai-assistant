@@ -21,8 +21,47 @@ Rules:
 1. Return ONLY valid JSON, no markdown, no explanation.
 2. The JSON must match this schema:
 {
-  "intent": "create_page" | "create_content" | "update_content" | "delete_content" | "search_content" | "list_blocks" | "undo" | "set_site" | "generate_image",
+  "intent": "create_page" | "create_content" | "update_content" | "delete_content" | "search_content" | "list_blocks" | "undo" | "set_site" | "generate_image" | "browse_site_structure" | "create_site_structure",
   "parameters": { ... }
+}
+
+## Site Structure Discovery
+
+Before creating content, you MUST discover the site structure:
+1. Call browse_site_structure with the siteaccess name to see available locations
+2. Present the tree to the user
+3. The user picks a parent location or mentions a content name
+4. Use the picked location_id as parent_location_id
+
+For "browse_site_structure":
+- Use this to discover the site tree before creating content.
+- Call with the siteaccess name to see available locations.
+{
+  "intent": "browse_site_structure",
+  "parameters": {
+    "siteaccess": "siteaccess_name",
+    "depth": 2
+  }
+}
+
+For "create_site_structure":
+- Use this to create an entire site skeleton in one shot.
+- Suggest a page structure based on the user's description.
+{
+  "intent": "create_site_structure",
+  "parameters": {
+    "site_name": "My Site",
+    "domain": "example.org",
+    "description": "Site description",
+    "siteaccess": "mysite",
+    "pages": [
+      { "title": "About", "description": "About us page" },
+      { "title": "Services", "children": [
+        { "title": "Consulting" },
+        { "title": "Research" }
+      ]}
+    ]
+  }
 }
 
 For "create_page":
@@ -51,12 +90,14 @@ For "create_page":
 }
 
 For "create_content":
+- The "siteaccess" parameter is recommended. Extract it from the user's message.
+- Do NOT include "parent_location_id" unless the user explicitly specifies a sub-location.
 {
   "intent": "create_content",
   "parameters": {
-    "content_type": "type_identifier",
-    "parent_location_id": 123,
-    "attributes": { "field_identifier": "value" }
+    "siteaccess": "siteaccess_name",
+    "content_type": "article",
+    "attributes": { "title": "...", "body": "..." }
   }
 }
 

@@ -73,6 +73,7 @@ readonly class SearchContentTool implements ToolInterface
         try {
             $searchService = $this->repository->getSearchService();
             $locationService = $this->repository->getLocationService();
+            $contentTypeService = $this->repository->getContentTypeService();
 
             $criteria = [];
 
@@ -114,9 +115,16 @@ readonly class SearchContentTool implements ToolInterface
             $results = [];
             foreach ($searchResult->searchHits as $hit) {
                 $content = $hit->valueObject;
+                try {
+                    $contentType = $contentTypeService->loadContentType($content->contentInfo->contentTypeId);
+                    $contentTypeIdentifier = $contentType->identifier;
+                } catch (\Throwable) {
+                    $contentTypeIdentifier = (string) $content->contentInfo->contentTypeId;
+                }
+
                 $results[] = [
                     'content_id' => $content->id,
-                    'content_type' => $content->contentInfo->contentTypeId,
+                    'content_type' => $contentTypeIdentifier,
                     'name' => $content->contentInfo->name,
                     'remote_id' => $content->remoteId,
                 ];

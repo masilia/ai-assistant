@@ -28,6 +28,7 @@ class BlockFlattener
 
     private ContentServiceInterface $contentService;
     private ContentTypeServiceInterface $contentTypeService;
+    private LanguageServiceInterface $languageService;
     private LocationServiceInterface $locationService;
     private FieldValueStringifierRegistry $stringifierRegistry;
     private CacheItemPoolInterface $cachePool;
@@ -41,6 +42,7 @@ class BlockFlattener
     ) {
         $this->contentService = $repository->getContentService();
         $this->contentTypeService = $repository->getContentTypeService();
+        $this->languageService = $repository->getContentLanguageService();
         $this->locationService = $repository->getLocationService();
         $this->stringifierRegistry = $stringifierRegistry;
         $this->cachePool = $cachePool;
@@ -324,11 +326,13 @@ class BlockFlattener
             return;
         }
 
-        // Delete specific cache keys for this content
-        // We try common language codes
-        $languages = ['eng-GB', 'fre-FR', 'ara-MA', 'eng-US', 'eng'];
-        foreach ($languages as $lang) {
-            $cacheKey = self::CACHE_PREFIX . $contentId . '-' . $lang;
+        // Delete specific cache keys for this content using all available languages
+        $languages = $this->languageService->loadLanguages();
+        foreach ($languages as $language) {
+            if (!$language->isEnabled()) {
+                continue;
+            }
+            $cacheKey = self::CACHE_PREFIX . $contentId . '-' . $language->languageCode;
             $this->cachePool->delete($cacheKey);
         }
     }

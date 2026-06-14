@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent;
 
+use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\Client\AiClientInterface;
+use Masilia\AiAssistant\Field\BlockFlattener;
+use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
+use Masilia\AiAssistant\SystemPromptContext;
+use Psr\Log\LoggerInterface;
 
 readonly class AgentOrchestrator
 {
@@ -17,6 +23,12 @@ readonly class AgentOrchestrator
         private BlockCatalog     $blockCatalog,
         private ToolRegistry     $toolRegistry,
         private ConfigResolverInterface $configResolver,
+        private BlockFlattener $blockFlattener,
+        private SiblingFieldsExtractor $siblingFieldsExtractor,
+        private AiClientInterface $aiClient,
+        private LlmPromptBuilder $promptBuilder,
+        private Repository $repository,
+        private LoggerInterface $aiLogger,
     ) {
     }
 
@@ -141,6 +153,14 @@ readonly class AgentOrchestrator
 
     private function handleUpdateContent(array $params): AgentResponse
     {
+        $attributes = $params['attributes'] ?? [];
+
+        // Check if this is a novaseometas update — needs enriched context
+        $isSeoUpdate = isset($attributes['novaseometas']);
+        if ($isSeoUpdate) {
+            return $this->handleUpdateSeo($params);
+        }
+
         // If content_id is provided directly, execute update directly
         if (isset($params['content_id'])) {
             return $this->executeTool('update_content', $params);
@@ -188,6 +208,129 @@ readonly class AgentOrchestrator
         // 3. Update the found content
         $contentId = $results[0]['content_id'];
         $updateParams = array_merge($params, ['content_id' => $contentId]);
+
+        return $this->executeTool('update_content', $updateParams);
+    }
+
+    /**
+     * Handle novaseometas updates with enriched context from block flattening.
+     */
+    private function handleUpdateSeo(array $params): AgentResponse
+    {
+        $contentId = $params['content_id'] ?? null;
+
+        // If no content_id, search for it
+        if ($contentId === null) {
+            $siteaccess = $params['siteaccess'] ?? '';
+            $pageName = $params['page_name'] ?? '';
+
+            if ($siteaccess === '' || $pageName === '') {
+                return AgentResponse::error(
+                    'Please provide either a content_id, or both siteaccess and page_name to search for the page.',
+                );
+            }
+
+            $rootLocationId = $this->resolveParentLocation($siteaccess, []);
+            if ($rootLocationId === null) {
+                return AgentResponse::error(
+                    sprintf('Could not resolve root location for siteaccess "%s".', $siteaccess),
+                );
+            }
+
+            $searchResult = $this->executeTool('search_content', [
+                'content_type' => 'page',
+                'name' => $pageName,
+                'subtree_location_id' => $rootLocationId,
+                'limit' => 1,
+            ]);
+
+            if (!$searchResult->success) {
+                return $searchResult;
+            }
+
+            $searchData = $searchResult->data ?? [];
+            $results = $searchData['results'] ?? [];
+
+            if (empty($results)) {
+                return AgentResponse::error(
+                    sprintf('Page "%s" not found in siteaccess "%s".', $pageName, $siteaccess),
+                );
+            }
+
+            $contentId = $results[0]['content_id'];
+        }
+
+        // Load the content
+        $contentService = $this->repository->getContentService();
+        try {
+            $content = $contentService->loadContent($contentId);
+        } catch (\Throwable $e) {
+            $this->aiLogger->warning(
+                '[Agent] Could not load content {id} for SEO update: {message}',
+                ['id' => $contentId, 'message' => $e->getMessage()],
+            );
+
+            return AgentResponse::error(sprintf('Could not load content with ID %d.', $contentId));
+        }
+
+        // Flatten blocks + non-block fields for context
+        $languageCode = $content->contentInfo->mainLanguageCode;
+        $blockText = $this->blockFlattener->flatten($content, $languageCode);
+
+        // Extract sibling fields for context
+        $contentType = $this->repository->getContentTypeService()->loadContentType(
+            $content->contentInfo->contentTypeId,
+        );
+        $siblingFields = $this->siblingFieldsExtractor->extract(
+            $content,
+            $contentType,
+            'novaseometas',
+            $languageCode,
+        );
+
+        // Build enriched system prompt
+        $systemPrompt = $this->promptBuilder->buildSeoSystemPrompt(
+            $contentType->getName(),
+            $content->contentInfo->name ?? '',
+            $blockText,
+            $siblingFields,
+            $params['attributes']['novaseometas']['metaKeys'] ?? [],
+        );
+
+        // Build user prompt
+        $userPrompt = 'Generate SEO metadata for this page based on the content provided.';
+
+        // Call LLM with enriched context
+        try {
+            $seoResponse = $this->aiClient->suggest($systemPrompt, $userPrompt);
+        } catch (\Throwable $e) {
+            $this->aiLogger->warning(
+                '[Agent] SEO generation failed for content {id}: {message}',
+                ['id' => $contentId, 'message' => $e->getMessage()],
+            );
+
+            return AgentResponse::error('Failed to generate SEO metadata. Please try again.');
+        }
+
+        // Parse the LLM response
+        $seoData = json_decode($seoResponse, true);
+        if (!is_array($seoData)) {
+            $this->aiLogger->warning(
+                '[Agent] Invalid SEO response for content {id}: {response}',
+                ['id' => $contentId, 'response' => $seoResponse],
+            );
+
+            return AgentResponse::error('Failed to parse SEO metadata. Please try again.');
+        }
+
+        // Clear cache after potential update
+        $this->blockFlattener->clearCache($contentId);
+
+        // Execute the update with the generated SEO values
+        $updateParams = array_merge($params, [
+            'content_id' => $contentId,
+            'attributes' => ['novaseometas' => $seoData],
+        ]);
 
         return $this->executeTool('update_content', $updateParams);
     }

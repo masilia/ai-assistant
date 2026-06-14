@@ -94,6 +94,10 @@ services:
         arguments:
             $stringifiers: !tagged_iterator masilia.ai.field_value_stringifier
 
+    Masilia\AiAssistant\Field\BlockFlattener:
+        arguments:
+            $cachePool: '@cache.app'
+
     Masilia\AiAssistant\Agent\Tool\ToolRegistry:
         arguments:
             $tools: !tagged_iterator masilia.ai.agent_tool
@@ -135,6 +139,10 @@ services:
             $fieldsProvider: '@Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface'
 
     Masilia\AiAssistant\AiPromptBuilder:
+        arguments:
+            $novaSeo: '@Masilia\AiAssistant\NovaSeoPromptBuilder'
+
+    Masilia\AiAssistant\Agent\LlmPromptBuilder:
         arguments:
             $novaSeo: '@Masilia\AiAssistant\NovaSeoPromptBuilder'
 

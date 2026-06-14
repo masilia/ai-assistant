@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Tests\Agent;
 
+use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Masilia\AiAssistant\Agent\AgentOrchestrator;
 use Masilia\AiAssistant\Agent\AgentResponse;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use Masilia\AiAssistant\Agent\IntentClassifier;
+use Masilia\AiAssistant\Agent\LlmPromptBuilder;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\Client\AiClientInterface;
+use Masilia\AiAssistant\Field\BlockFlattener;
+use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 final class AgentOrchestratorTest extends TestCase
 {
@@ -20,6 +26,11 @@ final class AgentOrchestratorTest extends TestCase
     private IntentClassifier $classifier;
     private ToolRegistry $toolRegistry;
     private ConfigResolverInterface $configResolver;
+    private BlockFlattener $blockFlattener;
+    private SiblingFieldsExtractor $siblingFieldsExtractor;
+    private AiClientInterface $aiClient;
+    private LlmPromptBuilder $promptBuilder;
+    private Repository $repository;
 
     protected function setUp(): void
     {
@@ -42,11 +53,23 @@ final class AgentOrchestratorTest extends TestCase
 
         $this->configResolver = $this->createMock(ConfigResolverInterface::class);
 
+        $this->blockFlattener = $this->createMock(BlockFlattener::class);
+        $this->siblingFieldsExtractor = $this->createMock(SiblingFieldsExtractor::class);
+        $this->aiClient = $this->createMock(AiClientInterface::class);
+        $this->promptBuilder = $this->createMock(LlmPromptBuilder::class);
+        $this->repository = $this->createMock(Repository::class);
+
         $this->orchestrator = new AgentOrchestrator(
             classifier: $this->classifier,
             blockCatalog: $blockCatalog,
             toolRegistry: $this->toolRegistry,
             configResolver: $this->configResolver,
+            blockFlattener: $this->blockFlattener,
+            siblingFieldsExtractor: $this->siblingFieldsExtractor,
+            aiClient: $this->aiClient,
+            promptBuilder: $this->promptBuilder,
+            repository: $this->repository,
+            aiLogger: new NullLogger(),
         );
     }
 
@@ -155,6 +178,12 @@ final class AgentOrchestratorTest extends TestCase
             blockCatalog: $this->createMock(BlockCatalog::class),
             toolRegistry: $this->toolRegistry,
             configResolver: $this->configResolver,
+            blockFlattener: $this->blockFlattener,
+            siblingFieldsExtractor: $this->siblingFieldsExtractor,
+            aiClient: $this->aiClient,
+            promptBuilder: $this->promptBuilder,
+            repository: $this->repository,
+            aiLogger: new NullLogger(),
         );
 
         $this->classifier->method('classify')->willReturn([
@@ -207,6 +236,12 @@ final class AgentOrchestratorTest extends TestCase
             blockCatalog: $this->createMock(BlockCatalog::class),
             toolRegistry: $this->toolRegistry,
             configResolver: $this->configResolver,
+            blockFlattener: $this->blockFlattener,
+            siblingFieldsExtractor: $this->siblingFieldsExtractor,
+            aiClient: $this->aiClient,
+            promptBuilder: $this->promptBuilder,
+            repository: $this->repository,
+            aiLogger: new NullLogger(),
         );
 
         $plan = new \Masilia\AiAssistant\Agent\AgentPlan(
@@ -237,6 +272,12 @@ final class AgentOrchestratorTest extends TestCase
             blockCatalog: $this->createMock(BlockCatalog::class),
             toolRegistry: $this->toolRegistry,
             configResolver: $this->configResolver,
+            blockFlattener: $this->blockFlattener,
+            siblingFieldsExtractor: $this->siblingFieldsExtractor,
+            aiClient: $this->aiClient,
+            promptBuilder: $this->promptBuilder,
+            repository: $this->repository,
+            aiLogger: new NullLogger(),
         );
 
         $plan = new \Masilia\AiAssistant\Agent\AgentPlan(
@@ -296,6 +337,12 @@ final class AgentOrchestratorTest extends TestCase
             blockCatalog: $this->createMock(BlockCatalog::class),
             toolRegistry: $this->toolRegistry,
             configResolver: $this->configResolver,
+            blockFlattener: $this->blockFlattener,
+            siblingFieldsExtractor: $this->siblingFieldsExtractor,
+            aiClient: $this->aiClient,
+            promptBuilder: $this->promptBuilder,
+            repository: $this->repository,
+            aiLogger: new NullLogger(),
         );
 
         $this->classifier->method('classify')->willReturn([

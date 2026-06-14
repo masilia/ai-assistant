@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent;
 
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
+use Masilia\AiAssistant\DTO\SiblingField;
+use Masilia\AiAssistant\NovaSeoPromptBuilder;
 
 readonly class LlmPromptBuilder
 {
@@ -207,6 +209,7 @@ EOT;
 
     public function __construct(
         private BlockCatalog $blockCatalog,
+        private NovaSeoPromptBuilder $novaSeo,
     ) {
     }
 
@@ -318,5 +321,49 @@ EOT;
         }
 
         return null;
+    }
+
+    /**
+     * Build the system prompt for SEO metadata generation.
+     *
+     * Reuses the same prompt structure as the admin suggest modal
+     * for consistency between modal and agent chat.
+     *
+     * @param string $contentTypeName Content type name (e.g. "Page", "Article")
+     * @param string $contentTitle Content title/name
+     * @param string $blockText Flattened block text from BlockFlattener
+     * @param SiblingField[] $siblingFields Other field values for context
+     * @param string[] $metaKeys Meta keys to generate (empty = all)
+     */
+    public function buildSeoSystemPrompt(
+        string $contentTypeName,
+        string $contentTitle,
+        string $blockText,
+        array $siblingFields,
+        array $metaKeys = [],
+    ): string {
+        $base = "You are a professional content writing assistant for a CMS."
+            . " The content type is \"{$contentTypeName}\"."
+            . " You are writing for the field \"SEO Metadata\"."
+            . "\n\nContent title: \"{$this->scrubForPrompt($contentTitle)}\"."
+            . "\n\n{$blockText}";
+
+        if (!empty($siblingFields)) {
+            $base .= "\n\nOther fields already filled in this content item (use for context, do not repeat):";
+            foreach ($siblingFields as $field) {
+                $label = $this->scrubForPrompt($field->label);
+                $value = $this->scrubForPrompt(mb_substr($field->value, 0, 250));
+                if ($label !== '' && $value !== '') {
+                    $base .= sprintf("\n  - %s: \"%s\"", $label, $value);
+                }
+            }
+        }
+
+        return $this->novaSeo->wholeBlockPrompt($base, $metaKeys);
+    }
+
+    private function scrubForPrompt(string $value): string
+    {
+        return str_replace(["\"", "\n", "\r"], ['\\"', ' ', ''], $value);
     }
 }

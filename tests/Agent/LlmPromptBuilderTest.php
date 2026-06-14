@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Tests\Agent;
 
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use Masilia\AiAssistant\Agent\LlmPromptBuilder;
+use Masilia\AiAssistant\NovaSeoPromptBuilder;
 use PHPUnit\Framework\TestCase;
 
 final class LlmPromptBuilderTest extends TestCase
@@ -24,7 +25,10 @@ final class LlmPromptBuilderTest extends TestCase
             'text' => ['paragraph'],
         ]);
 
-        $this->builder = new LlmPromptBuilder($blockCatalog);
+        $novaSeo = $this->createMock(NovaSeoPromptBuilder::class);
+        $novaSeo->method('wholeBlockPrompt')->willReturnArgument(0);
+
+        $this->builder = new LlmPromptBuilder($blockCatalog, $novaSeo);
     }
 
     public function testBuildSystemPromptIncludesBlockTypes(): void

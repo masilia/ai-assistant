@@ -95,7 +95,7 @@ class BlockFlattener
         $contentType = $content->getContentType();
 
         $output = sprintf("Content type: %s\n", $contentType->getName());
-        $output .= sprintf("Content title: %s\n", $content->contentInfo->name ?? '');
+        $output .= sprintf("Content title: %s\n", $content->getName($languageCode));
 
         // Add site path if location exists
         $path = $this->getSitePath($content);
@@ -111,39 +111,29 @@ class BlockFlattener
      */
     private function getSitePath(Content $content): string
     {
-        $mainLocationId = $content->contentInfo->mainLocationId;
-        if ($mainLocationId === null) {
+        $location = $content->contentInfo->getMainLocation();
+        if ($location === null) {
             return '';
         }
 
-        try {
-            $location = $this->locationService->loadLocation($mainLocationId);
-            $pathIds = $location->path;
+        $pathIds = $location->path;
 
-            if (count($pathIds) <= 1) {
-                return '/';
-            }
-
-            // Load all locations in the path for names
-            $locations = $this->locationService->loadLocationList($pathIds);
-
-            $pathParts = [];
-            foreach ($pathIds as $pathId) {
-                $loc = $locations[$pathId] ?? null;
-                if ($loc !== null) {
-                    $pathParts[] = $loc->name ?? (string)$pathId;
-                }
-            }
-
-            return '/' . implode('/', $pathParts);
-        } catch (\Throwable $e) {
-            $this->aiLogger->debug(
-                '[BlockFlattener] Could not load site path for content {id}: {message}',
-                ['id' => $content->id, 'message' => $e->getMessage()]
-            );
-
-            return '';
+        if (count($pathIds) <= 1) {
+            return '/';
         }
+
+        // Load all locations in the path for names
+        $locations = $this->locationService->loadLocationList($pathIds);
+
+        $pathParts = [];
+        foreach ($pathIds as $pathId) {
+            $loc = $locations[$pathId] ?? null;
+            if ($loc !== null) {
+                $pathParts[] = $loc->name ?? (string)$pathId;
+            }
+        }
+
+        return '/' . implode('/', $pathParts);
     }
 
     /**

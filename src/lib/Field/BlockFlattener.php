@@ -92,9 +92,7 @@ class BlockFlattener
      */
     private function buildMetadata(Content $content, string $languageCode): string
     {
-        $contentType = $this->contentTypeService->loadContentType(
-            $content->contentInfo->contentTypeId
-        );
+        $contentType = $content->getContentType();
 
         $output = sprintf("Content type: %s\n", $contentType->getName());
         $output .= sprintf("Content title: %s\n", $content->contentInfo->name ?? '');
@@ -156,9 +154,7 @@ class BlockFlattener
         string $languageCode,
         string $blocksFieldIdentifier,
     ): string {
-        $contentType = $this->contentTypeService->loadContentType(
-            $content->contentInfo->contentTypeId
-        );
+        $contentType = $content->getContentType();
 
         $output = '';
         foreach ($contentType->getFieldDefinitions() as $fieldDef) {

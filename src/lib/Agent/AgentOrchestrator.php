@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent;
 
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
-use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\Client\AiClientInterface;
 use Masilia\AiAssistant\Field\BlockFlattener;
 use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
-use Masilia\AiAssistant\SystemPromptContext;
 use Psr\Log\LoggerInterface;
 
 readonly class AgentOrchestrator
@@ -196,17 +196,19 @@ readonly class AgentOrchestrator
             return $searchResult;
         }
 
-        $searchData = $searchResult->data ?? [];
-        $results = $searchData['results'] ?? [];
+        $searchData = [];
+        if (!empty($searchResult->results)) {
+            $searchData = $searchResult->results[0]->data ?? [];
+        }
+        $contentId = $searchData['results'][0]['content_id'] ?? null;
 
-        if (empty($results)) {
+        if (!$contentId) {
             return AgentResponse::error(
                 sprintf('Page "%s" not found in siteaccess "%s".', $pageName, $siteaccess),
             );
         }
 
         // 3. Update the found content
-        $contentId = $results[0]['content_id'];
         $updateParams = array_merge($params, ['content_id' => $contentId]);
 
         return $this->executeTool('update_content', $updateParams);
@@ -244,27 +246,29 @@ readonly class AgentOrchestrator
                 'limit' => 1,
             ]);
 
+
             if (!$searchResult->success) {
                 return $searchResult;
             }
 
-            $searchData = $searchResult->data ?? [];
-            $results = $searchData['results'] ?? [];
+            $searchData = [];
+            if (!empty($searchResult->results)) {
+                $searchData = $searchResult->results[0]->data ?? [];
+            }
+            $contentId = $searchData['results'][0]['content_id'] ?? null;
 
-            if (empty($results)) {
+            if (!$contentId) {
                 return AgentResponse::error(
                     sprintf('Page "%s" not found in siteaccess "%s".', $pageName, $siteaccess),
                 );
             }
-
-            $contentId = $results[0]['content_id'];
         }
 
         // Load the content
         $contentService = $this->repository->getContentService();
         try {
             $content = $contentService->loadContent($contentId);
-        } catch (\Throwable $e) {
+        } catch (NotFoundException|UnauthorizedException $e) {
             $this->aiLogger->warning(
                 '[Agent] Could not load content {id} for SEO update: {message}',
                 ['id' => $contentId, 'message' => $e->getMessage()],
@@ -278,9 +282,7 @@ readonly class AgentOrchestrator
         $blockText = $this->blockFlattener->flatten($content, $languageCode);
 
         // Extract sibling fields for context
-        $contentType = $this->repository->getContentTypeService()->loadContentType(
-            $content->contentInfo->contentTypeId,
-        );
+        $contentType = $content->getContentType();
         $siblingFields = $this->siblingFieldsExtractor->extract(
             $content,
             $contentType,

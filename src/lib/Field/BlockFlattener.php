@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Field;
 
-use Ibexa\Contracts\Core\Repository\ContentServiceInterface;
-use Ibexa\Contracts\Core\Repository\ContentTypeServiceInterface;
-use Ibexa\Contracts\Core\Repository\LanguageServiceInterface;
-use Ibexa\Contracts\Core\Repository\LocationServiceInterface;
+use Ibexa\Contracts\Core\Repository\ContentService;
+use Ibexa\Contracts\Core\Repository\ContentTypeService;
+use Ibexa\Contracts\Core\Repository\LanguageService;
+use Ibexa\Contracts\Core\Repository\LocationService;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\Content\Location;
@@ -27,10 +27,10 @@ class BlockFlattener
     private const BLOCKS_FIELD = 'blocks';
     private const MAX_SIBLING_CHARS = 500;
 
-    private ContentServiceInterface $contentService;
-    private ContentTypeServiceInterface $contentTypeService;
-    private LanguageServiceInterface $languageService;
-    private LocationServiceInterface $locationService;
+    private ContentService $contentService;
+    private ContentTypeService $contentTypeService;
+    private LanguageService $languageService;
+    private LocationService $locationService;
     private FieldValueStringifierRegistry $stringifierRegistry;
     private CacheItemPoolInterface $cachePool;
     private LoggerInterface $aiLogger;

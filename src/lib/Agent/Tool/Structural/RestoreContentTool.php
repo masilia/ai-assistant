@@ -43,35 +43,31 @@ readonly class RestoreContentTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $result = $this->repository->sudo(function () use ($params) {
-                $trashService = $this->repository->getTrashService();
-                $contentService = $this->repository->getContentService();
+            $trashService = $this->repository->getTrashService();
+            $contentService = $this->repository->getContentService();
 
-                $restored = [];
-                $contentIds = $params['content_ids'] ?? [];
+            $restored = [];
+            $contentIds = $params['content_ids'] ?? [];
 
-                // Get all trashed items
-                $trashedItems = $contentService->loadContentInfoList($contentIds);
+            // Get all trashed items
+            $trashedItems = $contentService->loadContentInfoList($contentIds);
 
-                foreach ($contentIds as $contentId) {
-                    foreach ($trashedItems as $trashed) {
-                        if ($trashed->contentId === (int) $contentId) {
-                            $trashService->recover($trashed);
-                            $restored[] = (int) $contentId;
-                            break;
-                        }
+            foreach ($contentIds as $contentId) {
+                foreach ($trashedItems as $trashed) {
+                    if ($trashed->contentId === (int) $contentId) {
+                        $trashService->recover($trashed);
+                        $restored[] = (int) $contentId;
+                        break;
                     }
                 }
-
-                return [
-                    'restored' => $restored,
-                    'count' => count($restored),
-                ];
-            });
+            }
 
             return ToolResult::ok(
-                sprintf('Restored %d items', $result['count']),
-                $result,
+                sprintf('Restored %d items', count($restored)),
+                [
+                    'restored' => $restored,
+                    'count' => count($restored),
+                ],
             );
         } catch (\Throwable $e) {
             return ToolResult::error(sprintf('Failed to restore content: %s', $e->getMessage()));

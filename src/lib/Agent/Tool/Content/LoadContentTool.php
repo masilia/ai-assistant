@@ -58,27 +58,19 @@ readonly class LoadContentTool implements ToolInterface
     {
         try {
             $languageCode = $params['language'] ?? $this->defaultLanguageCode;
+            $contentService = $this->repository->getContentService();
 
-            $content = $this->repository->sudo(function () use ($params, $languageCode) {
-                $contentService = $this->repository->getContentService();
-
-                if (isset($params['content_id'])) {
-                    return $contentService->loadContent((int) $params['content_id'], [$languageCode]);
-                }
-
-                if (isset($params['remote_id'])) {
-                    return $contentService->loadContentByRemoteId($params['remote_id'], [$languageCode]);
-                }
-
-                if (isset($params['location_id'])) {
-                    $locationService = $this->repository->getLocationService();
-                    $location = $locationService->loadLocation((int) $params['location_id']);
-
-                    return $contentService->loadContent($location->contentId, [$languageCode]);
-                }
-
+            if (isset($params['content_id'])) {
+                $content = $contentService->loadContent((int) $params['content_id'], [$languageCode]);
+            } elseif (isset($params['remote_id'])) {
+                $content = $contentService->loadContentByRemoteId($params['remote_id'], [$languageCode]);
+            } elseif (isset($params['location_id'])) {
+                $locationService = $this->repository->getLocationService();
+                $location = $locationService->loadLocation((int) $params['location_id']);
+                $content = $contentService->loadContent($location->contentId, [$languageCode]);
+            } else {
                 throw new \InvalidArgumentException('Must provide content_id, remote_id, or location_id');
-            });
+            }
 
             $fields = [];
             foreach ($content->fields as $field) {

@@ -46,31 +46,27 @@ readonly class TrashContentTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $result = $this->repository->sudo(function () use ($params) {
-                $contentService = $this->repository->getContentService();
-                $locationService = $this->repository->getLocationService();
-                $trashService = $this->repository->getTrashService();
+            $contentService = $this->repository->getContentService();
+            $locationService = $this->repository->getLocationService();
+            $trashService = $this->repository->getTrashService();
 
-                $contentId = (int) $params['content_id'];
-                $content = $contentService->loadContent($contentId);
+            $contentId = (int) $params['content_id'];
+            $content = $contentService->loadContent($contentId);
 
-                $locationId = isset($params['location_id'])
-                    ? (int) $params['location_id']
-                    : $content->contentInfo->mainLocationId;
+            $locationId = isset($params['location_id'])
+                ? (int) $params['location_id']
+                : $content->contentInfo->mainLocationId;
 
-                $location = $locationService->loadLocation($locationId);
-                $trashService->trash($location);
+            $location = $locationService->loadLocation($locationId);
+            $trashService->trash($location);
 
-                return [
+            return ToolResult::ok(
+                sprintf('Trashed content %d', $contentId),
+                [
                     'content_id' => $contentId,
                     'location_id' => $locationId,
                     'trashed' => true,
-                ];
-            });
-
-            return ToolResult::ok(
-                sprintf('Trashed content %d', $result['content_id']),
-                $result,
+                ],
             );
         } catch (\Throwable $e) {
             return ToolResult::error(sprintf('Failed to trash content: %s', $e->getMessage()));

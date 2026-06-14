@@ -51,36 +51,32 @@ readonly class CreateFolderTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $result = $this->repository->sudo(function () use ($params) {
-                $contentService = $this->repository->getContentService();
-                $locationService = $this->repository->getLocationService();
-                $contentTypeService = $this->repository->getContentTypeService();
+            $contentService = $this->repository->getContentService();
+            $locationService = $this->repository->getLocationService();
+            $contentTypeService = $this->repository->getContentTypeService();
 
-                $languageCode = $params['language'] ?? 'eng-GB';
+            $languageCode = $params['language'] ?? 'eng-GB';
 
-                $folderType = $contentTypeService->loadContentTypeByIdentifier('folder');
+            $folderType = $contentTypeService->loadContentTypeByIdentifier('folder');
 
-                $createStruct = $contentService->newContentCreateStruct();
-                $createStruct->contentType = $folderType;
-                $createStruct->mainLanguageCode = $languageCode;
-                $createStruct->setField('name', $params['name'], $languageCode);
+            $createStruct = $contentService->newContentCreateStruct();
+            $createStruct->contentType = $folderType;
+            $createStruct->mainLanguageCode = $languageCode;
+            $createStruct->setField('name', $params['name'], $languageCode);
 
-                $locStruct = $locationService->newLocationCreateStruct((int) $params['parent_location_id']);
+            $locStruct = $locationService->newLocationCreateStruct((int) $params['parent_location_id']);
 
-                $draft = $contentService->createContent($createStruct, [$locStruct]);
+            $draft = $contentService->createContent($createStruct, [$locStruct]);
 
-                $published = $contentService->publishVersion($draft->versionInfo);
-                $location = $locationService->loadLocation($published->contentInfo->mainLocationId);
-
-                return [
-                    'content_id' => $published->id,
-                    'location_id' => $location->id,
-                ];
-            });
+            $published = $contentService->publishVersion($draft->versionInfo);
+            $location = $locationService->loadLocation($published->contentInfo->mainLocationId);
 
             return ToolResult::ok(
-                sprintf('Created folder "%s" (ID: %d)', $params['name'], $result['content_id']),
-                $result,
+                sprintf('Created folder "%s" (ID: %d)', $params['name'], $published->id),
+                [
+                    'content_id' => $published->id,
+                    'location_id' => $location->id,
+                ],
             );
         } catch (\Throwable $e) {
             return ToolResult::error(sprintf('Failed to create folder: %s', $e->getMessage()));

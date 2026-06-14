@@ -56,53 +56,48 @@ readonly class UpdateContentTool implements ToolInterface
             $contentId = (int) $params['content_id'];
             $attributes = $params['attributes'] ?? [];
             $languageCode = $params['language'] ?? 'eng-GB';
+            $contentService = $this->repository->getContentService();
 
-            $result = $this->repository->sudo(function () use ($contentId, $attributes, $languageCode) {
-                $contentService = $this->repository->getContentService();
+            // Load current content
+            $content = $contentService->loadContent($contentId);
 
-                // Load current content
-                $content = $contentService->loadContent($contentId);
+            // Create draft
+            $draft = $contentService->createContentDraft($content->contentInfo);
 
-                // Create draft
-                $draft = $contentService->createContentDraft($content->contentInfo);
+            // Create update struct
+            $updateStruct = $contentService->newContentUpdateStruct();
+            $updateStruct->languageCode = $languageCode;
 
-                // Create update struct
-                $updateStruct = $contentService->newContentUpdateStruct();
-                $updateStruct->languageCode = $languageCode;
+            foreach ($attributes as $fieldIdentifier => $value) {
+                $fieldDef = $content->getContentType()->getFieldDefinition($fieldIdentifier);
+                $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
 
-                foreach ($attributes as $fieldIdentifier => $value) {
-                    $fieldDef = $content->getContentType()->getFieldDefinition($fieldIdentifier);
-                    $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
-
-                    // ezselection: map label strings to option indices
-                    if ($fieldType === 'ezselection' && is_string($value)) {
-                        $options = $fieldDef->getFieldSettings()['options'] ?? [];
-                        $labelToIndex = array_flip($options);
-                        $index = $labelToIndex[$value] ?? null;
-                        if ($index !== null) {
-                            $value = [$index];
-                        }
+                // ezselection: map label strings to option indices
+                if ($fieldType === 'ezselection' && is_string($value)) {
+                    $options = $fieldDef->getFieldSettings()['options'] ?? [];
+                    $labelToIndex = array_flip($options);
+                    $index = $labelToIndex[$value] ?? null;
+                    if ($index !== null) {
+                        $value = [$index];
                     }
-
-                    $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value);
-                    $updateStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
                 }
 
-                // Apply update
-                $contentService->updateContent($draft->versionInfo, $updateStruct);
+                $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value);
+                $updateStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
+            }
 
-                // Publish
-                $published = $contentService->publishVersion($draft->versionInfo);
+            // Apply update
+            $contentService->updateContent($draft->versionInfo, $updateStruct);
 
-                return [
-                    'content_id' => $published->id,
-                    'version_no' => $published->versionInfo->versionNo,
-                ];
-            });
+            // Publish
+            $published = $contentService->publishVersion($draft->versionInfo);
 
             return ToolResult::ok(
                 sprintf('Updated content %d', $contentId),
-                $result,
+                [
+                    'content_id' => $published->id,
+                    'version_no' => $published->versionInfo->versionNo,
+                ],
             );
         } catch (\Throwable $e) {
             return ToolResult::error(sprintf('Failed to update content: %s', $e->getMessage()));

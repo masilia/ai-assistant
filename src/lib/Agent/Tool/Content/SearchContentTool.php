@@ -25,7 +25,7 @@ readonly class SearchContentTool implements ToolInterface
 
     public function getDescription(): string
     {
-        return 'Search for content using criteria like content type, full text, and subtree.';
+        return 'Search for content using criteria like content type, name, full text, and subtree.';
     }
 
     public function getParameters(): array
@@ -36,6 +36,10 @@ readonly class SearchContentTool implements ToolInterface
                 'content_type' => [
                     'type' => 'string',
                     'description' => 'Content type identifier to filter by',
+                ],
+                'name' => [
+                    'type' => 'string',
+                    'description' => 'Search by content name (supports * wildcards, e.g. "homepage" or "about*")',
                 ],
                 'query' => [
                     'type' => 'string',
@@ -62,52 +66,60 @@ readonly class SearchContentTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $result = $this->repository->sudo(function () use ($params) {
-                $searchService = $this->repository->getSearchService();
-                $locationService = $this->repository->getLocationService();
+            $searchService = $this->repository->getSearchService();
+            $locationService = $this->repository->getLocationService();
 
-                $criteria = [];
+            $criteria = [];
 
-                if (isset($params['content_type'])) {
-                    $criteria[] = new Criterion\ContentTypeIdentifier([$params['content_type']]);
-                }
+            // AND filters
+            if (!empty($params['content_type'])) {
+                $criteria[] = new Criterion\ContentTypeIdentifier([$params['content_type']]);
+            }
 
-                if (isset($params['query'])) {
-                    $criteria[] = new Criterion\FullText($params['query']);
-                }
-
-                if (isset($params['subtree_location_id'])) {
+            if (!empty($params['subtree_location_id'])) {
+                try {
                     $location = $locationService->loadLocation((int) $params['subtree_location_id']);
                     $criteria[] = new Criterion\Subtree($location->pathString);
+                } catch (\Throwable) {
+                    return ToolResult::error(
+                        sprintf('Location %d not found', (int) $params['subtree_location_id']),
+                    );
                 }
+            }
 
-                $query = new Query([
-                    'filter' => !empty($criteria) ? new LogicalAnd($criteria) : null,
-                    'limit' => $params['limit'] ?? 10,
-                ]);
+            // OR filter: name OR fulltext
+            $orCriteria = [];
+            if (!empty($params['name'])) {
+                $orCriteria[] = new Criterion\ContentName($params['name']);
+            }
+            if (!empty($params['query'])) {
+                $orCriteria[] = new Criterion\FullText($params['query']);
+            }
+            if (!empty($orCriteria)) {
+                $criteria[] = new Criterion\LogicalOr($orCriteria);
+            }
 
-                $searchResult = $searchService->findContent($query);
+            $query = new Query([
+                'filter' => !empty($criteria) ? new LogicalAnd($criteria) : null,
+                'limit' => $params['limit'] ?? 10,
+            ]);
 
-                $results = [];
-                foreach ($searchResult->searchHits as $hit) {
-                    $content = $hit->valueObject;
-                    $results[] = [
-                        'content_id' => $content->id,
-                        'content_type' => $content->contentInfo->contentTypeId,
-                        'name' => $content->contentInfo->name,
-                        'remote_id' => $content->remoteId,
-                    ];
-                }
+            $searchResult = $searchService->findContent($query);
 
-                return [
-                    'count' => $searchResult->totalCount,
-                    'results' => $results,
+            $results = [];
+            foreach ($searchResult->searchHits as $hit) {
+                $content = $hit->valueObject;
+                $results[] = [
+                    'content_id' => $content->id,
+                    'content_type' => $content->contentInfo->contentTypeId,
+                    'name' => $content->contentInfo->name,
+                    'remote_id' => $content->remoteId,
                 ];
-            });
+            }
 
             return ToolResult::ok(
-                sprintf('Found %d results', $result['count']),
-                $result,
+                sprintf('Found %d results', $searchResult->totalCount),
+                ['count' => $searchResult->totalCount, 'results' => $results],
             );
         } catch (\Throwable $e) {
             return ToolResult::error(sprintf('Failed to search content: %s', $e->getMessage()));

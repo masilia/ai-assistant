@@ -42,13 +42,8 @@ readonly class LoadContentTypeTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $contentType = $this->repository->sudo(function () use ($params) {
-                return $this->repository->getContentTypeService()
-                    ->loadContentTypeByIdentifier($params['identifier']);
-            });
-
-            /**@var \Ibexa\Core\Repository\Values\ContentType\ContentType $contentType */
-
+            $contentType = $this->repository->getContentTypeService()
+                ->loadContentTypeByIdentifier($params['identifier']);
 
             $fields = [];
             foreach ($contentType->fieldDefinitions as $fieldDef) {

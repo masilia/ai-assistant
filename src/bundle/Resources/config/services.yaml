@@ -123,6 +123,8 @@ services:
             - { name: masilia.ai.field_value_transformer, key: ezdate }
             - { name: masilia.ai.field_value_transformer, key: ezdatetime }
 
+    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\NovaSeoMetasTransformer: ~
+
     # Lib-layer SEO meta field provider: reads from the Novactive eZ SEO bundle
     # config (bundle-layer adapter) so the lib stays free of Novactive deps.
     Masilia\AiAssistant\Seo\SeoMetaFieldsProviderInterface:

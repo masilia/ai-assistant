@@ -48,39 +48,34 @@ readonly class UndoLastTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $result = $this->repository->sudo(function () use ($params) {
-                $contentService = $this->repository->getContentService();
-                $locationService = $this->repository->getLocationService();
-                $trashService = $this->repository->getTrashService();
+            $contentService = $this->repository->getContentService();
+            $trashService = $this->repository->getTrashService();
 
-                $restored = [];
-                $contentIds = $params['content_ids'] ?? [];
+            $restored = [];
+            $contentIds = $params['content_ids'] ?? [];
 
-                foreach ($contentIds as $contentId) {
-                    try {
-                        // Try to load from trash
-                        $trashedItems = $trashService->findByParentLocationId(2); // Root trash
-                        foreach ($trashedItems as $trashed) {
-                            if ($trashed->contentId === (int) $contentId) {
-                                $trashService->restore($trashed);
-                                $restored[] = (int) $contentId;
-                                break;
-                            }
+            foreach ($contentIds as $contentId) {
+                try {
+                    // Try to load from trash
+                    $trashedItems = $trashService->findByParentLocationId(2); // Root trash
+                    foreach ($trashedItems as $trashed) {
+                        if ($trashed->contentId === (int) $contentId) {
+                            $trashService->restore($trashed);
+                            $restored[] = (int) $contentId;
+                            break;
                         }
-                    } catch (\Throwable) {
-                        // Content might not be in trash, skip
                     }
+                } catch (\Throwable) {
+                    // Content might not be in trash, skip
                 }
-
-                return [
-                    'restored' => $restored,
-                    'count' => count($restored),
-                ];
-            });
+            }
 
             return ToolResult::ok(
-                sprintf('Restored %d items', $result['count']),
-                $result,
+                sprintf('Restored %d items', count($restored)),
+                [
+                    'restored' => $restored,
+                    'count' => count($restored),
+                ],
             );
         } catch (\Throwable $e) {
             return ToolResult::error(sprintf('Failed to undo: %s', $e->getMessage()));

@@ -39,7 +39,7 @@ readonly class AgentOrchestrator
         return match ($intent) {
             'create_page' => $this->handleCreatePage($params),
             'create_content' => $this->executeTool('create_content', $params),
-            'update_content' => $this->executeTool('update_content', $params),
+            'update_content' => $this->handleUpdateContent($params),
             'delete_content' => $this->executeTool('trash_content', $params),
             'search_content' => $this->executeTool('search_content', $params),
             'generate_image' => $this->executeTool('generate_image', $params),
@@ -121,6 +121,59 @@ readonly class AgentOrchestrator
             $params['title'] ?? 'Untitled Page',
             $siteaccess ?: 'default',
         ));
+    }
+
+    private function handleUpdateContent(array $params): AgentResponse
+    {
+        // If content_id is provided directly, execute update directly
+        if (isset($params['content_id'])) {
+            return $this->executeTool('update_content', $params);
+        }
+
+        // If siteaccess + page_name are provided, search first then update
+        $siteaccess = $params['siteaccess'] ?? '';
+        $pageName = $params['page_name'] ?? '';
+
+        if ($siteaccess === '' || $pageName === '') {
+            return AgentResponse::error(
+                'Please provide either a content_id, or both siteaccess and page_name to search for the page.',
+            );
+        }
+
+        // 1. Resolve siteaccess to root location
+        $rootLocationId = $this->resolveParentLocation($siteaccess, []);
+        if ($rootLocationId === null) {
+            return AgentResponse::error(
+                sprintf('Could not resolve root location for siteaccess "%s".', $siteaccess),
+            );
+        }
+
+        // 2. Search for the page by name within the siteaccess subtree
+        $searchResult = $this->executeTool('search_content', [
+            'content_type' => 'page',
+            'name' => $pageName,
+            'subtree_location_id' => $rootLocationId,
+            'limit' => 1,
+        ]);
+
+        if (!$searchResult->success) {
+            return $searchResult;
+        }
+
+        $searchData = $searchResult->data ?? [];
+        $results = $searchData['results'] ?? [];
+
+        if (empty($results)) {
+            return AgentResponse::error(
+                sprintf('Page "%s" not found in siteaccess "%s".', $pageName, $siteaccess),
+            );
+        }
+
+        // 3. Update the found content
+        $contentId = $results[0]['content_id'];
+        $updateParams = array_merge($params, ['content_id' => $contentId]);
+
+        return $this->executeTool('update_content', $updateParams);
     }
 
     private function handleListBlocks(): AgentResponse

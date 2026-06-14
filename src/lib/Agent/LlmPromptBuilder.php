@@ -61,6 +61,16 @@ For "create_content":
 }
 
 For "update_content":
+- If user specifies a page by name and site (e.g. "Update the homepage on mattcch"):
+{
+  "intent": "update_content",
+  "parameters": {
+    "siteaccess": "mattcch",
+    "page_name": "homepage",
+    "attributes": { "field_identifier": "new_value" }
+  }
+}
+- If user provides a content ID directly:
 {
   "intent": "update_content",
   "parameters": {
@@ -146,6 +156,7 @@ Field format rules:
 - ezobjectrelation: Output a content ID as integer (the system resolves it).
 - ezobjectrelationlist: Output an array of content IDs as integers.
 - ezimage: Output a detailed description of the desired image. This will be used as an AI image generation prompt. Be specific about the scene, subject, colors, and mood.
+- novaseometas: Output a JSON object with meta keys as keys and content as string values. Example: {"title": "Page Title", "description": "A description", "og:title": "OG Title"}. For image keys (og:image, twitter:image), output a descriptive search query to find an appropriate image in the media library (e.g. "african integration conference banner"). For other keys (canonical, robots), output the appropriate value as a string. Leave empty string if not applicable.
 
 Siteaccess rules:
 - If the user specifies a site (e.g. "under mattcch site", "for the mattcch site"), extract the siteaccess name.

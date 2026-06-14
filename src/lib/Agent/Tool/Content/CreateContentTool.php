@@ -75,61 +75,52 @@ readonly class CreateContentTool implements ToolInterface
             $remoteId = $params['remote_id'] ?? null;
             $locationRemoteId = $params['location_remote_id'] ?? null;
 
-            $result = $this->repository->sudo(function () use (
-                $contentTypeIdentifier,
-                $parentLocationId,
-                $attributes,
-                $languageCode,
-                $remoteId,
-                $locationRemoteId,
-            ) {
-                $contentService = $this->repository->getContentService();
-                $locationService = $this->repository->getLocationService();
-                $contentTypeService = $this->repository->getContentTypeService();
+            $contentService = $this->repository->getContentService();
+            $locationService = $this->repository->getLocationService();
+            $contentTypeService = $this->repository->getContentTypeService();
 
-                // Load content type
-                $contentType = $contentTypeService->loadContentTypeByIdentifier($contentTypeIdentifier);
+            // Load content type
+            $contentType = $contentTypeService->loadContentTypeByIdentifier($contentTypeIdentifier);
 
-                // Create content draft with inline location
-                $createStruct = $contentService->newContentCreateStruct($contentType, $languageCode);
-                $createStruct->contentType = $contentType;
-                $createStruct->mainLanguageCode = $languageCode;
-                $createStruct->remoteId = $remoteId;
+            // Create content draft with inline location
+            $createStruct = $contentService->newContentCreateStruct($contentType, $languageCode);
+            $createStruct->contentType = $contentType;
+            $createStruct->mainLanguageCode = $languageCode;
+            $createStruct->remoteId = $remoteId;
 
-                // Set field values with transformation
-                foreach ($attributes as $fieldIdentifier => $value) {
-                    $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
-                    $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
+            // Set field values with transformation
+            foreach ($attributes as $fieldIdentifier => $value) {
+                $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
+                $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
 
-                    // ezselection: map label strings to option indices
-                    if ($fieldType === 'ezselection' && is_string($value)) {
-                        $options = $fieldDef->getFieldSettings()['options'] ?? [];
-                        $labelToIndex = array_flip($options);
-                        $index = $labelToIndex[$value] ?? null;
-                        if ($index !== null) {
-                            $value = [$index];
-                        }
+                // ezselection: map label strings to option indices
+                if ($fieldType === 'ezselection' && is_string($value)) {
+                    $options = $fieldDef->getFieldSettings()['options'] ?? [];
+                    $labelToIndex = array_flip($options);
+                    $index = $labelToIndex[$value] ?? null;
+                    if ($index !== null) {
+                        $value = [$index];
                     }
-
-                    $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value);
-                    $createStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
                 }
 
-                $locationCreateStruct = $locationService->newLocationCreateStruct($parentLocationId);
-                $locationCreateStruct->remoteId = $locationRemoteId;
+                $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value);
+                $createStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
+            }
 
-                $draft = $contentService->createContent($createStruct, [$locationCreateStruct]);
+            $locationCreateStruct = $locationService->newLocationCreateStruct($parentLocationId);
+            $locationCreateStruct->remoteId = $locationRemoteId;
 
-                // Publish
-                $published = $contentService->publishVersion($draft->versionInfo);
-                $location = $locationService->loadLocation($published->contentInfo->mainLocationId);
+            $draft = $contentService->createContent($createStruct, [$locationCreateStruct]);
 
-                return [
-                    'content_id' => $published->id,
-                    'location_id' => $location->id,
-                    'remote_id' => $published->remoteId,
-                ];
-            });
+            // Publish
+            $published = $contentService->publishVersion($draft->versionInfo);
+            $location = $locationService->loadLocation($published->contentInfo->mainLocationId);
+
+            $result = [
+                'content_id' => $published->id,
+                'location_id' => $location->id,
+                'remote_id' => $published->remoteId,
+            ];
 
             return ToolResult::ok(
                 sprintf('Created %s (ID: %d)', $contentTypeIdentifier, $result['content_id']),

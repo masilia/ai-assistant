@@ -77,171 +77,169 @@ readonly class CreatePageStructureTool implements ToolInterface
         $tempFiles = [];
 
         try {
-            $result = $this->repository->sudo(function () use ($params, &$tempFiles) {
-                $contentService = $this->repository->getContentService();
-                $locationService = $this->repository->getLocationService();
-                $contentTypeService = $this->repository->getContentTypeService();
+            $contentService = $this->repository->getContentService();
+            $locationService = $this->repository->getLocationService();
+            $contentTypeService = $this->repository->getContentTypeService();
 
-                $languageCode = $params['language'] ?? 'eng-GB';
-                $parentLocationId = (int) $params['parent_location_id'];
-                $createdBlocks = [];
-                $blockContentIds = [];
+            $languageCode = $params['language'] ?? 'eng-GB';
+            $parentLocationId = (int) $params['parent_location_id'];
+            $createdBlocks = [];
+            $blockContentIds = [];
 
-                // 0. Pre-generate images for ezimage fields
-                $tempFiles = $this->preGenerateImages(
-                    $params['blocks'],
-                    $params['title'],
-                    $contentTypeService,
-                );
+            // 0. Pre-generate images for ezimage fields
+            $tempFiles = $this->preGenerateImages(
+                $params['blocks'],
+                $params['title'],
+                $contentTypeService,
+            );
 
-                // 1. Create page with inline location
-                $pageType = $contentTypeService->loadContentTypeByIdentifier('page');
-                $pageCreateStruct = $contentService->newContentCreateStruct($pageType, $languageCode);
-                $pageCreateStruct->setField('title', $params['title'], $languageCode);
-                $pageCreateStruct->setField('description', $params['description'] ?? '', $languageCode);
+            // 1. Create page with inline location
+            $pageType = $contentTypeService->loadContentTypeByIdentifier('page');
+            $pageCreateStruct = $contentService->newContentCreateStruct($pageType, $languageCode);
+            $pageCreateStruct->setField('title', $params['title'], $languageCode);
+            $pageCreateStruct->setField('description', $params['description'] ?? '', $languageCode);
 
-                $pageLocStruct = $locationService->newLocationCreateStruct($parentLocationId);
-                $pageDraft = $contentService->createContent($pageCreateStruct, [$pageLocStruct]);
-                $pagePublished = $contentService->publishVersion($pageDraft->versionInfo);
-                $pageLocation = $locationService->loadLocation($pagePublished->contentInfo->mainLocationId);
+            $pageLocStruct = $locationService->newLocationCreateStruct($parentLocationId);
+            $pageDraft = $contentService->createContent($pageCreateStruct, [$pageLocStruct]);
+            $pagePublished = $contentService->publishVersion($pageDraft->versionInfo);
+            $pageLocation = $locationService->loadLocation($pagePublished->contentInfo->mainLocationId);
 
-                // 2. Create blocks folder under page
-                $folderType = $contentTypeService->loadContentTypeByIdentifier('folder');
-                $folderCreateStruct = $contentService->newContentCreateStruct($folderType, $languageCode);
-                $folderCreateStruct->setField('name', $params['title'] . ' blocks', $languageCode);
+            // 2. Create blocks folder under page
+            $folderType = $contentTypeService->loadContentTypeByIdentifier('folder');
+            $folderCreateStruct = $contentService->newContentCreateStruct($folderType, $languageCode);
+            $folderCreateStruct->setField('name', $params['title'] . ' blocks', $languageCode);
 
-                $folderLocStruct = $locationService->newLocationCreateStruct($pageLocation->id);
-                $folderDraft = $contentService->createContent($folderCreateStruct, [$folderLocStruct]);
-                $folderPublished = $contentService->publishVersion($folderDraft->versionInfo);
-                $folderLocation = $locationService->loadLocation($folderPublished->contentInfo->mainLocationId);
+            $folderLocStruct = $locationService->newLocationCreateStruct($pageLocation->id);
+            $folderDraft = $contentService->createContent($folderCreateStruct, [$folderLocStruct]);
+            $folderPublished = $contentService->publishVersion($folderDraft->versionInfo);
+            $folderLocation = $locationService->loadLocation($folderPublished->contentInfo->mainLocationId);
 
-                // 3. Create blocks
-                foreach ($params['blocks'] as $blockData) {
-                    $blockTypeId = $blockData['type'] ?? '';
-                    $blockFields = $blockData['fields'] ?? [];
+            // 3. Create blocks
+            foreach ($params['blocks'] as $blockData) {
+                $blockTypeId = $blockData['type'] ?? '';
+                $blockFields = $blockData['fields'] ?? [];
 
-                    $blockType = $contentTypeService->loadContentTypeByIdentifier($blockTypeId);
-                    $blockCreateStruct = $contentService->newContentCreateStruct($blockType, $languageCode);
+                $blockType = $contentTypeService->loadContentTypeByIdentifier($blockTypeId);
+                $blockCreateStruct = $contentService->newContentCreateStruct($blockType, $languageCode);
 
-                    // Find the relation field for this block type
-                    $relationFieldDef = $this->findRelationField($blockType);
-                    $relationFieldId = $relationFieldDef?->identifier;
+                // Find the relation field for this block type
+                $relationFieldDef = $this->findRelationField($blockType);
+                $relationFieldId = $relationFieldDef?->identifier;
 
-                    // Set fields on the block, skipping the relation field (handled separately)
-                    foreach ($blockFields as $fieldId => $value) {
-                        if ($fieldId === $relationFieldId) {
-                            continue; // relation field handled after items are created
-                        }
-                        if ($blockType->hasFieldDefinition($fieldId)) {
-                            $fieldDef = $blockType->getFieldDefinition($fieldId);
-                            $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
-
-                            // ezselection: map label strings to option indices
-                            if ($fieldType === 'ezselection' && is_string($value)) {
-                                $options = $fieldDef->getFieldSettings()['options'] ?? [];
-                                $labelToIndex = array_flip($options);
-                                $index = $labelToIndex[$value] ?? null;
-                                if ($index !== null) {
-                                    $value = [$index];
-                                }
-                            }
-
-                            $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldId, $value);
-                            $blockCreateStruct->setField($fieldId, $transformedValue, $languageCode);
-                        }
+                // Set fields on the block, skipping the relation field (handled separately)
+                foreach ($blockFields as $fieldId => $value) {
+                    if ($fieldId === $relationFieldId) {
+                        continue; // relation field handled after items are created
                     }
+                    if ($blockType->hasFieldDefinition($fieldId)) {
+                        $fieldDef = $blockType->getFieldDefinition($fieldId);
+                        $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
 
-                    // Initialize empty relation list
-                    if ($relationFieldId !== null) {
-                        $blockCreateStruct->setField($relationFieldId, [], $languageCode);
-                    }
-
-                    $blockLocStruct = $locationService->newLocationCreateStruct($folderLocation->id);
-                    $blockDraft = $contentService->createContent($blockCreateStruct, [$blockLocStruct]);
-                    $blockPublished = $contentService->publishVersion($blockDraft->versionInfo);
-                    $blockContentIds[] = $blockPublished->id;
-                    $blockLocation = $locationService->loadLocation($blockPublished->contentInfo->mainLocationId);
-
-                    // 4. Create block items from LLM data
-                    $itemContentIds = [];
-                    if ($relationFieldId !== null && isset($blockFields[$relationFieldId]) && is_array($blockFields[$relationFieldId])) {
-                        $allowedTypes = $this->getAllowedTypes($relationFieldDef);
-                        $itemsData = $blockFields[$relationFieldId];
-
-                        foreach ($itemsData as $itemData) {
-                            $itemTypeId = $itemData['type'] ?? '';
-                            if ($itemTypeId === '' || !in_array($itemTypeId, $allowedTypes, true)) {
-                                continue; // skip invalid or disallowed item types
+                        // ezselection: map label strings to option indices
+                        if ($fieldType === 'ezselection' && is_string($value)) {
+                            $options = $fieldDef->getFieldSettings()['options'] ?? [];
+                            $labelToIndex = array_flip($options);
+                            $index = $labelToIndex[$value] ?? null;
+                            if ($index !== null) {
+                                $value = [$index];
                             }
+                        }
 
-                            $itemType = $contentTypeService->loadContentTypeByIdentifier($itemTypeId);
-                            $itemCreateStruct = $contentService->newContentCreateStruct($itemType, $languageCode);
+                        $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldId, $value);
+                        $blockCreateStruct->setField($fieldId, $transformedValue, $languageCode);
+                    }
+                }
 
-                            // Set item fields from LLM data with transformation
-                            foreach ($itemData as $itemFieldId => $itemValue) {
-                                if ($itemFieldId === 'type') {
-                                    continue; // skip the type key
-                                }
-                                if ($itemType->hasFieldDefinition($itemFieldId)) {
-                                    $itemFieldDef = $itemType->getFieldDefinition($itemFieldId);
-                                    $itemFieldType = $itemFieldDef?->fieldTypeIdentifier ?? '';
+                // Initialize empty relation list
+                if ($relationFieldId !== null) {
+                    $blockCreateStruct->setField($relationFieldId, [], $languageCode);
+                }
 
-                                    // ezselection: map label strings to option indices
-                                    if ($itemFieldType === 'ezselection' && is_string($itemValue)) {
-                                        $options = $itemFieldDef->getFieldSettings()['options'] ?? [];
-                                        $labelToIndex = array_flip($options);
-                                        $index = $labelToIndex[$itemValue] ?? null;
-                                        if ($index !== null) {
-                                            $itemValue = [$index];
-                                        }
+                $blockLocStruct = $locationService->newLocationCreateStruct($folderLocation->id);
+                $blockDraft = $contentService->createContent($blockCreateStruct, [$blockLocStruct]);
+                $blockPublished = $contentService->publishVersion($blockDraft->versionInfo);
+                $blockContentIds[] = $blockPublished->id;
+                $blockLocation = $locationService->loadLocation($blockPublished->contentInfo->mainLocationId);
+
+                // 4. Create block items from LLM data
+                $itemContentIds = [];
+                if ($relationFieldId !== null && isset($blockFields[$relationFieldId]) && is_array($blockFields[$relationFieldId])) {
+                    $allowedTypes = $this->getAllowedTypes($relationFieldDef);
+                    $itemsData = $blockFields[$relationFieldId];
+
+                    foreach ($itemsData as $itemData) {
+                        $itemTypeId = $itemData['type'] ?? '';
+                        if ($itemTypeId === '' || !in_array($itemTypeId, $allowedTypes, true)) {
+                            continue; // skip invalid or disallowed item types
+                        }
+
+                        $itemType = $contentTypeService->loadContentTypeByIdentifier($itemTypeId);
+                        $itemCreateStruct = $contentService->newContentCreateStruct($itemType, $languageCode);
+
+                        // Set item fields from LLM data with transformation
+                        foreach ($itemData as $itemFieldId => $itemValue) {
+                            if ($itemFieldId === 'type') {
+                                continue; // skip the type key
+                            }
+                            if ($itemType->hasFieldDefinition($itemFieldId)) {
+                                $itemFieldDef = $itemType->getFieldDefinition($itemFieldId);
+                                $itemFieldType = $itemFieldDef?->fieldTypeIdentifier ?? '';
+
+                                // ezselection: map label strings to option indices
+                                if ($itemFieldType === 'ezselection' && is_string($itemValue)) {
+                                    $options = $itemFieldDef->getFieldSettings()['options'] ?? [];
+                                    $labelToIndex = array_flip($options);
+                                    $index = $labelToIndex[$itemValue] ?? null;
+                                    if ($index !== null) {
+                                        $itemValue = [$index];
                                     }
-
-                                    $transformedItemValue = $this->transformerRegistry->transform($itemFieldType, $itemFieldId, $itemValue);
-                                    $itemCreateStruct->setField($itemFieldId, $transformedItemValue, $languageCode);
                                 }
+
+                                $transformedItemValue = $this->transformerRegistry->transform($itemFieldType, $itemFieldId, $itemValue);
+                                $itemCreateStruct->setField($itemFieldId, $transformedItemValue, $languageCode);
                             }
-
-                            $itemLocStruct = $locationService->newLocationCreateStruct($blockLocation->id);
-                            $itemDraft = $contentService->createContent($itemCreateStruct, [$itemLocStruct]);
-                            $itemPublished = $contentService->publishVersion($itemDraft->versionInfo);
-                            $itemContentIds[] = $itemPublished->id;
                         }
 
-                        // Update block's relation list with item IDs
-                        if (!empty($itemContentIds)) {
-                            $blockDraft2 = $contentService->createContentDraft($blockPublished->contentInfo);
-                            $updateStruct = $contentService->newContentUpdateStruct();
-                            $updateStruct->setField($relationFieldId, $itemContentIds, $languageCode);
-                            $contentService->updateContent($blockDraft2->versionInfo, $updateStruct);
-                            $contentService->publishVersion($blockDraft2->versionInfo);
-                        }
+                        $itemLocStruct = $locationService->newLocationCreateStruct($blockLocation->id);
+                        $itemDraft = $contentService->createContent($itemCreateStruct, [$itemLocStruct]);
+                        $itemPublished = $contentService->publishVersion($itemDraft->versionInfo);
+                        $itemContentIds[] = $itemPublished->id;
                     }
 
-                    $createdBlocks[] = [
-                        'type' => $blockTypeId,
-                        'content_id' => $blockPublished->id,
-                        'location_id' => $blockLocation->id,
-                        'items' => $itemContentIds,
-                    ];
+                    // Update block's relation list with item IDs
+                    if (!empty($itemContentIds)) {
+                        $blockDraft2 = $contentService->createContentDraft($blockPublished->contentInfo);
+                        $updateStruct = $contentService->newContentUpdateStruct();
+                        $updateStruct->setField($relationFieldId, $itemContentIds, $languageCode);
+                        $contentService->updateContent($blockDraft2->versionInfo, $updateStruct);
+                        $contentService->publishVersion($blockDraft2->versionInfo);
+                    }
                 }
 
-                // 5. Update page's blocks relation list
-                if (!empty($blockContentIds)) {
-                    $pageDraft2 = $contentService->createContentDraft($pagePublished->contentInfo);
-                    $updateStruct = $contentService->newContentUpdateStruct();
-                    $updateStruct->setField('blocks', $blockContentIds, $languageCode);
-                    $contentService->updateContent($pageDraft2->versionInfo, $updateStruct);
-                    $contentService->publishVersion($pageDraft2->versionInfo);
-                }
-
-                return [
-                    'page_id' => $pagePublished->id,
-                    'page_location_id' => $pageLocation->id,
-                    'folder_id' => $folderPublished->id,
-                    'folder_location_id' => $folderLocation->id,
-                    'blocks' => $createdBlocks,
+                $createdBlocks[] = [
+                    'type' => $blockTypeId,
+                    'content_id' => $blockPublished->id,
+                    'location_id' => $blockLocation->id,
+                    'items' => $itemContentIds,
                 ];
-            });
+            }
+
+            // 5. Update page's blocks relation list
+            if (!empty($blockContentIds)) {
+                $pageDraft2 = $contentService->createContentDraft($pagePublished->contentInfo);
+                $updateStruct = $contentService->newContentUpdateStruct();
+                $updateStruct->setField('blocks', $blockContentIds, $languageCode);
+                $contentService->updateContent($pageDraft2->versionInfo, $updateStruct);
+                $contentService->publishVersion($pageDraft2->versionInfo);
+            }
+
+            $result = [
+                'page_id' => $pagePublished->id,
+                'page_location_id' => $pageLocation->id,
+                'folder_id' => $folderPublished->id,
+                'folder_location_id' => $folderLocation->id,
+                'blocks' => $createdBlocks,
+            ];
 
             return ToolResult::ok(
                 sprintf('Created page "%s" with %d blocks', $params['title'], count($result['blocks'])),

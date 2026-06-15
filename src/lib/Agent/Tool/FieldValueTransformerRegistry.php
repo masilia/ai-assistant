@@ -25,7 +25,7 @@ readonly class FieldValueTransformerRegistry
     ) {
         $map = [];
         foreach ($transformers as $transformer) {
-            $map[$transformer->getFieldType()] = $transformer;
+            $map[$transformer->getFieldTypeIdentifier()] = $transformer;
         }
         $this->transformers = $map;
     }

@@ -14,7 +14,7 @@ use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
  */
 readonly class UrlTransformer implements FieldValueTransformerInterface
 {
-    public function getFieldType(): string
+    public function getFieldTypeIdentifier(): string
     {
         return 'ezurl';
     }

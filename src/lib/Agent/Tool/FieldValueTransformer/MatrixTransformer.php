@@ -17,7 +17,7 @@ use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
  */
 readonly class MatrixTransformer implements FieldValueTransformerInterface
 {
-    public function getFieldType(): string
+    public function getFieldTypeIdentifier(): string
     {
         return 'ezmatrix';
     }

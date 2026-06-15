@@ -7,7 +7,7 @@ namespace Masilia\AiAssistant\Field\Stringifier;
 use Ibexa\Contracts\Core\Repository\FieldTypeService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
-use Masilia\AiAssistant\Field\FieldValueStringifierInterface;
+use Masilia\AiAssistant\Field\FieldValueStringifierRegistry;
 use Throwable;
 
 /**
@@ -26,7 +26,7 @@ final readonly class GenericStringifier implements FieldValueStringifierInterfac
 
     public static function getSupportedFieldTypes(): array
     {
-        return [FieldValueStringifierInterface::FALLBACK_TYPE];
+        return [FieldValueStringifierRegistry::FALLBACK_TYPE];
     }
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string

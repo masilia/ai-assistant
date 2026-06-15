@@ -151,4 +151,9 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
     {
         return $this->extractAnthropicStreamUsage($lastChunk, $lastFinishReason);
     }
+
+    public function extractFinishReason(array $data): ?string
+    {
+        return $this->extractAnthropicFinishReason($data);
+    }
 }

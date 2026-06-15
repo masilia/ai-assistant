@@ -37,7 +37,7 @@ readonly class NovaSeoMetasTransformer implements FieldValueTransformerInterface
     ) {
     }
 
-    public function getFieldType(): string
+    public function getFieldTypeIdentifier(): string
     {
         return 'novaseometas';
     }

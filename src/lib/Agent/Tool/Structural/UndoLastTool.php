@@ -28,7 +28,7 @@ readonly class UndoLastTool implements ToolInterface
 
     public function getDescription(): string
     {
-        return 'Undo the last operation by restoring trashed content or trashing created content.';
+        return 'Restore one or more trashed content items back to their original location.';
     }
 
     public function getParameters(): array

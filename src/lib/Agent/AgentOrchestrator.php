@@ -7,6 +7,7 @@ namespace Masilia\AiAssistant\Agent;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use Masilia\AiAssistant\Agent\Block\BlockDesigner;
 use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\AiConstants;
@@ -148,12 +149,13 @@ readonly class AgentOrchestrator
         $attributes = $params['attributes'] ?? [];
         $isSeoUpdate = isset($attributes['novaseometas']);
 
-        $contentId = $params['content_id'] ?? null;
-        if ($contentId === null) {
-            $contentId = $this->resolveContentByName($params);
-            if ($contentId instanceof AgentResponse) {
-                return $contentId;
+        try {
+            $contentId = $params['content_id'] ?? null;
+            if ($contentId === null) {
+                $contentId = $this->resolveContentByName($params);
             }
+        } catch (ContentNotFoundException $e) {
+            return AgentResponse::error($e->getMessage());
         }
 
         if ($isSeoUpdate) {
@@ -165,22 +167,23 @@ readonly class AgentOrchestrator
 
     /**
      * Resolve content_id from siteaccess + page_name params.
-     * Returns int on success, AgentResponse(error) on failure.
+     *
+     * @throws ContentNotFoundException
      */
-    private function resolveContentByName(array $params): int|AgentResponse
+    private function resolveContentByName(array $params): int
     {
         $siteaccess = $params['siteaccess'] ?? '';
         $pageName = $params['page_name'] ?? '';
 
         if ($siteaccess === '' || $pageName === '') {
-            return AgentResponse::error(
+            throw new ContentNotFoundException(
                 'Please provide either a content_id, or both siteaccess and page_name to search for the page.',
             );
         }
 
         $contentId = $this->contentResolver->findBySiteaccessAndName($siteaccess, $pageName);
         if ($contentId === null) {
-            return AgentResponse::error(
+            throw new ContentNotFoundException(
                 sprintf('Page "%s" not found in siteaccess "%s".', $pageName, $siteaccess),
             );
         }

@@ -27,7 +27,7 @@ readonly class RichTextTransformer implements FieldValueTransformerInterface
     ) {
     }
 
-    public function getFieldType(): string
+    public function getFieldTypeIdentifier(): string
     {
         return 'ezrichtext';
     }

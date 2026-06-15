@@ -15,7 +15,7 @@ use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
  */
 readonly class DateTransformer implements FieldValueTransformerInterface
 {
-    public function getFieldType(): string
+    public function getFieldTypeIdentifier(): string
     {
         return 'ezdate';
     }

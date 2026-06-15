@@ -23,7 +23,7 @@ use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
  */
 readonly class SelectionTransformer implements FieldValueTransformerInterface
 {
-    public function getFieldType(): string
+    public function getFieldTypeIdentifier(): string
     {
         return 'ezselection';
     }

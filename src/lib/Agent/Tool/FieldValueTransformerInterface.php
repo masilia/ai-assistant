@@ -14,7 +14,7 @@ interface FieldValueTransformerInterface
      *
      * @return string e.g. 'ezrichtext', 'ezmatrix'
      */
-    public function getFieldType(): string;
+    public function getFieldTypeIdentifier(): string;
 
     /**
      * Transform a raw LLM value into the format expected by the given field type.

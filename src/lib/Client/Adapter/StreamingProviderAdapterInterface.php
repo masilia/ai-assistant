@@ -28,6 +28,16 @@ interface StreamingProviderAdapterInterface extends ProviderAdapterInterface
     public function isStreamEnd(string $line): bool;
 
     /**
+     * Extract the finish reason from a decoded SSE chunk.
+     *
+     * Each provider uses different JSON keys:
+     * - OpenAI: `choices[0].finish_reason`
+     * - Anthropic: `delta.stop_reason` or `stop_reason`
+     * - MiniMax: `stop_reason`
+     */
+    public function extractFinishReason(array $data): ?string;
+
+    /**
      * Inspect the last decoded SSE chunk and the last seen finish-reason
      * (already extracted by {@see StreamConsumer}) and return usage data
      * in the same shape as {@see ProviderAdapterInterface::extractUsage()}:

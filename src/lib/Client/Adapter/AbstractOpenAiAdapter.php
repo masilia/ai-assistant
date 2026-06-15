@@ -144,6 +144,13 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
         return $trimmed === 'data: [DONE]' || $trimmed === '[DONE]' || $trimmed === 'DONE';
     }
 
+    public function extractFinishReason(array $data): ?string
+    {
+        return isset($data['choices'][0]['finish_reason'])
+            ? (string) $data['choices'][0]['finish_reason']
+            : null;
+    }
+
     public function extractUsage(array $data): ?array
     {
         $usage = $data['usage'] ?? null;

@@ -61,4 +61,14 @@ trait AnthropicMessagesResponseTrait
             'finishReason' => $finish,
         ];
     }
+
+    /**
+     * Extract finish reason from Anthropic-Messages-API-shaped SSE chunk.
+     */
+    protected function extractAnthropicFinishReason(array $data): ?string
+    {
+        return isset($data['delta']['stop_reason'])
+            ? (string) $data['delta']['stop_reason']
+            : (isset($data['stop_reason']) ? (string) $data['stop_reason'] : null);
+    }
 }

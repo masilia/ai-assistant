@@ -24,6 +24,12 @@ use Throwable;
  */
 class FieldValueStringifierRegistry
 {
+    /**
+     * Pseudo field-type identifier used to register the fallback stringifier
+     * (typically {@see GenericStringifier}). Not a real Ibexa field type.
+     */
+    public const FALLBACK_TYPE = '_fallback';
+
     /** @var array<string, FieldValueStringifierInterface> */
     private array $map = [];
 
@@ -44,7 +50,7 @@ class FieldValueStringifierRegistry
 
         foreach ($stringifiers as $stringifier) {
             foreach ($stringifier::getSupportedFieldTypes() as $type) {
-                if ($type === FieldValueStringifierInterface::FALLBACK_TYPE) {
+                if ($type === self::FALLBACK_TYPE) {
                     $this->fallback = $stringifier;
                     continue;
                 }

@@ -36,8 +36,13 @@ class MasiliaAiAssistantExtension extends Extension implements PrependExtensionI
 
         if (isset($bundles['TwigBundle'])) {
             $configFile = __DIR__ . '/../Resources/config/twig.yaml';
-            $config = Yaml::parse(file_get_contents($configFile));
-            $container->prependExtensionConfig('twig', $config);
+            $raw = @file_get_contents($configFile);
+            if ($raw !== false) {
+                $config = Yaml::parse($raw);
+                if (is_array($config)) {
+                    $container->prependExtensionConfig('twig', $config);
+                }
+            }
         }
 
         // Register a dedicated Monolog channel so AI logs can be routed

@@ -104,12 +104,9 @@ readonly class StreamConsumer
         $parsed = $this->decodeIfDataLine($line);
         if ($parsed !== null) {
             $lastChunk = $parsed;
-            $finishInChunk = $parsed['choices'][0]['finish_reason']
-                ?? $parsed['delta']['stop_reason']
-                ?? $parsed['stop_reason']
-                ?? null;
+            $finishInChunk = $adapter->extractFinishReason($parsed);
             if ($finishInChunk !== null) {
-                $lastFinish = (string)$finishInChunk;
+                $lastFinish = $finishInChunk;
             }
         }
 

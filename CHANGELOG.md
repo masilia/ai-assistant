@@ -16,17 +16,6 @@ Types of changes:
 
 ## [Unreleased]
 
-### Changed
-- **Icon set migrated from emoji to Lucide-style SVG** — all
-  rendered icons in the AI modal, the dashboard, and the
-  field-level injector are now inline-SVG Lucide components
-  (`WandIcon`, `MinimizeIcon`, `LanguagesIcon`, `BrainIcon`,
-  `BotIcon`, `SearchXIcon`, etc.) instead of OS-dependent emoji
-  glyphs. Single source of truth in
-  `components/ai-settings/icons.jsx`. No new dependency.
-  `QUICK_ACTIONS[].icon` is now a React component reference, not
-  a string.
-
 ### Added
 - **`ResolvedProvider` domain object** — `lib/Client/Resolved/ResolvedProvider.php`.
   The `AiProviderRepositoryInterface` now returns framework-agnostic
@@ -81,11 +70,90 @@ Types of changes:
 - **`extractUsage()` on `ProviderAdapterInterface`** — adapters
   return `{input, output, finishReason}` (or null); used by the
   request logger to populate token columns.
+- **`ContentNotFoundException`** — typed exception for content
+  resolution failures, replacing mixed `int|AgentResponse` return.
+- **`ToolName` constants class** — 14 centralized tool name
+  identifiers replacing hardcoded strings across 17 files.
+- **`ContentTypeId` and `FieldId` constants classes** — centralized
+  content type and field identifiers for the agent subsystem.
+- **`SiteaccessResolverTrait`** — shared siteaccess resolution for
+  `TargetResolver` and `ImageTargetResolver`.
+- **`ImageFileHelper`** — shared image file utilities (SVG MIME type,
+  temp file handling with leak prevention).
+- **`ContentResolver`** — content lookup by name/siteaccess.
+- **`SiteaccessLocationResolver`** — location resolution helper.
+- **`LlmResponseParser`** — standalone JSON parsing extracted from
+  `LlmPromptBuilder`.
+- **`BlockImagePreGenerator`** — image pre-generation extracted from
+  `CreatePageStructureTool`.
+- **`BlockCatalog::renderBlockSummary()`** — shared block rendering
+  for orchestrator and prompt builder.
+- **`DateTimeTransformer`** — ezdatetime field transformer.
+- **`extractFinishReason()` on `StreamingProviderAdapterInterface`**
+  — provider-specific finish-reason extraction delegated to adapters.
+- **`extractAnthropicFinishReason()` on `AnthropicMessagesResponseTrait`**
+  — shared by `AnthropicAdapter` and `MiniMaxAdapter`.
+- **`AiConstants::scrubForPrompt()`** — centralized prompt scrubbing,
+  replacing 3 duplicated private methods.
+- **`AiConstants::truncate()`** — centralized truncation, replacing
+  duplicated logic in stringifiers.
+- **`AiConstants::MAX_SIBLING_CHARS`**, **`MAX_CURRENT_VALUE_CHARS`**,
+  **`MAX_ALT_TEXT_CHARS`**, **`DEFAULT_SITEACCESS`** — centralized
+  constants replacing hardcoded values.
+- **Documentation files** — `docs/FEATURES.md`, `docs/CONFIGURATION.md`,
+  `docs/USAGE.md`, `docs/EXTENDING.md` extracted from README for
+  the Novactive thin-landing-page pattern.
 
 ### Changed
-- **`AiClient` was split** into `TargetResolver` (resolves active
-  provider+model+endpoint) + `StreamConsumer` (SSE line buffering).
-  `AiClient` is now a thin orchestrator (~80 lines).
+- **Icon set migrated from emoji to Lucide-style SVG** — all
+  rendered icons in the AI modal, the dashboard, and the
+  field-level injector are now inline-SVG Lucide components
+  (`WandIcon`, `MinimizeIcon`, `LanguagesIcon`, `BrainIcon`,
+  `BotIcon`, `SearchXIcon`, etc.) instead of OS-dependent emoji
+  glyphs. Single source of truth in
+  `components/ai-settings/icons.jsx`. No new dependency.
+  `QUICK_ACTIONS[].icon` is now a React component reference, not
+  a string.
+- **`getFieldType()` renamed to `getFieldTypeIdentifier()`** on
+  `FieldValueTransformerInterface` and all 11 implementations.
+  Clarifies that the method returns a string identifier, not a
+  field type object.
+- **`FALLBACK_TYPE` moved** from `FieldValueStringifierInterface`
+  to `FieldValueTransformerRegistry` where it is actually consumed.
+- **`resolveContentByName()` now throws `ContentNotFoundException`**
+  instead of returning `int|AgentResponse`. Callers catch the
+  exception and return a typed error response.
+- **`UndoLastTool` description corrected** — now accurately describes
+  "restore trashed content" instead of the misleading "undo last
+  operation by restoring trashed content or trashing created content".
+- **Provider-specific finish-reason extraction** moved from
+  `StreamConsumer` to adapters via `extractFinishReason()` on
+  `StreamingProviderAdapterInterface`. Eliminates hardcoded
+  `choices[0].finish_reason` / `delta.stop_reason` fallback chain.
+- **`ImageFileHelper::saveTempFile()`** now uses `tempnam()` +
+  `rename()` to prevent temp file leaks on concurrent requests.
+- **`LlmPromptBuilder`** no longer depends on `NovaSeoPromptBuilder`
+  directly — SEO prompt building inlined into `SeoMetadataHandler`.
+- **`IntentClassifier`** now depends on `LlmResponseParser` instead
+  of `LlmPromptBuilder` for response parsing.
+- **Null-value guards added** to 5 stringifiers (Author, Country,
+  Keyword, MapLocation, Selection) — `null` field values now return
+  `''` instead of potentially throwing.
+- **`SelectionTransformer::resolveLabel()`** moved into
+  `FieldValueTransformerRegistry::transform()` — callers no longer
+  need manual ezselection handling.
+- **`BlockImagePreGenerator`** extracted from `CreatePageStructureTool`
+  (553→429 lines).
+- **`CreateSiteStructureTool::execute()`** decomposed — extracted
+  `createSiteSkeleton()` private method (95→60 lines).
+- **`AiPromptBuilder::buildSystemPrompt()`** decomposed — 4 private
+  methods extracted (`resolveSubFieldKey`, `normalizeLanguage`,
+  `buildContextString`, `buildContentContext`).
+- **`SeoMetadataHandler`** now owns its SEO prompt building
+  (inlined from `LlmPromptBuilder`).
+- **Documentation restructured** — README thinned to Novactive
+  landing-page standard; features, configuration, usage, and
+  extending content moved to separate `docs/` files.
 - **`AiSettingsController` was split** into `AiSettingsController`
   (renders the dashboard Twig template) +
   `AiProviderApiController` (provider CRUD + test + health) +
@@ -129,16 +197,29 @@ Types of changes:
   time.
 
 ### Fixed
-- **`AiProviderApiController::getData()` TypeError** — the
-  controller passed a `ResolvedProvider` (returned by
-  `AiProviderRepository::findActive()` after the Sprint 3 P1-B5
-  refactor) to `AiModelRepository::findActiveForProvider()` which
-  expects an `AiProvider` entity. Resolved by adding a new
-  `AiProviderRepository::findActiveEntity()` method that returns
-  the raw `AiProvider` (not the `ResolvedProvider`) for the
-  dashboard data path. Runtime resolution (TargetResolver,
-  HealthChecker) still uses `findActive()` → `ResolvedProvider`.
-  Regression test added.
+- **Temp file leak in `ImageFileHelper::saveTempFile()`** — now
+  uses `tempnam()` + `rename()` to prevent orphaned temp files.
+- **Null-value guard in 5 stringifiers** — Author, Country, Keyword,
+  MapLocation, and Selection stringifiers now handle `null` field
+  values gracefully.
+- **YAML loading error handling** — `MasiliaAiAssistantExtension::prepend()`
+  now handles missing twig.yaml file gracefully with `@file_get_contents()`.
+- **`SystemPromptContext` docblock** — fixed `string[]` type to
+  `array<int, array{label, value}>` for language options.
+- **`FieldType::aiTargeted()` docblock** — corrected count (5 → 6)
+  of AI-targeted field types.
+- **`GenericStringifier` docblock** — clarified that the stringifier
+  handles recursive values, not just single-level.
+- **`BlockFlattener::MAX_FLATTEN_CHARS`** — renamed from
+  `MAX_SIBLING_CHARS` to clarify its actual purpose.
+- **`AiClient::extractErrorCode()`** — cleaned up FQCN parsing
+  logic for provider-specific error code extraction.
+- **`AiProviderApiController`** — removed redundant `validationError()`
+  method, replaced with `jsonErrorResponse()`.
+- **`AgentChatController`** — made `readonly`, imported `AgentPlan`.
+- **`FieldIdentifierResolver`** — made `final`.
+- **`FieldContextExtractor::loadOrLog()`** — changed from `public`
+  to `private` (was never called externally).
 
 - **SSE UTF-8 truncation** — the reader previously dropped the
   final multi-byte characters of a non-ASCII response. Now calls

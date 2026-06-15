@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Client;
 
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\AiAssistant\AiConstants;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -27,6 +28,7 @@ readonly class ImageGenerationClient
         private ImageTargetResolver         $targetResolver,
         private ImageAdapterRegistry        $adapterRegistry,
         private SiteAccessServiceInterface  $siteAccessService,
+        private LoggerInterface             $aiLogger,
     ) {
     }
 
@@ -67,30 +69,53 @@ readonly class ImageGenerationClient
             $quality,
         );
 
-        $response = $this->httpClient->request('POST', $url, [
-            'headers' => $headers,
-            'json'    => $body,
+        $providerName = ProviderId::displayName($target->providerIdentifier);
+        $this->aiLogger->info('[ImageGeneration] Requesting image from {provider}', [
+            'provider' => $providerName,
+            'model' => $target->imageModelIdentifier,
         ]);
 
-        $statusCode = $response->getStatusCode();
-        if ($statusCode !== 200) {
-            throw new RuntimeException(
-                sprintf(
-                    '%s image API returned HTTP %d: %s',
-                    ProviderId::displayName($target->providerIdentifier),
-                    $statusCode,
-                    $response->getContent(false),
-                )
+        try {
+            $response = $this->httpClient->request('POST', $url, [
+                'headers' => $headers,
+                'json'    => $body,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            if ($statusCode !== 200) {
+                $this->aiLogger->error('[ImageGeneration] {provider} returned HTTP {status}', [
+                    'provider' => $providerName,
+                    'status' => $statusCode,
+                ]);
+                throw new RuntimeException(
+                    sprintf(
+                        '%s image API returned HTTP %d: %s',
+                        $providerName,
+                        $statusCode,
+                        $response->getContent(false),
+                    )
+                );
+            }
+
+            $rawData = $response->toArray();
+            $parsed  = $adapter->parseImageResponse($rawData);
+
+            $this->aiLogger->info('[ImageGeneration] Image received from {provider} ({mimeType})', [
+                'provider' => $providerName,
+                'mimeType' => $parsed['mimeType'],
+            ]);
+
+            return new ImageGenerationResult(
+                imageData:     $parsed['imageData'],
+                mimeType:      $parsed['mimeType'],
+                revisedPrompt: $parsed['revisedPrompt'],
             );
+        } catch (\Throwable $e) {
+            $this->aiLogger->error('[ImageGeneration] Request failed: {message}', [
+                'message' => $e->getMessage(),
+                'provider' => $providerName,
+            ]);
+            throw $e;
         }
-
-        $rawData = $response->toArray();
-        $parsed  = $adapter->parseImageResponse($rawData);
-
-        return new ImageGenerationResult(
-            imageData:     $parsed['imageData'],
-            mimeType:      $parsed['mimeType'],
-            revisedPrompt: $parsed['revisedPrompt'],
-        );
     }
 }

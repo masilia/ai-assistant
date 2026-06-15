@@ -145,9 +145,7 @@ services:
         arguments:
             $novaSeo: '@Masilia\AiAssistant\NovaSeoPromptBuilder'
 
-    Masilia\AiAssistant\Agent\LlmPromptBuilder:
-        arguments:
-            $novaSeo: '@Masilia\AiAssistant\NovaSeoPromptBuilder'
+    Masilia\AiAssistant\Agent\LlmPromptBuilder: ~
 
     Masilia\AiAssistant\Client\RequestLoggerInterface:
         alias: 'Masilia\Bundle\AiAssistant\Service\DoctrineRequestLogger'

@@ -7,7 +7,6 @@ namespace Masilia\AiAssistant\Agent\Tool\Content;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
-use Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\SelectionTransformer;
 use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
@@ -106,11 +105,7 @@ readonly class CreateContentTool implements ToolInterface
                 $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
                 $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
 
-                if ($fieldType === 'ezselection' && $fieldDef !== null) {
-                    $value = SelectionTransformer::resolveLabel($fieldDef, $value);
-                }
-
-                $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value);
+                $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value, $fieldDef);
                 $createStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
             }
 

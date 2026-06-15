@@ -7,6 +7,7 @@ namespace Masilia\AiAssistant;
 use Ibexa\FieldTypeMatrix\FieldType\Value;
 use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Field\FieldStringValue;
+use Masilia\AiAssistant\Field\Stringifier\MatrixStringifier;
 use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\Field\ContentFieldAccessor;
@@ -214,14 +215,7 @@ readonly class FieldContextExtractor
             return null;
         }
 
-        $columns = $fieldDef->getFieldSettings()['columns'] ?? [];
-        $headers = [];
-        foreach ($columns as $col) {
-            if (!isset($col['identifier'])) {
-                continue;
-            }
-            $headers[(string)$col['identifier']] = (string)($col['name'] ?? $col['identifier']);
-        }
+        $headers = MatrixStringifier::extractColumnHeaders($fieldDef);
 
         $field = ContentFieldAccessor::getWithFallback($content, $fieldIdentifier, $language);
 

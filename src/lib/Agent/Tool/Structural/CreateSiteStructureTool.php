@@ -87,8 +87,6 @@ readonly class CreateSiteStructureTool implements ToolInterface
         $tempFiles = [];
 
         try {
-            $contentService = $this->repository->getContentService();
-            $locationService = $this->repository->getLocationService();
             $contentTypeService = $this->repository->getContentTypeService();
 
             $languageCode = $params['language']
@@ -109,36 +107,9 @@ readonly class CreateSiteStructureTool implements ToolInterface
             $layoutType = $contentTypeService->loadContentTypeByIdentifier($layoutContentTypeId);
             $folderType = $contentTypeService->loadContentTypeByIdentifier($folderContentTypeId);
 
-            $createdPages = [];
-
-            // 1. Create site container under location 2
-            $siteCreateStruct = $contentService->newContentCreateStruct($siteType, $languageCode);
-            $siteCreateStruct->setField(FieldId::TITLE, $siteName, $languageCode);
-            $siteCreateStruct->setField(FieldId::DOMAIN, $domain, $languageCode);
-            $siteCreateStruct->setField(FieldId::DESCRIPTION, $description, $languageCode);
-
-            $siteLocStruct = $locationService->newLocationCreateStruct(2);
-            $siteDraft = $contentService->createContent($siteCreateStruct, [$siteLocStruct]);
-            $sitePublished = $contentService->publishVersion($siteDraft->versionInfo);
-            $siteLocation = $locationService->loadLocation($sitePublished->contentInfo->mainLocationId);
-
-            // 2. Create layout config under site
-            $layoutCreateStruct = $contentService->newContentCreateStruct($layoutType, $languageCode);
-            $layoutCreateStruct->setField(FieldId::BO_TITLE, sprintf('%s Layout Configuration', $siteName), $languageCode);
-
-            $layoutLocStruct = $locationService->newLocationCreateStruct($siteLocation->id);
-            $layoutDraft = $contentService->createContent($layoutCreateStruct, [$layoutLocStruct]);
-            $layoutPublished = $contentService->publishVersion($layoutDraft->versionInfo);
-
-            // 3. Create home page under site
-            $homeCreateStruct = $contentService->newContentCreateStruct($homePageType, $languageCode);
-            $homeCreateStruct->setField(FieldId::TITLE, 'Home', $languageCode);
-            $homeCreateStruct->setField(FieldId::BLOCKS, [], $languageCode);
-
-            $homeLocStruct = $locationService->newLocationCreateStruct($siteLocation->id);
-            $homeDraft = $contentService->createContent($homeCreateStruct, [$homeLocStruct]);
-            $homePublished = $contentService->publishVersion($homeDraft->versionInfo);
-            $homeLocation = $locationService->loadLocation($homePublished->contentInfo->mainLocationId);
+            // 1-3. Create site skeleton (container + layout + home page)
+            [$sitePublished, $siteLocation, $homePublished, $homeLocation, $layoutPublished]
+                = $this->createSiteSkeleton($siteType, $layoutType, $homePageType, $siteName, $domain, $description, $languageCode);
 
             // 4. Create media folder structure
             $mediaFolder = $this->createFolder($folderType, $languageCode, $mediaRootLocationId, sprintf('%s Media', $siteName));
@@ -177,6 +148,55 @@ readonly class CreateSiteStructureTool implements ToolInterface
                 }
             }
         }
+    }
+
+    /**
+     * Create the site container, layout config, and home page.
+     *
+     * @return array{0: Content, 1: Location, 2: Content, 3: Location, 4: Content}
+     */
+    private function createSiteSkeleton(
+        ContentType $siteType,
+        ContentType $layoutType,
+        ContentType $homePageType,
+        string $siteName,
+        string $domain,
+        string $description,
+        string $languageCode,
+    ): array {
+        $contentService = $this->repository->getContentService();
+        $locationService = $this->repository->getLocationService();
+
+        // 1. Create site container under location 2
+        $siteCreateStruct = $contentService->newContentCreateStruct($siteType, $languageCode);
+        $siteCreateStruct->setField(FieldId::TITLE, $siteName, $languageCode);
+        $siteCreateStruct->setField(FieldId::DOMAIN, $domain, $languageCode);
+        $siteCreateStruct->setField(FieldId::DESCRIPTION, $description, $languageCode);
+
+        $siteLocStruct = $locationService->newLocationCreateStruct(2);
+        $siteDraft = $contentService->createContent($siteCreateStruct, [$siteLocStruct]);
+        $sitePublished = $contentService->publishVersion($siteDraft->versionInfo);
+        $siteLocation = $locationService->loadLocation($sitePublished->contentInfo->mainLocationId);
+
+        // 2. Create layout config under site
+        $layoutCreateStruct = $contentService->newContentCreateStruct($layoutType, $languageCode);
+        $layoutCreateStruct->setField(FieldId::BO_TITLE, sprintf('%s Layout Configuration', $siteName), $languageCode);
+
+        $layoutLocStruct = $locationService->newLocationCreateStruct($siteLocation->id);
+        $layoutDraft = $contentService->createContent($layoutCreateStruct, [$layoutLocStruct]);
+        $layoutPublished = $contentService->publishVersion($layoutDraft->versionInfo);
+
+        // 3. Create home page under site
+        $homeCreateStruct = $contentService->newContentCreateStruct($homePageType, $languageCode);
+        $homeCreateStruct->setField(FieldId::TITLE, 'Home', $languageCode);
+        $homeCreateStruct->setField(FieldId::BLOCKS, [], $languageCode);
+
+        $homeLocStruct = $locationService->newLocationCreateStruct($siteLocation->id);
+        $homeDraft = $contentService->createContent($homeCreateStruct, [$homeLocStruct]);
+        $homePublished = $contentService->publishVersion($homeDraft->versionInfo);
+        $homeLocation = $locationService->loadLocation($homePublished->contentInfo->mainLocationId);
+
+        return [$sitePublished, $siteLocation, $homePublished, $homeLocation, $layoutPublished];
     }
 
     private function resolveConfig(string $key, mixed $default): mixed

@@ -5,15 +5,11 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent;
 
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
-use Masilia\AiAssistant\DTO\SiblingField;
-use Masilia\AiAssistant\NovaSeoPromptBuilder;
-use Masilia\AiAssistant\AiConstants;
 
 readonly class LlmPromptBuilder
 {
     public function __construct(
         private BlockCatalog $blockCatalog,
-        private NovaSeoPromptBuilder $novaSeo,
     ) {
     }
 
@@ -50,22 +46,7 @@ readonly class LlmPromptBuilder
      */
     private function blockTypesSection(): string
     {
-        $blocks = $this->blockCatalog->getAvailableBlocks();
-        $capabilities = $this->blockCatalog->getCapabilities();
-
-        $body = '';
-        foreach ($capabilities as $cap => $types) {
-            $body .= sprintf("\n%s:\n", ucfirst($cap));
-            foreach ($types as $type) {
-                $info = $blocks[$type] ?? null;
-                $fields = $info ? implode(', ', array_keys($info['fields'])) : 'unknown';
-                $body .= sprintf("  - %s (fields: %s)\n", $type, $fields);
-            }
-        }
-
-        // Trailing "\n" on $body becomes part of the section join — strip it
-        // so implode("\n\n") doesn't produce three consecutive newlines.
-        return "Available block types and their capabilities:" . rtrim($body, "\n");
+        return $this->blockCatalog->renderBlockSummary();
     }
 
     /**
@@ -399,94 +380,5 @@ EOT;
     public function buildUserMessage(string $userMessage): string
     {
         return $userMessage;
-    }
-
-    /**
-     * Parse the LLM response into structured data.
-     *
-     * @return array{intent: string, parameters: array}|null
-     */
-    public function parseLlmResponse(string $response): ?array
-    {
-        $json = $this->extractJson($response);
-        if ($json === null) {
-            return null;
-        }
-
-        $decoded = json_decode($json, true);
-        if (!is_array($decoded) || !isset($decoded['intent'])) {
-            return null;
-        }
-
-        return [
-            'intent' => $decoded['intent'],
-            'parameters' => $decoded['parameters'] ?? [],
-        ];
-    }
-
-    private function extractJson(string $text): ?string
-    {
-        $start = strpos($text, '{');
-        if ($start === false) {
-            return null;
-        }
-
-        $depth = 0;
-        for ($i = $start, $iMax = strlen($text); $i < $iMax; $i++) {
-            if ($text[$i] === '{') {
-                $depth++;
-            } elseif ($text[$i] === '}') {
-                $depth--;
-                if ($depth === 0) {
-                    return substr($text, $start, $i - $start + 1);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Build the system prompt for SEO metadata generation.
-     *
-     * Reuses the same prompt structure as the admin suggest modal
-     * for consistency between modal and agent chat.
-     *
-     * @param string $contentTypeName Content type name (e.g. "Page", "Article")
-     * @param string $contentTitle Content title/name
-     * @param string $blockText Flattened block text from BlockFlattener
-     * @param SiblingField[] $siblingFields Other field values for context
-     * @param string[] $metaKeys Meta keys to generate (empty = all)
-     */
-    public function buildSeoSystemPrompt(
-        string $contentTypeName,
-        string $contentTitle,
-        string $blockText,
-        array $siblingFields,
-        array $metaKeys = [],
-    ): string {
-        $base = "You are a professional content writing assistant for a CMS."
-            . " The content type is \"{$contentTypeName}\"."
-            . " You are writing for the field \"SEO Metadata\"."
-            . "\n\nContent title: \"{$this->scrubForPrompt($contentTitle)}\"."
-            . "\n\n{$blockText}";
-
-        if (!empty($siblingFields)) {
-            $base .= "\n\nOther fields already filled in this content item (use for context, do not repeat):";
-            foreach ($siblingFields as $field) {
-                $label = $this->scrubForPrompt($field->label);
-                $value = $this->scrubForPrompt(mb_substr($field->value, 0, AiConstants::MAX_SIBLING_CHARS));
-                if ($label !== '' && $value !== '') {
-                    $base .= sprintf("\n  - %s: \"%s\"", $label, $value);
-                }
-            }
-        }
-
-        return $this->novaSeo->wholeBlockPrompt($base, $metaKeys);
-    }
-
-    private function scrubForPrompt(string $value): string
-    {
-        return AiConstants::scrubForPrompt($value);
     }
 }

@@ -194,21 +194,9 @@ readonly class AgentOrchestrator
      */
     private function handleListBlocks(): AgentResponse
     {
-        $blocks = $this->blockCatalog->getAvailableBlocks();
-        $capabilities = $this->blockCatalog->getCapabilities();
+        $message = $this->blockCatalog->renderBlockSummary();
 
-        $message = "Available block types:\n\n";
-        foreach ($capabilities as $cap => $types) {
-            $message .= sprintf("**%s:**\n", ucfirst($cap));
-            foreach ($types as $type) {
-                $info = $blocks[$type] ?? null;
-                $fields = $info ? implode(', ', array_keys($info['fields'])) : '';
-                $message .= sprintf("  - %s (%s)\n", $type, $fields);
-            }
-            $message .= "\n";
-        }
-
-        return new AgentResponse(message: $message);
+        return new AgentResponse(message: $message ?: 'No block types available.');
     }
 
     private function handleUndo(array $params): AgentResponse

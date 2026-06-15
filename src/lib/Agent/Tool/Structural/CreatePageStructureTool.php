@@ -10,7 +10,6 @@ use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
-use Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\SelectionTransformer;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
@@ -354,11 +353,7 @@ readonly class CreatePageStructureTool implements ToolInterface
             $fieldDef = $contentType->getFieldDefinition($fieldId);
             $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
 
-            if ($fieldType === 'ezselection' && $fieldDef !== null) {
-                $value = SelectionTransformer::resolveLabel($fieldDef, $value);
-            }
-
-            $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldId, $value);
+            $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldId, $value, $fieldDef);
             $createStruct->setField($fieldId, $transformedValue, $languageCode);
         }
     }

@@ -156,6 +156,30 @@ final class BlockCatalog
     }
 
     /**
+     * Render a human-readable summary of all block types grouped by capability.
+     *
+     * Used by both the agent orchestrator (frontend display) and the LLM
+     * prompt builder (system prompt context).
+     */
+    public function renderBlockSummary(): string
+    {
+        $blocks = $this->getAvailableBlocks();
+        $capabilities = $this->getCapabilities();
+
+        $output = '';
+        foreach ($capabilities as $cap => $types) {
+            $output .= sprintf("\n%s:\n", ucfirst($cap));
+            foreach ($types as $type) {
+                $info = $blocks[$type] ?? null;
+                $fields = $info ? implode(', ', array_keys($info['fields'])) : 'unknown';
+                $output .= sprintf("  - %s (fields: %s)\n", $type, $fields);
+            }
+        }
+
+        return $output !== '' ? "Available block types and their capabilities:" . rtrim($output, "\n") : '';
+    }
+
+    /**
      * @return ContentType[]
      */
     private function loadBlockTypes(): array

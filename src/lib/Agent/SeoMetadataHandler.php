@@ -13,6 +13,8 @@ use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\Client\AiClientInterface;
 use Masilia\AiAssistant\Field\BlockFlattener;
 use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
+use Masilia\AiAssistant\AiConstants;
+use Masilia\AiAssistant\NovaSeoPromptBuilder;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -27,7 +29,7 @@ readonly class SeoMetadataHandler
         private Repository $repository,
         private BlockFlattener $blockFlattener,
         private SiblingFieldsExtractor $siblingFieldsExtractor,
-        private LlmPromptBuilder $promptBuilder,
+        private NovaSeoPromptBuilder $novaSeo,
         private AiClientInterface $aiClient,
         private ToolRegistry $toolRegistry,
         private LoggerInterface $aiLogger,
@@ -63,13 +65,25 @@ readonly class SeoMetadataHandler
             $languageCode,
         );
 
-        $systemPrompt = $this->promptBuilder->buildSeoSystemPrompt(
-            $contentType->getName(),
-            $content->contentInfo->name ?? '',
-            $blockText,
-            $siblingFields,
-            $params['attributes']['novaseometas']['metaKeys'] ?? [],
-        );
+        $base = "You are a professional content writing assistant for a CMS."
+            . " The content type is \"{$contentType->getName()}\"."
+            . " You are writing for the field \"SEO Metadata\"."
+            . "\n\nContent title: \"{$this->scrubForPrompt($content->contentInfo->name ?? '')}\"."
+            . "\n\n{$blockText}";
+
+        if (!empty($siblingFields)) {
+            $base .= "\n\nOther fields already filled in this content item (use for context, do not repeat):";
+            foreach ($siblingFields as $field) {
+                $label = $this->scrubForPrompt($field->label);
+                $value = $this->scrubForPrompt(mb_substr($field->value, 0, AiConstants::MAX_SIBLING_CHARS));
+                if ($label !== '' && $value !== '') {
+                    $base .= sprintf("\n  - %s: \"%s\"", $label, $value);
+                }
+            }
+        }
+
+        $metaKeys = $params['attributes']['novaseometas']['metaKeys'] ?? [];
+        $systemPrompt = $this->novaSeo->wholeBlockPrompt($base, $metaKeys);
 
         $userPrompt = 'Generate SEO metadata for this page based on the content provided.';
 
@@ -109,5 +123,10 @@ readonly class SeoMetadataHandler
         $result = $updateTool->execute($updateParams);
 
         return AgentResponse::withResults([$result], $result->message);
+    }
+
+    private function scrubForPrompt(string $value): string
+    {
+        return AiConstants::scrubForPrompt($value);
     }
 }

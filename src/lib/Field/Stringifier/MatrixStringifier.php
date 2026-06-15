@@ -19,6 +19,25 @@ final class MatrixStringifier implements FieldValueStringifierInterface
         return [FieldType::EZMATRIX];
     }
 
+    /**
+     * Extract column headers from an ezmatrix field definition's settings.
+     *
+     * @return array<string, string> identifier => display name
+     */
+    public static function extractColumnHeaders(FieldDefinition $fieldDefinition): array
+    {
+        $columns = $fieldDefinition->getFieldSettings()['columns'] ?? [];
+        $headers = [];
+        foreach ($columns as $col) {
+            if (!isset($col['identifier'])) {
+                continue;
+            }
+            $headers[(string)$col['identifier']] = (string)($col['name'] ?? $col['identifier']);
+        }
+
+        return $headers;
+    }
+
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
         /** @var Value $value */
@@ -27,14 +46,7 @@ final class MatrixStringifier implements FieldValueStringifierInterface
             return '';
         }
 
-        $columns = $fieldDefinition->getFieldSettings()['columns'] ?? [];
-        $headerByIdentifier = [];
-        foreach ($columns as $col) {
-            if (!isset($col['identifier'])) {
-                continue;
-            }
-            $headerByIdentifier[$col['identifier']] = $col['name'] ?? $col['identifier'];
-        }
+        $headerByIdentifier = self::extractColumnHeaders($fieldDefinition);
 
         $blocks = [];
         $count = 0;

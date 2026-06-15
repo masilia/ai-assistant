@@ -33,19 +33,54 @@ class AiPromptBuilder
         ?array              $matrixContext = null,
     ): string
     {
-        // Resolve the SEO meta key explicitly. Fall back to deriving it from the
-        // legacy "Meta: <key>" display label only when no explicit key is given.
+        $subFieldKey = $this->resolveSubFieldKey($ctx);
+        $normalizedLanguage = $this->normalizeLanguage($ctx->language, $languageNormalizer);
+
+        $context = $this->buildContextString($ctx, $normalizedLanguage);
+        $contentContext = $this->buildContentContext($ctx);
+
+        $base = "You are a professional content writing assistant for a CMS.$context$contentContext";
+
+        if ($ctx->fieldType === FieldType::NOVASEOMETAS && $subFieldKey === '') {
+            return $this->novaSeo->wholeBlockPrompt($base, $ctx->metaKeys);
+        }
+
+        if ($ctx->fieldType === FieldType::NOVASEOMETAS && $subFieldKey !== '') {
+            return $this->novaSeo->subFieldPrompt($base, $subFieldKey);
+        }
+
+        if ($ctx->fieldType === FieldType::EZMATRIX && $matrixContext !== null) {
+            return $this->matrixPrompt($base, $matrixContext);
+        }
+
+        if ($ctx->fieldType === FieldType::EZIMAGE) {
+            return $this->ezimagePrompt($base);
+        }
+
+        return $base . FormatPromptRules::for($ctx->format);
+    }
+
+    private function resolveSubFieldKey(SystemPromptContext $ctx): string
+    {
         $subFieldKey = $ctx->subFieldKey;
         if ($subFieldKey === '' && $ctx->fieldName !== '' && str_starts_with(strtolower($ctx->fieldName), 'meta:')) {
             $subFieldKey = trim(substr($ctx->fieldName, strlen('meta:')));
         }
-        $subFieldKey = strtolower($subFieldKey);
 
-        $normalizedLanguage = $ctx->language;
-        if ($languageNormalizer !== null) {
-            $normalizedLanguage = $languageNormalizer->normalize($ctx->language);
+        return strtolower($subFieldKey);
+    }
+
+    private function normalizeLanguage(string $language, ?LanguageNormalizer $normalizer): string
+    {
+        if ($normalizer !== null) {
+            return $normalizer->normalize($language);
         }
 
+        return $language;
+    }
+
+    private function buildContextString(SystemPromptContext $ctx, string $normalizedLanguage): string
+    {
         $context = '';
 
         if ($ctx->contentType) {
@@ -58,6 +93,11 @@ class AiPromptBuilder
             $context .= " Write in language code: {$normalizedLanguage}.";
         }
 
+        return $context;
+    }
+
+    private function buildContentContext(SystemPromptContext $ctx): string
+    {
         $contentContext = '';
 
         if ($ctx->contentTitle !== '') {
@@ -79,25 +119,7 @@ class AiPromptBuilder
             $contentContext = "\n\nContent context:" . $contentContext;
         }
 
-        $base = "You are a professional content writing assistant for a CMS.$context$contentContext";
-
-        if ($ctx->fieldType === FieldType::NOVASEOMETAS && $subFieldKey === '') {
-            return $this->novaSeo->wholeBlockPrompt($base, $ctx->metaKeys);
-        }
-
-        if ($ctx->fieldType === FieldType::NOVASEOMETAS && $subFieldKey !== '') {
-            return $this->novaSeo->subFieldPrompt($base, $subFieldKey);
-        }
-
-        if ($ctx->fieldType === FieldType::EZMATRIX && $matrixContext !== null) {
-            return $this->matrixPrompt($base, $matrixContext);
-        }
-
-        if ($ctx->fieldType === FieldType::EZIMAGE) {
-            return $this->ezimagePrompt($base);
-        }
-
-        return $base . FormatPromptRules::for($ctx->format);
+        return $contentContext;
     }
 
     private function scrubForPrompt(string $value): string

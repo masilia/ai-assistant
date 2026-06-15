@@ -25,6 +25,7 @@ readonly class IntentClassifier
     public function __construct(
         private AiClientInterface $aiClient,
         private LlmPromptBuilder $promptBuilder,
+        private LlmResponseParser $responseParser,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -42,7 +43,7 @@ readonly class IntentClassifier
         try {
             $response = $this->aiClient->suggest($systemPrompt, $userMessage);
 
-            return $this->promptBuilder->parseLlmResponse($response);
+            return $this->responseParser->parseIntentResponse($response);
         } catch (\Throwable $e) {
             $this->aiLogger->warning('[Agent] Intent classification failed: {message}', [
                 'message' => $e->getMessage(),

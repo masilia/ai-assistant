@@ -81,11 +81,11 @@ class AiPromptBuilder
 
         $base = "You are a professional content writing assistant for a CMS.$context$contentContext";
 
-        if ($ctx->fieldType === NovaSeoPromptBuilder::FIELD_TYPE && $subFieldKey === '') {
+        if ($ctx->fieldType === FieldType::NOVASEOMETAS && $subFieldKey === '') {
             return $this->novaSeo->wholeBlockPrompt($base, $ctx->metaKeys);
         }
 
-        if ($subFieldKey !== '') {
+        if ($ctx->fieldType === FieldType::NOVASEOMETAS && $subFieldKey !== '') {
             return $this->novaSeo->subFieldPrompt($base, $subFieldKey);
         }
 
@@ -102,7 +102,7 @@ class AiPromptBuilder
 
     private function scrubForPrompt(string $value): string
     {
-        return str_replace(['"', "\n", "\r"], ['\\"', ' ', ''], $value);
+        return AiConstants::scrubForPrompt($value);
     }
 
     /**
@@ -150,7 +150,7 @@ class AiPromptBuilder
         return $base
             . "\n\nAlt text generation rules:"
             . "\n- Generate concise, descriptive alt text for screen readers."
-            . "\n- Keep it under 125 characters."
+            . "\n- Keep it under " . AiConstants::MAX_ALT_TEXT_CHARS . " characters."
             . "\n- Be specific and factual about the image content."
             . "\n- Do not start with \"Image of\" or \"Photo of\"."
             . "\n- Focus on what the image shows, not its style."
@@ -164,9 +164,7 @@ class AiPromptBuilder
             return $userPrompt;
         }
 
-        $truncated = mb_strlen($currentValue) > AiConstants::MAX_CURRENT_VALUE_CHARS
-            ? mb_substr($currentValue, 0, AiConstants::MAX_CURRENT_VALUE_CHARS) . '...'
-            : $currentValue;
+        $truncated = AiConstants::truncate($currentValue, AiConstants::MAX_CURRENT_VALUE_CHARS);
 
         return "$userPrompt\n\nCurrent content for context (do not repeat it unless asked):\n\"\"\"$truncated\"\"\"";
     }

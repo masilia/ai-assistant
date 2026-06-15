@@ -148,6 +148,7 @@ class AiProvider
     public function removeModel(AiModel $model): self
     {
         $this->models->removeElement($model);
+
         return $this;
     }
 

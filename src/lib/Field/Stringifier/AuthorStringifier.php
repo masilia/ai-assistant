@@ -18,6 +18,10 @@ final class AuthorStringifier implements FieldValueStringifierInterface
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
+        if ($field->value === null) {
+            return '';
+        }
+
         $authors = $field->value->authors ?? [];
         $names = [];
 

@@ -11,7 +11,7 @@ use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Field\FieldValueStringifierInterface;
 use Throwable;
 
-final class RelationListStringifier implements FieldValueStringifierInterface
+final readonly class RelationListStringifier implements FieldValueStringifierInterface
 {
     /** Maximum related items to resolve (avoids huge payloads on large relations). */
     private const MAX_ITEMS = 10;

@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
-use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
-use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
+use Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\SelectionTransformer;
+use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
 
@@ -21,14 +19,14 @@ readonly class CreateContentTool implements ToolInterface
     public function __construct(
         private Repository $repository,
         private FieldValueTransformerRegistry $transformerRegistry,
-        private ConfigResolverInterface $configResolver,
+        private SiteaccessLocationResolver $locationResolver,
         private LoggerInterface $aiLogger,
     ) {
     }
 
     public function getName(): string
     {
-        return 'create_content';
+        return ToolName::CREATE_CONTENT;
     }
 
     public function getDescription(): string
@@ -85,9 +83,8 @@ readonly class CreateContentTool implements ToolInterface
             $locationRemoteId = $params['location_remote_id'] ?? null;
 
             // Resolve parent_location_id from siteaccess if not provided directly
-            $parentLocationId = isset($params['parent_location_id'])
-                ? (int) $params['parent_location_id']
-                : $this->resolveParentLocation($params['siteaccess'] ?? '');
+            $explicitId = isset($params['parent_location_id']) ? (int) $params['parent_location_id'] : null;
+            $parentLocationId = $this->locationResolver->resolve($params['siteaccess'] ?? '', $explicitId);
 
             if ($parentLocationId === null) {
                 return ToolResult::error('Provide either parent_location_id or a siteaccess name to resolve the parent location.');
@@ -102,8 +99,6 @@ readonly class CreateContentTool implements ToolInterface
 
             // Create content draft with inline location
             $createStruct = $contentService->newContentCreateStruct($contentType, $languageCode);
-            $createStruct->contentType = $contentType;
-            $createStruct->mainLanguageCode = $languageCode;
             $createStruct->remoteId = $remoteId;
 
             // Set field values with transformation
@@ -111,14 +106,8 @@ readonly class CreateContentTool implements ToolInterface
                 $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
                 $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
 
-                // ezselection: map label strings to option indices
-                if ($fieldType === 'ezselection' && is_string($value)) {
-                    $options = $fieldDef->getFieldSettings()['options'] ?? [];
-                    $labelToIndex = array_flip($options);
-                    $index = $labelToIndex[$value] ?? null;
-                    if ($index !== null) {
-                        $value = [$index];
-                    }
+                if ($fieldType === 'ezselection' && $fieldDef !== null) {
+                    $value = SelectionTransformer::resolveLabel($fieldDef, $value);
                 }
 
                 $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value);
@@ -144,38 +133,9 @@ readonly class CreateContentTool implements ToolInterface
                 sprintf('Created %s (ID: %d)', $contentTypeIdentifier, $result['content_id']),
                 $result,
             );
-        } catch (ContentFieldValidationException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
-        } catch (BadStateException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
-        } catch (UnauthorizedException $e) {
-            return AgentErrorHelper::unauthorized('create content');
-        } catch (NotFoundException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create content');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'create content');
         }
     }
 
-    private function resolveParentLocation(string $siteaccess): ?int
-    {
-        if ($siteaccess === '') {
-            // Current request siteaccess
-            try {
-                return (int) $this->configResolver->getParameter('content.tree_root.location_id');
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        try {
-            return (int) $this->configResolver->getParameter(
-                'content.tree_root.location_id',
-                null,
-                $siteaccess,
-            );
-        } catch (\Throwable) {
-            return null;
-        }
-    }
 }

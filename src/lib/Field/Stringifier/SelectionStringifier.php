@@ -22,6 +22,10 @@ final class SelectionStringifier implements FieldValueStringifierInterface
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
+        if ($field->value === null) {
+            return '';
+        }
+
         $options = $fieldDefinition->fieldSettings['options'] ?? [];
         $selected = $field->value->selection ?? [];
         $labels = [];

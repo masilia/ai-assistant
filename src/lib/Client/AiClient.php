@@ -25,6 +25,8 @@ use Throwable;
  */
 class AiClient implements AiClientInterface
 {
+    private const UNKNOWN_PROVIDER = 'unknown';
+
     private RequestLoggerInterface $requestLogger;
 
     public function __construct(
@@ -84,8 +86,8 @@ class AiClient implements AiClientInterface
     private function logResolutionFailure(float $startMs, Throwable $e): void
     {
         $this->requestLogger->log([
-            'providerIdentifier' => 'unknown',
-            'modelIdentifier' => 'unknown',
+            'providerIdentifier' => self::UNKNOWN_PROVIDER,
+            'modelIdentifier' => self::UNKNOWN_PROVIDER,
             'success' => false,
             'latencyMs' => $this->elapsedMs($startMs),
             'errorCode' => $this->extractErrorCode($e),
@@ -107,8 +109,10 @@ class AiClient implements AiClientInterface
             return 'HTTP_' . $e->statusCode;
         }
 
-        $parts = explode('\\', $e::class);
-        return end($parts) ?: 'UnknownError';
+        $class = $e::class;
+        $shortName = strrchr($class, '\\');
+
+        return $shortName !== false ? substr($shortName, 1) : $class;
     }
 
     private function assertOk(ResponseInterface $response, string $providerIdentifier): void

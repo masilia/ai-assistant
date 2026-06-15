@@ -99,7 +99,7 @@ class AiProviderApiController extends Controller
 
         $data = $this->decodeJsonRequest($request);
         if ($data === null) {
-            return $this->validationError('Invalid JSON payload');
+            return $this->jsonErrorResponse('Invalid JSON payload');
         }
 
         try {
@@ -107,7 +107,7 @@ class AiProviderApiController extends Controller
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage());
+            return $this->jsonErrorResponse($e->getMessage());
         }
     }
 
@@ -123,7 +123,7 @@ class AiProviderApiController extends Controller
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
 
@@ -136,7 +136,7 @@ class AiProviderApiController extends Controller
 
         $data = $this->decodeJsonRequest($request);
         if ($data === null || !isset($data['siteaccesses']) || !is_array($data['siteaccesses'])) {
-            return $this->validationError('siteaccesses array is required');
+            return $this->jsonErrorResponse('siteaccesses array is required');
         }
 
         try {
@@ -144,7 +144,7 @@ class AiProviderApiController extends Controller
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
 
@@ -157,7 +157,7 @@ class AiProviderApiController extends Controller
 
         $data = $this->decodeJsonRequest($request);
         if ($data === null) {
-            return $this->validationError('Invalid JSON payload');
+            return $this->jsonErrorResponse('Invalid JSON payload');
         }
 
         $modelId = $data['modelId'] ?? null;
@@ -167,7 +167,7 @@ class AiProviderApiController extends Controller
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
 
@@ -180,7 +180,7 @@ class AiProviderApiController extends Controller
 
         $data = $this->decodeJsonRequest($request);
         if ($data === null) {
-            return $this->validationError('Invalid JSON payload');
+            return $this->jsonErrorResponse('Invalid JSON payload');
         }
 
         $modelId = $data['modelId'] ?? null;
@@ -190,7 +190,7 @@ class AiProviderApiController extends Controller
 
             return new JsonResponse(['success' => true]);
         } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         }
     }
 
@@ -208,7 +208,7 @@ class AiProviderApiController extends Controller
 
             return new JsonResponse($result, $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
         } catch (\InvalidArgumentException $e) {
-            return $this->validationError($e->getMessage(), Response::HTTP_NOT_FOUND);
+            return $this->jsonErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (\Exception $e) {
             return new JsonResponse(
                 AiError::serviceUnavailable('Connection failed: ' . $e->getMessage())->toArray(),
@@ -227,8 +227,5 @@ class AiProviderApiController extends Controller
         return new JsonResponse($this->healthChecker->check()->toArray());
     }
 
-    private function validationError(string $message, int $status = Response::HTTP_BAD_REQUEST): JsonResponse
-    {
-        return new JsonResponse(AiError::validationError($message)->toArray(), $status);
-    }
+
 }

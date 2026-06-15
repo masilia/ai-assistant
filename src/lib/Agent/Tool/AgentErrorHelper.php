@@ -28,7 +28,7 @@ final class AgentErrorHelper
 
     public static function userMessage(\Throwable $e, string $action): string
     {
-        $class = (new \ReflectionClass($e))->getShortName();
+        $class = substr($e::class, strrpos($e::class, '\\') + 1) ?: $e::class;
 
         return sprintf('Failed to %s: %s', $action, $class);
     }

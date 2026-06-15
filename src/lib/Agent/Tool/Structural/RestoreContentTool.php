@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
+use Ibexa\Contracts\Core\Repository\Values\Content\Query;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
 
@@ -22,7 +22,7 @@ readonly class RestoreContentTool implements ToolInterface
 
     public function getName(): string
     {
-        return 'restore_content';
+        return ToolName::RESTORE_CONTENT;
     }
 
     public function getDescription(): string
@@ -49,22 +49,17 @@ readonly class RestoreContentTool implements ToolInterface
     {
         try {
             $trashService = $this->repository->getTrashService();
-            $contentService = $this->repository->getContentService();
 
             $restored = [];
             $contentIds = $params['content_ids'] ?? [];
 
-            // Get all trashed items
-            $trashedItems = $contentService->loadContentInfoList($contentIds);
+            $trashedItems = $trashService->findTrashItems(new Query([
+                'filter' => new Query\Criterion\ContentId($contentIds),
+            ]));
 
-            foreach ($contentIds as $contentId) {
-                foreach ($trashedItems as $trashed) {
-                    if ($trashed->contentId === (int) $contentId) {
-                        $trashService->recover($trashed);
-                        $restored[] = (int) $contentId;
-                        break;
-                    }
-                }
+            foreach ($trashedItems->items as $trashed) {
+                $trashService->recover($trashed);
+                $restored[] = $trashed->contentId;
             }
 
             return ToolResult::ok(
@@ -74,12 +69,8 @@ readonly class RestoreContentTool implements ToolInterface
                     'count' => count($restored),
                 ],
             );
-        } catch (UnauthorizedException $e) {
-            return AgentErrorHelper::unauthorized('restore content');
-        } catch (NotFoundException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'restore content');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'restore content');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'restore content');
         }
     }
 }

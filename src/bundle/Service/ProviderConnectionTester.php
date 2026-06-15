@@ -88,7 +88,7 @@ readonly class ProviderConnectionTester
         // Sync test passed. Optionally exercise the streaming path.
         $streamOk = null;
         if ($testStream) {
-            $streamOk = $this->testStream($provider, $this->adapterRegistry, $testModel, $url, $headers);
+            $streamOk = $this->testStream($provider, $testModel, $url, $headers);
         }
 
         $message = $streamOk === false
@@ -106,12 +106,11 @@ readonly class ProviderConnectionTester
 
     private function testStream(
         AiProvider $provider,
-        ProviderAdapterRegistry $registry,
         string $testModel,
         string $url,
         array $headers,
     ): bool {
-        $adapter = $registry->getForProvider($provider->getIdentifier());
+        $adapter = $this->adapterRegistry->getForProvider($provider->getIdentifier());
 
         if (!$adapter instanceof StreamingProviderAdapterInterface) {
             // Adapter is non-streaming: trivially 'no streaming to test'.

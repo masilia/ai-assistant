@@ -18,6 +18,10 @@ final class CountryStringifier implements FieldValueStringifierInterface
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
+        if ($field->value === null) {
+            return '';
+        }
+
         $countries = $field->value->countries ?? [];
 
         return implode(', ', array_column($countries, 'Name'));

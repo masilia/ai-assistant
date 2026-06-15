@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Client;
 
 use Masilia\AiAssistant\Client\Resolved\ResolvedImageTarget;
+use Masilia\AiAssistant\Client\SiteaccessResolverTrait;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
@@ -20,6 +21,7 @@ use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
  */
 class ImageTargetResolver
 {
+    use SiteaccessResolverTrait;
     private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
 
     public function __construct(
@@ -62,10 +64,5 @@ class ImageTargetResolver
             apiUrl: $apiUrl ? (string) $apiUrl : null,
             imageModelIdentifier: (string) $imageModel,
         );
-    }
-
-    private function getCurrentSiteaccess(): string
-    {
-        return $this->siteAccessService->getCurrent()?->name ?? 'default';
     }
 }

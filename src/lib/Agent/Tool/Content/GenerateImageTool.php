@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
-use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
+use Masilia\AiAssistant\Agent\Tool\ImageFileHelper;
 use Masilia\AiAssistant\Client\ImageGenerationClient;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -27,7 +25,7 @@ readonly class GenerateImageTool implements ToolInterface
 
     public function getName(): string
     {
-        return 'generate_image';
+        return ToolName::GENERATE_IMAGE;
     }
 
     public function getDescription(): string
@@ -74,13 +72,14 @@ readonly class GenerateImageTool implements ToolInterface
             $fieldIdentifier = $params['field'];
             $prompt = $params['prompt'];
             $size = $params['size'] ?? '1:1';
-            $languageCode = $params['language'] ?? 'eng-GB';
+            $languageCode = $params['language']
+                ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
             // 1. Generate image via provider
             $imageResult = $this->imageClient->generate($prompt, $size);
 
             // 2. Save base64 to temp file
-            $tempPath = $this->saveTempFile($imageResult->imageData, $imageResult->mimeType);
+            $tempPath = ImageFileHelper::saveTempFile($imageResult->imageData, $imageResult->mimeType);
 
             try {
                 // 3. Update content's image field
@@ -126,44 +125,9 @@ readonly class GenerateImageTool implements ToolInterface
             ]);
 
             return ToolResult::error('Image generation failed: provider returned an error');
-        } catch (ContentFieldValidationException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
-        } catch (BadStateException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
-        } catch (UnauthorizedException $e) {
-            return AgentErrorHelper::unauthorized('generate image');
-        } catch (NotFoundException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'generate image');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'generate image');
         }
     }
 
-    /**
-     * Decode base64 image data and save to a temp file.
-     *
-     * @throws RuntimeException
-     */
-    private function saveTempFile(string $imageData, string $mimeType): string
-    {
-        $ext = match ($mimeType) {
-            'image/jpeg', 'image/jpg' => 'jpg',
-            'image/gif' => 'gif',
-            'image/webp' => 'webp',
-            default => 'png',
-        };
-
-        $path = tempnam(sys_get_temp_dir(), 'ai_img_') . '.' . $ext;
-
-        $decoded = base64_decode($imageData, true);
-        if ($decoded === false) {
-            throw new RuntimeException('Failed to decode image data');
-        }
-
-        if (file_put_contents($path, $decoded) === false) {
-            throw new RuntimeException('Failed to save generated image');
-        }
-
-        return $path;
-    }
 }

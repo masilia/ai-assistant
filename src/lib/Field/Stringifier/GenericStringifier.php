@@ -55,10 +55,10 @@ final readonly class GenericStringifier implements FieldValueStringifierInterfac
      * Recursively converts a hash (from FieldTypeService::toHash()) into
      * a flat, comma-separated string suitable for AI context.
      *
-     * Limitation: nested arrays are flattened to a single level. For
-     * example, `['nested' => ['key' => 'value']]` produces `"key: value"`
-     * — the `nested` namespace is lost. This is acceptable for the
-     * fallback stringifier's purpose (providing context to the LLM);
+     * Nested arrays are handled recursively: each leaf value is converted
+     * to a string and joined with ", ". Array keys are preserved as prefixes
+     * for associative arrays. This is acceptable for the fallback
+     * stringifier's purpose (providing context to the LLM);
      * field-type-specific stringifiers handle structured data properly.
      */
     private function hashToString(mixed $hash): string

@@ -95,7 +95,7 @@ readonly class FieldContextExtractor
      * {@see ContentService::loadContent()} — the only point in the
      * package that knows how to talk to the Ibexa content service.
      */
-    public function loadOrLog(int $contentId, string $reason): ?Content
+    private function loadOrLog(int $contentId, string $reason): ?Content
     {
         try {
             return $this->contentService->loadContent($contentId);

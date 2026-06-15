@@ -81,37 +81,17 @@ readonly class ProviderManager
         return $provider;
     }
 
-    /**
-     * Set the active chat model for a provider. Pass null to clear.
-     */
     public function setChatModel(int $providerId, ?int $modelId): AiProvider
     {
-        $provider = $this->providerRepository->find($providerId)
-            ?? throw new \InvalidArgumentException('Provider not found.');
-
-        if ($modelId !== null) {
-            $model = $provider->getModels()->filter(
-                fn (AiModel $m) => $m->getId() === $modelId
-            )->first() ?: null;
-
-            if ($model === null) {
-                throw new \InvalidArgumentException('Model does not belong to this provider.');
-            }
-
-            $provider->setActiveChatModel($model);
-        } else {
-            $provider->setActiveChatModel(null);
-        }
-
-        $this->entityManager->flush();
-
-        return $provider;
+        return $this->setModel($providerId, $modelId, 'setActiveChatModel');
     }
 
-    /**
-     * Set the active image model for a provider. Pass null to clear.
-     */
     public function setImageModel(int $providerId, ?int $modelId): AiProvider
+    {
+        return $this->setModel($providerId, $modelId, 'setActiveImageModel');
+    }
+
+    private function setModel(int $providerId, ?int $modelId, string $setter): AiProvider
     {
         $provider = $this->providerRepository->find($providerId)
             ?? throw new \InvalidArgumentException('Provider not found.');
@@ -125,9 +105,9 @@ readonly class ProviderManager
                 throw new \InvalidArgumentException('Model does not belong to this provider.');
             }
 
-            $provider->setActiveImageModel($model);
+            $provider->$setter($model);
         } else {
-            $provider->setActiveImageModel(null);
+            $provider->$setter(null);
         }
 
         $this->entityManager->flush();

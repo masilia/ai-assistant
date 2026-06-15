@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Client;
 
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
+use Masilia\AiAssistant\AiConstants;
 use RuntimeException;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -45,7 +46,7 @@ readonly class ImageGenerationClient
     ): ImageGenerationResult {
         $target = $this->targetResolver->resolve();
         if ($target === null) {
-            $siteaccess = $this->siteAccessService->getCurrent()?->name ?? 'default';
+            $siteaccess = $this->siteAccessService->getCurrent()?->name ?? AiConstants::DEFAULT_SITEACCESS;
             throw new RuntimeException(
                 sprintf(
                     'No image generation provider configured for siteaccess "%s". '

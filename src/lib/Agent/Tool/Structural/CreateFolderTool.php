@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
-use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\ContentTypeId;
+use Masilia\AiAssistant\FieldId;
 use Psr\Log\LoggerInterface;
 
 readonly class CreateFolderTool implements ToolInterface
@@ -24,7 +23,7 @@ readonly class CreateFolderTool implements ToolInterface
 
     public function getName(): string
     {
-        return 'create_folder';
+        return ToolName::CREATE_FOLDER;
     }
 
     public function getDescription(): string
@@ -62,14 +61,13 @@ readonly class CreateFolderTool implements ToolInterface
             $locationService = $this->repository->getLocationService();
             $contentTypeService = $this->repository->getContentTypeService();
 
-            $languageCode = $params['language'] ?? 'eng-GB';
+            $languageCode = $params['language']
+                ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
-            $folderType = $contentTypeService->loadContentTypeByIdentifier('folder');
+            $folderType = $contentTypeService->loadContentTypeByIdentifier(ContentTypeId::FOLDER);
 
-            $createStruct = $contentService->newContentCreateStruct();
-            $createStruct->contentType = $folderType;
-            $createStruct->mainLanguageCode = $languageCode;
-            $createStruct->setField('name', $params['name'], $languageCode);
+            $createStruct = $contentService->newContentCreateStruct($folderType, $languageCode);
+            $createStruct->setField(FieldId::NAME, $params['name'], $languageCode);
 
             $locStruct = $locationService->newLocationCreateStruct((int) $params['parent_location_id']);
 
@@ -85,16 +83,8 @@ readonly class CreateFolderTool implements ToolInterface
                     'location_id' => $location->id,
                 ],
             );
-        } catch (ContentFieldValidationException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
-        } catch (BadStateException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
-        } catch (UnauthorizedException $e) {
-            return AgentErrorHelper::unauthorized('create folder');
-        } catch (NotFoundException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create folder');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'create folder');
         }
     }
 }

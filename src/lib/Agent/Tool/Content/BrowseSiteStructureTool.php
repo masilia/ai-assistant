@@ -5,29 +5,29 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion\LogicalAnd;
+use Ibexa\Core\Repository\Values\Content\Content;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
+use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
 
 readonly class BrowseSiteStructureTool implements ToolInterface
 {
-    private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
-
     public function __construct(
         private Repository $repository,
-        private ConfigResolverInterface $configResolver,
+        private SiteaccessLocationResolver $locationResolver,
         private LoggerInterface $aiLogger,
     ) {
     }
 
     public function getName(): string
     {
-        return 'browse_site_structure';
+        return ToolName::BROWSE_SITE_STRUCTURE;
     }
 
     public function getDescription(): string
@@ -76,10 +76,10 @@ readonly class BrowseSiteStructureTool implements ToolInterface
         try {
             $searchService = $this->repository->getSearchService();
             $locationService = $this->repository->getLocationService();
-            $contentTypeService = $this->repository->getContentTypeService();
 
             // 1. Resolve root location
-            $rootLocationId = $this->resolveRootLocation($params);
+            $explicitId = isset($params['location_id']) ? (int) $params['location_id'] : null;
+            $rootLocationId = $this->locationResolver->resolve($params['siteaccess'] ?? '', $explicitId);
             if ($rootLocationId === null) {
                 return ToolResult::error('Could not resolve root location. Provide a siteaccess name or location_id.');
             }
@@ -106,26 +106,16 @@ readonly class BrowseSiteStructureTool implements ToolInterface
             // 3. Collect items with location info
             $items = [];
             foreach ($searchResult->searchHits as $hit) {
+                /**@var Content $content*/
                 $content = $hit->valueObject;
-                try {
-                    $location = $locationService->loadLocation($content->contentInfo->mainLocationId);
-                } catch (\Throwable) {
-                    continue;
-                }
-
-                try {
-                    $contentType = $contentTypeService->loadContentType($content->contentInfo->contentTypeId);
-                    $contentTypeIdentifier = $contentType->identifier;
-                } catch (\Throwable) {
-                    $contentTypeIdentifier = 'unknown';
-                }
+                $location = $content->getContentInfo()->getMainLocation();
 
                 $items[] = [
                     'location_id' => $location->id,
                     'parent_location_id' => $location->parentLocationId,
                     'content_id' => $content->id,
-                    'content_type' => $contentTypeIdentifier,
-                    'name' => $content->contentInfo->name,
+                    'content_type' => $content->getContentType()->identifier,
+                    'name' => $content->getName(),
                 ];
             }
 
@@ -146,36 +136,7 @@ readonly class BrowseSiteStructureTool implements ToolInterface
                 ],
             );
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'browse site structure');
-        }
-    }
-
-    private function resolveRootLocation(array $params): ?int
-    {
-        // 1. Explicit location_id
-        if (isset($params['location_id'])) {
-            return (int) $params['location_id'];
-        }
-
-        // 2. Resolve from siteaccess name
-        $siteaccess = $params['siteaccess'] ?? '';
-        if ($siteaccess !== '') {
-            try {
-                return (int) $this->configResolver->getParameter(
-                    'content.tree_root.location_id',
-                    null,
-                    $siteaccess,
-                );
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        // 3. Current request siteaccess
-        try {
-            return (int) $this->configResolver->getParameter('content.tree_root.location_id');
-        } catch (\Throwable) {
-            return null;
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'browse site structure');
         }
     }
 

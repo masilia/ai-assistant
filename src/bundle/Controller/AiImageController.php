@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Controller;
 
 use Masilia\AiAssistant\Client\ImageGenerationClient;
+use Masilia\AiAssistant\DTO\AiError;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,7 +37,7 @@ readonly class AiImageController
         $payload = $this->decodeJsonRequest($request);
         if ($payload === null) {
             return new JsonResponse(
-                ['error' => 'Invalid JSON payload'],
+                AiError::validationError('Invalid JSON payload')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
@@ -47,7 +48,7 @@ readonly class AiImageController
 
         if ($prompt === '') {
             return new JsonResponse(
-                ['error' => 'Missing required field: prompt'],
+                AiError::validationError('Missing required field: prompt')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
@@ -63,7 +64,7 @@ readonly class AiImageController
             ]);
 
             return new JsonResponse(
-                ['error' => $e->getMessage()],
+                AiError::serviceUnavailable($e->getMessage())->toArray(),
                 Response::HTTP_SERVICE_UNAVAILABLE,
             );
         }

@@ -11,7 +11,7 @@ use Ibexa\Contracts\Core\Repository\LocationService;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
-use Ibexa\Contracts\Core\Repository\Values\Content\Location;
+use Masilia\AiAssistant\AiConstants;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
@@ -26,7 +26,8 @@ class BlockFlattener
     private const CACHE_PREFIX = 'ai_block_flattener_';
     private const CACHE_TTL = 3600; // 1 hour
     private const BLOCKS_FIELD = 'blocks';
-    private const MAX_SIBLING_CHARS = 500;
+    /** Block context uses a higher limit than sibling fields (500 vs 250) because the full page summary can tolerate more detail. */
+    private const MAX_FLATTEN_CHARS = 500;
 
     private ContentService $contentService;
     private ContentTypeService $contentTypeService;
@@ -155,8 +156,8 @@ class BlockFlattener
                 continue;
             }
 
-            $field = $this->getFieldWithFallback($content, $fieldDef->identifier, $languageCode);
-            if ($field === null) {
+            $field = ContentFieldAccessor::getWithFallback($content, $fieldDef->identifier, $languageCode);
+            if ($field === null || $field->value === null) {
                 continue;
             }
 
@@ -166,9 +167,7 @@ class BlockFlattener
             }
 
             // Truncate long values
-            if (mb_strlen($stringValue) > self::MAX_SIBLING_CHARS) {
-                $stringValue = mb_substr($stringValue, 0, self::MAX_SIBLING_CHARS) . '...';
-            }
+            $stringValue = AiConstants::truncate($stringValue, self::MAX_FLATTEN_CHARS);
 
             $label = $fieldDef->getName() ?: $fieldDef->identifier;
             $output .= sprintf("%s: %s\n", $label, $this->scrubForPrompt($stringValue));
@@ -226,20 +225,21 @@ class BlockFlattener
         $output = "Page blocks:\n";
         $index = 1;
         foreach ($blockContents as $block) {
-            $blockType = $contentTypes[$block->contentInfo->contentTypeId]->getName() ?? 'Block';
+            $blockType = $contentTypes[$block->contentInfo->contentTypeId];
+            $blockTypeName = $blockType->getName() ?? 'Block';
 
-            $output .= sprintf("\n- %s (Block %d):\n", $blockType, $index);
+            $output .= sprintf("\n- %s (Block %d):\n", $blockTypeName, $index);
 
 
             foreach ($block->fields as $field) {
                 // Skip novaseometas in blocks too
-                if ($field->fieldDefinition->fieldTypeIdentifier === FieldType::NOVASEOMETAS) {
+                if ($field->getFieldTypeIdentifier() === FieldType::NOVASEOMETAS) {
                     continue;
                 }
 
                 $stringValue = $this->stringifierRegistry->toString(
                     $field,
-                    $field->fieldDefinition,
+                    $blockType->getFieldDefinition($field->getFieldDefinitionIdentifier()),
                 );
 
                 if ($stringValue === '') {
@@ -247,11 +247,9 @@ class BlockFlattener
                 }
 
                 // Truncate long values
-                if (mb_strlen($stringValue) > self::MAX_SIBLING_CHARS) {
-                    $stringValue = mb_substr($stringValue, 0, self::MAX_SIBLING_CHARS) . '...';
-                }
+                $stringValue = AiConstants::truncate($stringValue, self::MAX_FLATTEN_CHARS);
 
-                $label = $field->fieldDefinition->getName() ?? $field->identifier;
+                $label = $field->getFieldDefinitionIdentifier();
                 $output .= sprintf("  %s: %s\n", $label, $this->scrubForPrompt($stringValue));
             }
 
@@ -262,43 +260,11 @@ class BlockFlattener
     }
 
     /**
-     * Get a field value with language fallback.
-     */
-    private function getFieldWithFallback(
-        Content $content,
-        string $fieldIdentifier,
-        string $languageCode,
-    ): ?Field {
-        // Try the requested language first
-        $field = $content->getField($fieldIdentifier, $languageCode);
-        if ($field !== null && $field->value !== null) {
-            return $field;
-        }
-
-        // Try the main language
-        $mainLanguage = $content->contentInfo->mainLanguageCode;
-        if ($mainLanguage !== $languageCode) {
-            $field = $content->getField($fieldIdentifier, $mainLanguage);
-            if ($field !== null && $field->value !== null) {
-                return $field;
-            }
-        }
-
-        // Try always available
-        $field = $content->getField($fieldIdentifier);
-        if ($field !== null && $field->value !== null) {
-            return $field;
-        }
-
-        return null;
-    }
-
-    /**
      * Scrub a string value for safe inclusion in LLM prompts.
      */
     private function scrubForPrompt(string $value): string
     {
-        return str_replace(["\n", "\r"], [' ', ''], $value);
+        return AiConstants::scrubForPrompt($value);
     }
 
     /**

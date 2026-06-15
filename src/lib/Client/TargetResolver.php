@@ -9,6 +9,7 @@ use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\AiAssistant\AiDefaults;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
 use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
+use Masilia\AiAssistant\Client\SiteaccessResolverTrait;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use RuntimeException;
 
@@ -24,6 +25,7 @@ use RuntimeException;
  */
 class TargetResolver
 {
+    use SiteaccessResolverTrait;
     private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
     private const FALLBACK_PROVIDER = ProviderId::OPENAI;
 
@@ -103,10 +105,5 @@ class TargetResolver
             headers: $adapter->buildHeaders($apiKey),
             siteaccess: $this->getCurrentSiteaccess(),
         );
-    }
-
-    private function getCurrentSiteaccess(): string
-    {
-        return $this->siteAccessService->getCurrent()?->name ?? 'default';
     }
 }

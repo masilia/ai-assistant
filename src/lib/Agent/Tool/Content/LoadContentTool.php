@@ -5,27 +5,23 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
 
 readonly class LoadContentTool implements ToolInterface
 {
-    private string $defaultLanguageCode;
-
     public function __construct(
         private Repository $repository,
         private LoggerInterface $aiLogger,
     ) {
-        $this->defaultLanguageCode = $this->repository->getContentLanguageService()->getDefaultLanguageCode();
     }
 
     public function getName(): string
     {
-        return 'load_content';
+        return ToolName::LOAD_CONTENT;
     }
 
     public function getDescription(): string
@@ -52,8 +48,7 @@ readonly class LoadContentTool implements ToolInterface
                 ],
                 'language' => [
                     'type' => 'string',
-                    'description' => "Language code (default: $this->defaultLanguageCode)",
-                    'default' => $this->defaultLanguageCode,
+                    'description' => 'Language code (defaults to repository default)',
                 ],
             ],
         ];
@@ -62,7 +57,8 @@ readonly class LoadContentTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $languageCode = $params['language'] ?? $this->defaultLanguageCode;
+            $languageCode = $params['language']
+                ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
             $contentService = $this->repository->getContentService();
 
             if (isset($params['content_id'])) {
@@ -93,12 +89,8 @@ readonly class LoadContentTool implements ToolInterface
                     'fields' => $fields,
                 ],
             );
-        } catch (UnauthorizedException $e) {
-            return AgentErrorHelper::unauthorized('load content');
-        } catch (NotFoundException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'load content');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'load content');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'load content');
         }
     }
 }

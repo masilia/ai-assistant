@@ -12,9 +12,9 @@ namespace Masilia\AiAssistant\Field;
  * `if ($ctx->fieldType === FieldType::Ezmatrix)`.
  *
  * Two groups of field types live here:
- *  - **AI-targeted** (the 5 the modal can act on directly):
+ *  - **AI-targeted** (the 6 the modal can act on directly):
  *    {@see EZSTRING}, {@see EZTEXT}, {@see EZRICHTEXT},
- *    {@see NOVASEOMETAS}, {@see EZMATRIX}. These are the field types
+ *    {@see NOVASEOMETAS}, {@see EZMATRIX}, {@see EZIMAGE}. These are the field types
  *    the React SPA exposes the "AI" button on.
  *  - **Sibling-field context** (the rest): the stringifiers
  *    registered against these produce readable text for the AI prompt

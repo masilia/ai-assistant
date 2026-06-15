@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\Controller;
 
 use Masilia\AiAssistant\Agent\AgentOrchestrator;
+use Masilia\AiAssistant\Agent\AgentPlan;
+use Masilia\AiAssistant\DTO\AiError;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -12,7 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-class AgentChatController
+readonly class AgentChatController
 {
     use JsonRequestDecoder;
     use RequirePermission;
@@ -36,7 +38,7 @@ class AgentChatController
         $payload = $this->decodeJsonRequest($request);
         if ($payload === null) {
             return new JsonResponse(
-                ['error' => 'Invalid JSON payload'],
+                AiError::validationError('Invalid JSON payload')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
@@ -44,7 +46,7 @@ class AgentChatController
         $message = trim($payload['message'] ?? '');
         if ($message === '') {
             return new JsonResponse(
-                ['error' => 'Missing required field: message'],
+                AiError::validationError('Missing required field: message')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
@@ -60,7 +62,7 @@ class AgentChatController
             ]);
 
             return new JsonResponse(
-                ['error' => self::GENERIC_SERVICE_ERROR],
+                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
                 Response::HTTP_SERVICE_UNAVAILABLE,
             );
         }
@@ -76,7 +78,7 @@ class AgentChatController
         $payload = $this->decodeJsonRequest($request);
         if ($payload === null) {
             return new JsonResponse(
-                ['error' => 'Invalid JSON payload'],
+                AiError::validationError('Invalid JSON payload')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
@@ -84,13 +86,13 @@ class AgentChatController
         $steps = $payload['steps'] ?? [];
         if (empty($steps)) {
             return new JsonResponse(
-                ['error' => 'Missing required field: steps'],
+                AiError::validationError('Missing required field: steps')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
 
         try {
-            $plan = new \Masilia\AiAssistant\Agent\AgentPlan(
+            $plan = new AgentPlan(
                 steps: $steps,
                 description: $payload['description'] ?? '',
                 requiresApproval: false,
@@ -106,7 +108,7 @@ class AgentChatController
             ]);
 
             return new JsonResponse(
-                ['error' => self::GENERIC_SERVICE_ERROR],
+                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
                 Response::HTTP_SERVICE_UNAVAILABLE,
             );
         }

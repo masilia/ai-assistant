@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
 use Ibexa\Contracts\Core\Repository\Repository;
+use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
-use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
-use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
+use Masilia\AiAssistant\Agent\Tool\ImageFileHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\Client\ImageGenerationClient;
+use Masilia\AiAssistant\ContentTypeId;
+use Masilia\AiAssistant\FieldId;
 use Psr\Log\LoggerInterface;
 
 readonly class CreateSiteStructureTool implements ToolInterface
@@ -30,7 +31,7 @@ readonly class CreateSiteStructureTool implements ToolInterface
 
     public function getName(): string
     {
-        return 'create_site_structure';
+        return ToolName::CREATE_SITE_STRUCTURE;
     }
 
     public function getDescription(): string
@@ -90,16 +91,17 @@ readonly class CreateSiteStructureTool implements ToolInterface
             $locationService = $this->repository->getLocationService();
             $contentTypeService = $this->repository->getContentTypeService();
 
-            $languageCode = $params['language'] ?? 'eng-GB';
+            $languageCode = $params['language']
+                ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
             $siteName = $params['site_name'];
             $domain = $params['domain'];
             $description = $params['description'] ?? '';
 
             // Resolve content type identifiers from config
-            $siteContentTypeId = $this->resolveConfig('site_content_type', 'site');
-            $homePageContentTypeId = $this->resolveConfig('home_page_content_type', 'home_page');
-            $layoutContentTypeId = $this->resolveConfig('layout_content_type', 'layout_config');
-            $folderContentTypeId = $this->resolveConfig('folder_content_type', 'folder');
+            $siteContentTypeId = $this->resolveConfig('site_content_type', ContentTypeId::SITE);
+            $homePageContentTypeId = $this->resolveConfig('home_page_content_type', ContentTypeId::HOME_PAGE);
+            $layoutContentTypeId = $this->resolveConfig('layout_content_type', ContentTypeId::LAYOUT);
+            $folderContentTypeId = $this->resolveConfig('folder_content_type', ContentTypeId::FOLDER);
             $mediaRootLocationId = (int) $this->resolveConfig('media_root_location_id', 43);
 
             $siteType = $contentTypeService->loadContentTypeByIdentifier($siteContentTypeId);
@@ -111,9 +113,9 @@ readonly class CreateSiteStructureTool implements ToolInterface
 
             // 1. Create site container under location 2
             $siteCreateStruct = $contentService->newContentCreateStruct($siteType, $languageCode);
-            $siteCreateStruct->setField('title', $siteName, $languageCode);
-            $siteCreateStruct->setField('domain', $domain, $languageCode);
-            $siteCreateStruct->setField('description', $description, $languageCode);
+            $siteCreateStruct->setField(FieldId::TITLE, $siteName, $languageCode);
+            $siteCreateStruct->setField(FieldId::DOMAIN, $domain, $languageCode);
+            $siteCreateStruct->setField(FieldId::DESCRIPTION, $description, $languageCode);
 
             $siteLocStruct = $locationService->newLocationCreateStruct(2);
             $siteDraft = $contentService->createContent($siteCreateStruct, [$siteLocStruct]);
@@ -122,7 +124,7 @@ readonly class CreateSiteStructureTool implements ToolInterface
 
             // 2. Create layout config under site
             $layoutCreateStruct = $contentService->newContentCreateStruct($layoutType, $languageCode);
-            $layoutCreateStruct->setField('bo_title', sprintf('%s Layout Configuration', $siteName), $languageCode);
+            $layoutCreateStruct->setField(FieldId::BO_TITLE, sprintf('%s Layout Configuration', $siteName), $languageCode);
 
             $layoutLocStruct = $locationService->newLocationCreateStruct($siteLocation->id);
             $layoutDraft = $contentService->createContent($layoutCreateStruct, [$layoutLocStruct]);
@@ -130,8 +132,8 @@ readonly class CreateSiteStructureTool implements ToolInterface
 
             // 3. Create home page under site
             $homeCreateStruct = $contentService->newContentCreateStruct($homePageType, $languageCode);
-            $homeCreateStruct->setField('title', 'Home', $languageCode);
-            $homeCreateStruct->setField('blocks', [], $languageCode);
+            $homeCreateStruct->setField(FieldId::TITLE, 'Home', $languageCode);
+            $homeCreateStruct->setField(FieldId::BLOCKS, [], $languageCode);
 
             $homeLocStruct = $locationService->newLocationCreateStruct($siteLocation->id);
             $homeDraft = $contentService->createContent($homeCreateStruct, [$homeLocStruct]);
@@ -139,22 +141,18 @@ readonly class CreateSiteStructureTool implements ToolInterface
             $homeLocation = $locationService->loadLocation($homePublished->contentInfo->mainLocationId);
 
             // 4. Create media folder structure
-            $mediaFolder = $this->createFolder($contentTypeService, $contentService, $locationService, $folderType, $languageCode, $mediaRootLocationId, sprintf('%s Media', $siteName));
-
-            $imageFolder = $this->createFolder($contentTypeService, $contentService, $locationService, $folderType, $languageCode, $mediaFolder['location_id'], 'Images');
-            $fileFolder = $this->createFolder($contentTypeService, $contentService, $locationService, $folderType, $languageCode, $mediaFolder['location_id'], 'Files');
-            $multimediaFolder = $this->createFolder($contentTypeService, $contentService, $locationService, $folderType, $languageCode, $mediaFolder['location_id'], 'Multimedia');
+            $mediaFolder = $this->createFolder($folderType, $languageCode, $mediaRootLocationId, sprintf('%s Media', $siteName));
+            $this->createFolder($folderType, $languageCode, $mediaFolder['location_id'], 'Images');
+            $this->createFolder($folderType, $languageCode, $mediaFolder['location_id'], 'Files');
+            $this->createFolder($folderType, $languageCode, $mediaFolder['location_id'], 'Multimedia');
 
             // 5. Pre-generate site images
-            $tempFiles = $this->preGenerateSiteImages($siteName, $sitePublished->id, $contentService, $locationService, $contentTypeService, $siteType, $languageCode);
+            $tempFiles = $this->preGenerateSiteImages($siteName, $sitePublished->id, $languageCode);
 
             // 6. Create pages under home page
             $createdPages = $this->createPagesRecursive(
                 $params['pages'] ?? [],
                 $homeLocation->id,
-                $contentTypeService,
-                $contentService,
-                $locationService,
                 $languageCode,
             );
 
@@ -170,16 +168,8 @@ readonly class CreateSiteStructureTool implements ToolInterface
                     'pages' => $createdPages,
                 ],
             );
-        } catch (ContentFieldValidationException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create site structure');
-        } catch (BadStateException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create site structure');
-        } catch (UnauthorizedException $e) {
-            return AgentErrorHelper::unauthorized('create site structure');
-        } catch (NotFoundException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create site structure');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'create site structure');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'create site structure');
         } finally {
             foreach ($tempFiles as $path) {
                 if (file_exists($path)) {
@@ -198,17 +188,20 @@ readonly class CreateSiteStructureTool implements ToolInterface
         }
     }
 
+    /**
+     * @return array{content_id: int, location_id: int}
+     */
     private function createFolder(
-        $contentTypeService,
-        $contentService,
-        $locationService,
-        $folderType,
+        ContentType $folderType,
         string $languageCode,
         int $parentLocationId,
         string $name,
     ): array {
+        $contentService = $this->repository->getContentService();
+        $locationService = $this->repository->getLocationService();
+
         $createStruct = $contentService->newContentCreateStruct($folderType, $languageCode);
-        $createStruct->setField('name', $name, $languageCode);
+        $createStruct->setField(FieldId::NAME, $name, $languageCode);
 
         $locStruct = $locationService->newLocationCreateStruct($parentLocationId);
         $draft = $contentService->createContent($createStruct, [$locStruct]);
@@ -224,13 +217,14 @@ readonly class CreateSiteStructureTool implements ToolInterface
     private function createPagesRecursive(
         array $pages,
         int $parentLocationId,
-        $contentTypeService,
-        $contentService,
-        $locationService,
         string $languageCode,
     ): array {
+        $contentService = $this->repository->getContentService();
+        $locationService = $this->repository->getLocationService();
+        $contentTypeService = $this->repository->getContentTypeService();
+
         $pageType = $contentTypeService->loadContentTypeByIdentifier(
-            $this->resolveConfig('page_content_type', 'page'),
+            $this->resolveConfig('page_content_type', ContentTypeId::PAGE),
         );
 
         $created = [];
@@ -240,9 +234,9 @@ readonly class CreateSiteStructureTool implements ToolInterface
             $pageDescription = $pageData['description'] ?? '';
 
             $createStruct = $contentService->newContentCreateStruct($pageType, $languageCode);
-            $createStruct->setField('title', $title, $languageCode);
-            $createStruct->setField('description', $pageDescription, $languageCode);
-            $createStruct->setField('blocks', [], $languageCode);
+            $createStruct->setField(FieldId::TITLE, $title, $languageCode);
+            $createStruct->setField(FieldId::DESCRIPTION, $pageDescription, $languageCode);
+            $createStruct->setField(FieldId::BLOCKS, [], $languageCode);
 
             $locStruct = $locationService->newLocationCreateStruct($parentLocationId);
             $draft = $contentService->createContent($createStruct, [$locStruct]);
@@ -260,9 +254,6 @@ readonly class CreateSiteStructureTool implements ToolInterface
                 $pageEntry['children'] = $this->createPagesRecursive(
                     $pageData['children'],
                     $location->id,
-                    $contentTypeService,
-                    $contentService,
-                    $locationService,
                     $languageCode,
                 );
             }
@@ -273,15 +264,15 @@ readonly class CreateSiteStructureTool implements ToolInterface
         return $created;
     }
 
+    /**
+     * @return string[] Temp file paths created (for cleanup)
+     */
     private function preGenerateSiteImages(
         string $siteName,
         int $siteContentId,
-        $contentService,
-        $locationService,
-        $contentTypeService,
-        $siteType,
         string $languageCode,
     ): array {
+        $contentService = $this->repository->getContentService();
         $tempFiles = [];
 
         try {
@@ -290,14 +281,16 @@ readonly class CreateSiteStructureTool implements ToolInterface
                 sprintf('Simple clean favicon icon for "%s" website, minimalist, professional', $siteName),
                 '1:1',
             );
-            $faviconPath = $this->saveTempFile($faviconResult->imageData, $faviconResult->mimeType);
+            $faviconPath = ImageFileHelper::saveTempFile($faviconResult->imageData, $faviconResult->mimeType, 'ai_site_');
             $tempFiles[] = $faviconPath;
 
             // Update site content with favicon
-            $draft = $contentService->createContentDraft($siteType->getContentTypeInfo($siteContentId));
+            $siteContentInfo = $contentService->loadContentInfo($siteContentId);
+
+            $draft = $contentService->createContentDraft($siteContentInfo);
             $updateStruct = $contentService->newContentUpdateStruct();
             $updateStruct->languageCode = $languageCode;
-            $updateStruct->setField('favicon', $faviconPath, $languageCode);
+            $updateStruct->setField(FieldId::FAVICON, $faviconPath, $languageCode);
             $contentService->updateContent($draft->versionInfo, $updateStruct);
             $contentService->publishVersion($draft->versionInfo);
         } catch (\Throwable $e) {
@@ -311,26 +304,4 @@ readonly class CreateSiteStructureTool implements ToolInterface
         return $tempFiles;
     }
 
-    private function saveTempFile(string $imageData, string $mimeType): string
-    {
-        $ext = match ($mimeType) {
-            'image/jpeg', 'image/jpg' => 'jpg',
-            'image/gif' => 'gif',
-            'image/webp' => 'webp',
-            default => 'png',
-        };
-
-        $path = tempnam(sys_get_temp_dir(), 'ai_site_') . '.' . $ext;
-        $decoded = base64_decode($imageData, true);
-
-        if ($decoded === false) {
-            throw new \RuntimeException('Failed to decode image data');
-        }
-
-        if (file_put_contents($path, $decoded) === false) {
-            throw new \RuntimeException('Failed to save generated image');
-        }
-
-        return $path;
-    }
 }

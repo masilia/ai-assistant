@@ -13,7 +13,7 @@ use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
  *
  * Pure: no I/O, no logging, no entity access. Trivial to unit test.
  */
-class FieldIdentifierResolver
+final class FieldIdentifierResolver
 {
     public function resolve(string $fieldName, ContentType $contentType): string
     {

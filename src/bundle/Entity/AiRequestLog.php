@@ -77,13 +77,13 @@ class AiRequestLog
     public function getFinishReason(): ?string { return $this->finishReason; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
-    public function setProviderIdentifier(string $v): self { $this->providerIdentifier = $v; return $this; }
-    public function setModelIdentifier(string $v): self { $this->modelIdentifier = $v; return $this; }
-    public function setSiteaccess(?string $v): self { $this->siteaccess = $v; return $this; }
-    public function setSuccess(bool $v): self { $this->success = $v; return $this; }
-    public function setLatencyMs(int $v): self { $this->latencyMs = $v; return $this; }
-    public function setErrorCode(?string $v): self { $this->errorCode = $v; return $this; }
-    public function setTokensIn(?int $v): self { $this->tokensIn = $v; return $this; }
-    public function setTokensOut(?int $v): self { $this->tokensOut = $v; return $this; }
-    public function setFinishReason(?string $v): self { $this->finishReason = $v; return $this; }
+    public function setProviderIdentifier(string $providerIdentifier): self { $this->providerIdentifier = $providerIdentifier; return $this; }
+    public function setModelIdentifier(string $modelIdentifier): self { $this->modelIdentifier = $modelIdentifier; return $this; }
+    public function setSiteaccess(?string $siteaccess): self { $this->siteaccess = $siteaccess; return $this; }
+    public function setSuccess(bool $success): self { $this->success = $success; return $this; }
+    public function setLatencyMs(int $latencyMs): self { $this->latencyMs = $latencyMs; return $this; }
+    public function setErrorCode(?string $errorCode): self { $this->errorCode = $errorCode; return $this; }
+    public function setTokensIn(?int $tokensIn): self { $this->tokensIn = $tokensIn; return $this; }
+    public function setTokensOut(?int $tokensOut): self { $this->tokensOut = $tokensOut; return $this; }
+    public function setFinishReason(?string $finishReason): self { $this->finishReason = $finishReason; return $this; }
 }

@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool\Content;
 
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion\LogicalAnd;
-use Ibexa\Contracts\Core\Repository\Exceptions\InvalidArgumentException;
-use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Core\Repository\Values\Content\Content;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
+use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
 
@@ -25,7 +27,7 @@ readonly class SearchContentTool implements ToolInterface
 
     public function getName(): string
     {
-        return 'search_content';
+        return ToolName::SEARCH_CONTENT;
     }
 
     public function getDescription(): string
@@ -73,7 +75,6 @@ readonly class SearchContentTool implements ToolInterface
         try {
             $searchService = $this->repository->getSearchService();
             $locationService = $this->repository->getLocationService();
-            $contentTypeService = $this->repository->getContentTypeService();
 
             $criteria = [];
 
@@ -86,9 +87,13 @@ readonly class SearchContentTool implements ToolInterface
                 try {
                     $location = $locationService->loadLocation((int) $params['subtree_location_id']);
                     $criteria[] = new Criterion\Subtree($location->pathString);
-                } catch (\Throwable) {
+                } catch (NotFoundException) {
                     return ToolResult::error(
                         sprintf('Location %d not found', (int) $params['subtree_location_id']),
+                    );
+                } catch (UnauthorizedException $e) {
+                    return ToolResult::error(
+                        sprintf('unable to load Location %d not found', (int) $params['subtree_location_id']),
                     );
                 }
             }
@@ -96,7 +101,7 @@ readonly class SearchContentTool implements ToolInterface
             // OR filter: name OR fulltext
             $orCriteria = [];
             if (!empty($params['name'])) {
-                $orCriteria[] = new Criterion\ContentName($params['name']);
+               $orCriteria[] = new Criterion\ContentName($params['name']);
             }
             if (!empty($params['query'])) {
                 $orCriteria[] = new Criterion\FullText($params['query']);
@@ -105,39 +110,37 @@ readonly class SearchContentTool implements ToolInterface
                 $criteria[] = new Criterion\LogicalOr($orCriteria);
             }
 
+
             $query = new Query([
-                'filter' => !empty($criteria) ? new LogicalAnd($criteria) : null,
+                'query' => !empty($criteria) ? new LogicalAnd($criteria) : null,
                 'limit' => $params['limit'] ?? 10,
             ]);
 
             $searchResult = $searchService->findContent($query);
 
+
             $results = [];
             foreach ($searchResult->searchHits as $hit) {
+                /** @var   Content  $content */
                 $content = $hit->valueObject;
-                try {
-                    $contentType = $contentTypeService->loadContentType($content->contentInfo->contentTypeId);
-                    $contentTypeIdentifier = $contentType->identifier;
-                } catch (\Throwable) {
-                    $contentTypeIdentifier = (string) $content->contentInfo->contentTypeId;
-                }
 
                 $results[] = [
                     'content_id' => $content->id,
-                    'content_type' => $contentTypeIdentifier,
+                    'content_type' => $content->getContentType()->identifier,
                     'name' => $content->contentInfo->name,
-                    'remote_id' => $content->remoteId,
+                    'remote_id' => $content->contentInfo->remoteId,
                 ];
             }
 
             return ToolResult::ok(
                 sprintf('Found %d results', $searchResult->totalCount),
-                ['count' => $searchResult->totalCount, 'results' => $results],
+                [
+                    'count' => $searchResult->totalCount,
+                    'results' => $results
+                ]
             );
-        } catch (InvalidArgumentException $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'search content');
         } catch (\Throwable $e) {
-            return AgentErrorHelper::logAndReturn($this->aiLogger, $e, 'search content');
+            return AgentErrorHelper::handle($this->aiLogger, $e, 'search content');
         }
     }
 }

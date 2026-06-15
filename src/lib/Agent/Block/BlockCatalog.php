@@ -7,11 +7,13 @@ namespace Masilia\AiAssistant\Agent\Block;
 use Ibexa\Contracts\Core\Repository\ContentTypeService;
 use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
-use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
+use Psr\Cache\CacheItemPoolInterface;
 
-class BlockCatalog
+final class BlockCatalog
 {
     private const BLOCK_GROUP = 'Blocks';
+    private const CACHE_KEY = 'masilia_ai.block_catalog.available_blocks';
+    private const CACHE_TTL = 3600; // 1 hour; invalidated by AI cache warmer too
 
     /**
      * Semantic capabilities mapped to block type identifiers.
@@ -36,11 +38,16 @@ class BlockCatalog
         'data'    => ['chart_set'],
     ];
 
-    /** @var array<string, array>|null */
-    private ?array $cache = null;
+    /**
+     * Request-scoped memoization on top of the PSR-6 pool.
+     *
+     * @var array<string, array>|null
+     */
+    private ?array $memo = null;
 
     public function __construct(
         private readonly ContentTypeService $contentTypeService,
+        private readonly CacheItemPoolInterface $cache,
     ) {
     }
 
@@ -51,8 +58,13 @@ class BlockCatalog
      */
     public function getAvailableBlocks(): array
     {
-        if ($this->cache !== null) {
-            return $this->cache;
+        if ($this->memo !== null) {
+            return $this->memo;
+        }
+
+        $item = $this->cache->getItem(self::CACHE_KEY);
+        if ($item->isHit()) {
+            return $this->memo = $item->get();
         }
 
         $blocks = [];
@@ -69,9 +81,10 @@ class BlockCatalog
             ];
         }
 
-        $this->cache = $blocks;
+        $item->set($blocks)->expiresAfter(self::CACHE_TTL);
+        $this->cache->save($item);
 
-        return $blocks;
+        return $this->memo = $blocks;
     }
 
     /**

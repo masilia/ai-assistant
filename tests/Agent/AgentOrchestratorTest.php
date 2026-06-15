@@ -4,33 +4,29 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Tests\Agent;
 
-use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Masilia\AiAssistant\Agent\AgentOrchestrator;
 use Masilia\AiAssistant\Agent\AgentResponse;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
+use Masilia\AiAssistant\Agent\Block\BlockDesigner;
+use Masilia\AiAssistant\Agent\ContentResolver;
+use Masilia\AiAssistant\Agent\DTO\PageDesign;
 use Masilia\AiAssistant\Agent\IntentClassifier;
-use Masilia\AiAssistant\Agent\LlmPromptBuilder;
+use Masilia\AiAssistant\Agent\SeoMetadataHandler;
+use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
-use Masilia\AiAssistant\Client\AiClientInterface;
-use Masilia\AiAssistant\Field\BlockFlattener;
-use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
 
 final class AgentOrchestratorTest extends TestCase
 {
     private AgentOrchestrator $orchestrator;
     private IntentClassifier $classifier;
     private ToolRegistry $toolRegistry;
-    private ConfigResolverInterface $configResolver;
-    private BlockFlattener $blockFlattener;
-    private SiblingFieldsExtractor $siblingFieldsExtractor;
-    private AiClientInterface $aiClient;
-    private LlmPromptBuilder $promptBuilder;
-    private Repository $repository;
+    private SiteaccessLocationResolver $locationResolver;
+    private ContentResolver $contentResolver;
+    private SeoMetadataHandler $seoHandler;
+    private BlockDesigner $blockDesigner;
 
     protected function setUp(): void
     {
@@ -51,25 +47,22 @@ final class AgentOrchestratorTest extends TestCase
 
         $this->toolRegistry = new ToolRegistry();
 
-        $this->configResolver = $this->createMock(ConfigResolverInterface::class);
-
-        $this->blockFlattener = $this->createMock(BlockFlattener::class);
-        $this->siblingFieldsExtractor = $this->createMock(SiblingFieldsExtractor::class);
-        $this->aiClient = $this->createMock(AiClientInterface::class);
-        $this->promptBuilder = $this->createMock(LlmPromptBuilder::class);
-        $this->repository = $this->createMock(Repository::class);
+        $this->locationResolver = $this->createMock(SiteaccessLocationResolver::class);
+        $this->contentResolver = $this->createMock(ContentResolver::class);
+        $this->seoHandler = $this->createMock(SeoMetadataHandler::class);
+        $this->blockDesigner = $this->createMock(BlockDesigner::class);
+        // Default: pass blocks through unchanged so existing assertions stay valid
+        $this->blockDesigner->method('designPageStructure')
+            ->willReturnCallback(static fn(array $parsed) => PageDesign::fromArray($parsed));
 
         $this->orchestrator = new AgentOrchestrator(
             classifier: $this->classifier,
             blockCatalog: $blockCatalog,
+            blockDesigner: $this->blockDesigner,
             toolRegistry: $this->toolRegistry,
-            configResolver: $this->configResolver,
-            blockFlattener: $this->blockFlattener,
-            siblingFieldsExtractor: $this->siblingFieldsExtractor,
-            aiClient: $this->aiClient,
-            promptBuilder: $this->promptBuilder,
-            repository: $this->repository,
-            aiLogger: new NullLogger(),
+            locationResolver: $this->locationResolver,
+            contentResolver: $this->contentResolver,
+            seoHandler: $this->seoHandler,
         );
     }
 
@@ -97,8 +90,8 @@ final class AgentOrchestratorTest extends TestCase
             ],
         ]);
 
-        $this->configResolver->method('getParameter')
-            ->with('content.tree_root.location_id', null, 'mattcch')
+        $this->locationResolver->method('resolve')
+            ->with('mattcch', null)
             ->willReturn(42);
 
         $response = $this->orchestrator->chat('create a page under mattcch site');
@@ -127,8 +120,8 @@ final class AgentOrchestratorTest extends TestCase
         ]);
 
         // No siteaccess → try current siteaccess → fails
-        $this->configResolver->method('getParameter')
-            ->willThrowException(new \RuntimeException('No scope'));
+        $this->locationResolver->method('resolve')
+            ->willReturn(null);
 
         $response = $this->orchestrator->chat('create a page');
 
@@ -146,16 +139,10 @@ final class AgentOrchestratorTest extends TestCase
             ],
         ]);
 
-        $callCount = 0;
-        $this->configResolver->method('getParameter')
-            ->willReturnCallback(function (string $param, $ns, $scope = null) use (&$callCount) {
-                $callCount++;
-                if ($scope === null && $callCount === 2) {
-                    // Second call: current siteaccess fallback
-                    return 99;
-                }
-                throw new \RuntimeException('No scope');
-            });
+        // Empty siteaccess falls back to current
+        $this->locationResolver->method('resolve')
+            ->with('', null)
+            ->willReturn(99);
 
         $response = $this->orchestrator->chat('create a page');
 
@@ -176,14 +163,11 @@ final class AgentOrchestratorTest extends TestCase
         $this->orchestrator = new AgentOrchestrator(
             classifier: $this->classifier,
             blockCatalog: $this->createMock(BlockCatalog::class),
+            blockDesigner: $this->blockDesigner,
             toolRegistry: $this->toolRegistry,
-            configResolver: $this->configResolver,
-            blockFlattener: $this->blockFlattener,
-            siblingFieldsExtractor: $this->siblingFieldsExtractor,
-            aiClient: $this->aiClient,
-            promptBuilder: $this->promptBuilder,
-            repository: $this->repository,
-            aiLogger: new NullLogger(),
+            locationResolver: $this->locationResolver,
+            contentResolver: $this->contentResolver,
+            seoHandler: $this->seoHandler,
         );
 
         $this->classifier->method('classify')->willReturn([
@@ -234,14 +218,11 @@ final class AgentOrchestratorTest extends TestCase
         $this->orchestrator = new AgentOrchestrator(
             classifier: $this->classifier,
             blockCatalog: $this->createMock(BlockCatalog::class),
+            blockDesigner: $this->blockDesigner,
             toolRegistry: $this->toolRegistry,
-            configResolver: $this->configResolver,
-            blockFlattener: $this->blockFlattener,
-            siblingFieldsExtractor: $this->siblingFieldsExtractor,
-            aiClient: $this->aiClient,
-            promptBuilder: $this->promptBuilder,
-            repository: $this->repository,
-            aiLogger: new NullLogger(),
+            locationResolver: $this->locationResolver,
+            contentResolver: $this->contentResolver,
+            seoHandler: $this->seoHandler,
         );
 
         $plan = new \Masilia\AiAssistant\Agent\AgentPlan(
@@ -270,14 +251,11 @@ final class AgentOrchestratorTest extends TestCase
         $this->orchestrator = new AgentOrchestrator(
             classifier: $this->classifier,
             blockCatalog: $this->createMock(BlockCatalog::class),
+            blockDesigner: $this->blockDesigner,
             toolRegistry: $this->toolRegistry,
-            configResolver: $this->configResolver,
-            blockFlattener: $this->blockFlattener,
-            siblingFieldsExtractor: $this->siblingFieldsExtractor,
-            aiClient: $this->aiClient,
-            promptBuilder: $this->promptBuilder,
-            repository: $this->repository,
-            aiLogger: new NullLogger(),
+            locationResolver: $this->locationResolver,
+            contentResolver: $this->contentResolver,
+            seoHandler: $this->seoHandler,
         );
 
         $plan = new \Masilia\AiAssistant\Agent\AgentPlan(
@@ -311,23 +289,10 @@ final class AgentOrchestratorTest extends TestCase
         self::assertStringContainsString('Tool not found', $response->results[0]->message);
     }
 
-    public function testChatHandlesSetSiteIntent(): void
-    {
-        $this->classifier->method('classify')->willReturn([
-            'intent' => 'set_site',
-            'parameters' => ['siteaccess' => 'mattcch'],
-        ]);
-
-        $response = $this->orchestrator->chat('set site to mattcch');
-
-        self::assertTrue($response->success);
-        self::assertStringContainsString('mattcch', $response->message);
-    }
-
     public function testChatHandlesUndoIntent(): void
     {
         $undoTool = $this->createMock(ToolInterface::class);
-        $undoTool->method('getName')->willReturn('undo_last');
+        $undoTool->method('getName')->willReturn('undo_last_operation');
         $undoTool->method('execute')->willReturn(ToolResult::ok('Undone'));
 
         $this->toolRegistry = $this->toolRegistry->register($undoTool);
@@ -335,14 +300,11 @@ final class AgentOrchestratorTest extends TestCase
         $this->orchestrator = new AgentOrchestrator(
             classifier: $this->classifier,
             blockCatalog: $this->createMock(BlockCatalog::class),
+            blockDesigner: $this->blockDesigner,
             toolRegistry: $this->toolRegistry,
-            configResolver: $this->configResolver,
-            blockFlattener: $this->blockFlattener,
-            siblingFieldsExtractor: $this->siblingFieldsExtractor,
-            aiClient: $this->aiClient,
-            promptBuilder: $this->promptBuilder,
-            repository: $this->repository,
-            aiLogger: new NullLogger(),
+            locationResolver: $this->locationResolver,
+            contentResolver: $this->contentResolver,
+            seoHandler: $this->seoHandler,
         );
 
         $this->classifier->method('classify')->willReturn([
@@ -367,8 +329,9 @@ final class AgentOrchestratorTest extends TestCase
             ],
         ]);
 
-        $this->configResolver->method('getParameter')
-            ->willThrowException(new \RuntimeException('Unknown siteaccess'));
+        $this->locationResolver->method('resolve')
+            ->with('nonexistent', null)
+            ->willReturn(null);
 
         $response = $this->orchestrator->chat('create a page under nonexistent');
 

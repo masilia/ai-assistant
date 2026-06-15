@@ -4,32 +4,36 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Tests\Agent\Block;
 
+use Ibexa\Contracts\Core\Repository\ContentTypeService;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Cache\Adapter\NullAdapter;
 
 final class BlockCatalogTest extends TestCase
 {
+    private function makeCatalog(): BlockCatalog
+    {
+        return new BlockCatalog(
+            $this->createMock(ContentTypeService::class),
+            new NullAdapter(),
+        );
+    }
+
     public function testGetCapabilitiesReturnsExpectedCapabilities(): void
     {
-        $contentTypeService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentTypeService::class);
-        $catalog = new BlockCatalog($contentTypeService);
-
-        $capabilities = $catalog->getCapabilities();
+        $capabilities = $this->makeCatalog()->getCapabilities();
 
         self::assertArrayHasKey('hero', $capabilities);
         self::assertArrayHasKey('text', $capabilities);
         self::assertArrayHasKey('cards', $capabilities);
         self::assertArrayHasKey('cta', $capabilities);
         self::assertContains('hero_banner', $capabilities['hero']);
-        self::contains('paragraph', $capabilities['text']);
+        self::assertContains('paragraph', $capabilities['text']);
     }
 
     public function testFindBlocksByCapabilityReturnsMatchingBlocks(): void
     {
-        $contentTypeService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentTypeService::class);
-        $catalog = new BlockCatalog($contentTypeService);
-
-        $blocks = $catalog->findBlocksByCapability('hero');
+        $blocks = $this->makeCatalog()->findBlocksByCapability('hero');
 
         self::assertContains('hero_banner', $blocks);
         self::assertContains('hero_carousel', $blocks);
@@ -37,19 +41,14 @@ final class BlockCatalogTest extends TestCase
 
     public function testFindBlocksByCapabilityReturnsEmptyForUnknown(): void
     {
-        $contentTypeService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentTypeService::class);
-        $catalog = new BlockCatalog($contentTypeService);
-
-        $blocks = $catalog->findBlocksByCapability('nonexistent');
+        $blocks = $this->makeCatalog()->findBlocksByCapability('nonexistent');
 
         self::assertEmpty($blocks);
     }
 
     public function testResolveCapabilityReturnsCorrectCapability(): void
     {
-        $contentTypeService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentTypeService::class);
-        $catalog = new BlockCatalog($contentTypeService);
-
+        $catalog = $this->makeCatalog();
         // The resolveCapability method is private, but we can test it indirectly
         // through findBlocksByCapability which uses the same mapping
         $heroBlocks = $catalog->findBlocksByCapability('hero');

@@ -6,6 +6,7 @@ namespace Masilia\Bundle\AiAssistant\DependencyInjection;
 
 use Ibexa\Bundle\Core\DependencyInjection\Configuration\SiteAccessAware;
 use Masilia\AiAssistant\AiDefaults;
+use Masilia\AiAssistant\ContentTypeId;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 
 class Configuration extends SiteAccessAware\Configuration
@@ -46,23 +47,23 @@ class Configuration extends SiteAccessAware\Configuration
                 ->info('Model identifier for image generation (e.g. gpt-image-2, image-01).')
             ->end()
             ->scalarNode('site_content_type')
-                ->defaultValue('site')
+                ->defaultValue(ContentTypeId::SITE)
                 ->info('Content type identifier for the site container.')
             ->end()
             ->scalarNode('home_page_content_type')
-                ->defaultValue('home_page')
+                ->defaultValue(ContentTypeId::HOME_PAGE)
                 ->info('Content type identifier for the home page.')
             ->end()
             ->scalarNode('page_content_type')
-                ->defaultValue('page')
+                ->defaultValue(ContentTypeId::PAGE)
                 ->info('Content type identifier for pages.')
             ->end()
             ->scalarNode('layout_content_type')
-                ->defaultValue('layout_config')
+                ->defaultValue(ContentTypeId::LAYOUT)
                 ->info('Content type identifier for layout configuration.')
             ->end()
             ->scalarNode('folder_content_type')
-                ->defaultValue('folder')
+                ->defaultValue(ContentTypeId::FOLDER)
                 ->info('Content type identifier for folders.')
             ->end()
             ->integerNode('media_root_location_id')

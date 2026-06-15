@@ -41,6 +41,56 @@ final class LlmPromptBuilderTest extends TestCase
         self::assertStringContainsString('text:', $prompt);
     }
 
+    /**
+     * Regression for G1 refactor: all top-level sections must appear in the
+     * documented order. Locks structural intent without locking byte output.
+     */
+    public function testBuildSystemPromptSectionsAppearInOrder(): void
+    {
+        $prompt = $this->builder->buildSystemPrompt();
+
+        $orderedMarkers = [
+            'You are an Ibexa CMS page builder assistant.',
+            'Available block types and their capabilities:',
+            'Block relation fields (blocks that contain child items):',
+            'Rules:',
+            '## Site Structure Discovery',
+            'For "browse_site_structure":',
+            'For "create_site_structure":',
+            'For "create_page":',
+            'For "create_content":',
+            'For "update_content":',
+            'For "delete_content":',
+            'For "search_content":',
+            'For "list_blocks":',
+            'For "undo":',
+            'For "generate_image":',
+            'Block ordering rules:',
+            'Item creation rules:',
+            'Field format rules:',
+            'Siteaccess rules:',
+        ];
+
+        $previousPos = -1;
+        foreach ($orderedMarkers as $marker) {
+            $pos = strpos($prompt, $marker);
+            self::assertNotFalse($pos, sprintf('Missing section marker: "%s"', $marker));
+            self::assertGreaterThan(
+                $previousPos,
+                $pos,
+                sprintf('Section "%s" appears out of order', $marker),
+            );
+            $previousPos = $pos;
+        }
+    }
+
+    public function testBuildSystemPromptDoesNotMentionRemovedSetSiteIntent(): void
+    {
+        $prompt = $this->builder->buildSystemPrompt();
+
+        self::assertStringNotContainsString('set_site', $prompt);
+    }
+
     public function testBuildUserMessageReturnsInputUnchanged(): void
     {
         $message = $this->builder->buildUserMessage('Create a page');

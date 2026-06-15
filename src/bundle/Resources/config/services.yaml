@@ -98,6 +98,14 @@ services:
         arguments:
             $cachePool: '@cache.app'
 
+    Masilia\AiAssistant\Agent\Block\BlockCatalog:
+        arguments:
+            $cache: '@cache.app'
+
+    Masilia\AiAssistant\Agent\Block\BlockItemCatalog:
+        arguments:
+            $cache: '@cache.app'
+
     Masilia\AiAssistant\Agent\Tool\ToolRegistry:
         arguments:
             $tools: !tagged_iterator masilia.ai.agent_tool
@@ -121,11 +129,6 @@ services:
     Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\KeywordTransformer: ~
 
     Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\MapLocationTransformer: ~
-
-    Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\DateTransformer:
-        tags:
-            - { name: masilia.ai.field_value_transformer, key: ezdate }
-            - { name: masilia.ai.field_value_transformer, key: ezdatetime }
 
     Masilia\AiAssistant\Agent\Tool\FieldValueTransformer\NovaSeoMetasTransformer: ~
 

@@ -29,4 +29,17 @@ readonly class PageDesign
             siteaccess: $data['siteaccess'] ?? '',
         );
     }
+
+    public function toArray(): array
+    {
+        return [
+            'title' => $this->title,
+            'description' => $this->description,
+            'siteaccess' => $this->siteaccess,
+            'blocks' => array_map(
+                static fn(BlockDesign $block) => $block->toArray(),
+                $this->blocks,
+            ),
+        ];
+    }
 }

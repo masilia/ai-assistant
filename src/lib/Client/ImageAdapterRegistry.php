@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
+use Masilia\AiAssistant\Client\Adapter\AdapterRegistryTrait;
 use Masilia\AiAssistant\Client\Adapter\ImageProviderAdapterInterface;
-use Traversable;
 
 /**
  * Registry for image generation adapters. Resolves a provider identifier
@@ -13,37 +13,19 @@ use Traversable;
  */
 class ImageAdapterRegistry
 {
-    /** @var array<string, ImageProviderAdapterInterface> */
-    private array $map;
+    use AdapterRegistryTrait;
 
     /**
      * @param iterable<ImageProviderAdapterInterface> $adapters
      */
     public function __construct(iterable $adapters)
     {
-        $list = $adapters instanceof Traversable
-            ? iterator_to_array($adapters)
-            : $adapters;
-
-        $this->map = [];
-        foreach ($list as $adapter) {
-            foreach (ProviderId::ALL as $id) {
-                if ($adapter->supportsImageGeneration($id)) {
-                    $this->map[$id] = $adapter;
-                }
-            }
-        }
+        $this->buildMap($adapters, static fn (ImageProviderAdapterInterface $adapter, string $id): bool => $adapter->supportsImageGeneration($id));
     }
 
     public function getForProvider(string $providerIdentifier): ImageProviderAdapterInterface
     {
-        return $this->map[$providerIdentifier]
-            ?? throw new \RuntimeException(
-                sprintf(
-                    'No image generation adapter found for identifier "%s". Registered adapters: %s',
-                    $providerIdentifier,
-                    implode(', ', array_keys($this->map))
-                )
-            );
+        /** @var ImageProviderAdapterInterface */
+        return $this->getFromMap($providerIdentifier, 'image generation');
     }
 }

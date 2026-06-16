@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  *
  * Uses batch loading for blocks and PSR-6 caching for performance.
  */
-class BlockFlattener
+final class BlockFlattener
 {
     private const CACHE_PREFIX = 'ai_block_flattener_';
     private const CACHE_TTL = 3600; // 1 hour

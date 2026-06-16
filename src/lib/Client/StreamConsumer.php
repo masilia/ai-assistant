@@ -81,10 +81,12 @@ readonly class StreamConsumer
         ?string                           $lastFinish,
     ): StreamEvent
     {
+        $rawUsage = $adapter->extractStreamUsage($lastChunk ?? [], $lastFinish);
+
         return new StreamEvent(
             token: null,
             isFinal: true,
-            usage: $adapter->extractStreamUsage($lastChunk ?? [], $lastFinish),
+            usage: $rawUsage !== null ? UsageData::fromArray($rawUsage) : null,
             finishReason: $lastFinish,
         );
     }

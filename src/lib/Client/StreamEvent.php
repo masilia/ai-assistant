@@ -19,10 +19,10 @@ namespace Masilia\AiAssistant\Client;
 final readonly class StreamEvent
 {
     public function __construct(
-        public ?string $token,
-        public bool    $isFinal,
-        public ?array  $usage = null,
-        public ?string $finishReason = null,
+        public ?string  $token,
+        public bool     $isFinal,
+        public ?UsageData $usage = null,
+        public ?string  $finishReason = null,
     )
     {
     }

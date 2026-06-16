@@ -116,7 +116,7 @@ readonly class SeoMetadataHandler
 
         $this->blockFlattener->clearCache($contentId);
 
-        return [FieldType::NOVASEOMETAS => $seoData];
+        return $seoData;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent;
 
+use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use Masilia\AiAssistant\Agent\Block\BlockDesigner;
 use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
@@ -16,6 +17,7 @@ use Masilia\AiAssistant\Field\FieldType;
 readonly class AgentOrchestrator
 {
     public function __construct(
+        private Repository $repository,
         private IntentClassifier $classifier,
         private BlockCatalog     $blockCatalog,
         private BlockDesigner    $blockDesigner,
@@ -177,6 +179,16 @@ readonly class AgentOrchestrator
             return AgentResponse::error('Failed to generate SEO metadata. Please try again.');
         }
 
+        // Resolve actual field identifier from content type — novaseometas is
+        // the field *type*, not the field *identifier* (e.g. "seo_metadata")
+        $content = $this->repository->getContentService()->loadContent($contentId);
+        $fieldDef = $content->getContentType()->getFirstFieldDefinitionOfType(FieldType::NOVASEOMETAS);
+
+        if ($fieldDef === null) {
+            return AgentResponse::error('This content type does not have a novaseometas field.');
+        }
+
+        $resolvedAttributes = [$fieldDef->identifier => $seoData];
         $pageName = $params['page_name'] ?? sprintf('content %d', $contentId);
 
         $plan = new AgentPlan(
@@ -185,7 +197,7 @@ readonly class AgentOrchestrator
                     'tool' => ToolName::UPDATE_CONTENT,
                     'params' => array_merge($params, [
                         'content_id' => $contentId,
-                        'attributes' => $seoData,
+                        'attributes' => $resolvedAttributes,
                     ]),
                     'description' => sprintf('Apply SEO metadata to "%s"', $pageName),
                 ],
@@ -194,7 +206,7 @@ readonly class AgentOrchestrator
             requiresApproval: true,
         );
 
-        $preview = $this->formatSeoPreview($seoData[FieldType::NOVASEOMETAS] ?? []);
+        $preview = $this->formatSeoPreview($seoData);
 
         return AgentResponse::withPlan($plan, sprintf(
             "Here are the SEO metadata I generated for \"%s\":\n\n%s\n\nShall I apply these to the page?",

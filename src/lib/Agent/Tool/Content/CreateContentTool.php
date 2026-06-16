@@ -100,13 +100,31 @@ readonly class CreateContentTool implements ToolInterface
             $createStruct = $contentService->newContentCreateStruct($contentType, $languageCode);
             $createStruct->remoteId = $remoteId;
 
-            // Set field values with transformation
-            foreach ($attributes as $fieldIdentifier => $value) {
-                $fieldDef = $contentType->getFieldDefinition($fieldIdentifier);
-                $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
+            // Set field values with transformation — loop over definitions, not LLM params
+            $validIdentifiers = [];
+            foreach ($contentType->getFieldDefinitions() as $fieldDef) {
+                $validIdentifiers[] = $fieldDef->identifier;
 
-                $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value, $fieldDef);
-                $createStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
+                if (!array_key_exists($fieldDef->identifier, $attributes)) {
+                    continue;
+                }
+
+                $fieldType = $fieldDef->getFieldTypeIdentifier();
+                $transformedValue = $this->transformerRegistry->transform(
+                    $fieldType,
+                    $fieldDef->identifier,
+                    $attributes[$fieldDef->identifier],
+                    $fieldDef,
+                );
+                $createStruct->setField($fieldDef->identifier, $transformedValue, $languageCode);
+            }
+
+            $unknownFields = array_diff(array_keys($attributes), $validIdentifiers);
+            if (!empty($unknownFields)) {
+                $this->aiLogger->info(
+                    '[Agent] Skipped unknown fields for {content_type}: {fields}',
+                    ['content_type' => $contentTypeIdentifier, 'fields' => implode(', ', $unknownFields)],
+                );
             }
 
             $locationCreateStruct = $locationService->newLocationCreateStruct($parentLocationId);

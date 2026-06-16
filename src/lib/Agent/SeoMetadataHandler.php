@@ -14,6 +14,7 @@ use Masilia\AiAssistant\Client\AiClientInterface;
 use Masilia\AiAssistant\Field\BlockFlattener;
 use Masilia\AiAssistant\Field\SiblingFieldsExtractor;
 use Masilia\AiAssistant\AiConstants;
+use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\NovaSeoPromptBuilder;
 use Psr\Log\LoggerInterface;
 
@@ -66,7 +67,7 @@ readonly class SeoMetadataHandler
         $siblingFields = $this->siblingFieldsExtractor->extract(
             $content,
             $contentType,
-            'novaseometas',
+            FieldType::NOVASEOMETAS,
             $languageCode,
         );
 
@@ -87,7 +88,7 @@ readonly class SeoMetadataHandler
             }
         }
 
-        $metaKeys = $params['attributes']['novaseometas']['metaKeys'] ?? [];
+        $metaKeys = $params['attributes'][FieldType::NOVASEOMETAS]['metaKeys'] ?? [];
         $systemPrompt = $this->novaSeo->wholeBlockPrompt($base, $metaKeys);
 
         $userPrompt = 'Generate SEO metadata for this page based on the content provided.';
@@ -115,7 +116,7 @@ readonly class SeoMetadataHandler
 
         $this->blockFlattener->clearCache($contentId);
 
-        return ['novaseometas' => $seoData];
+        return [FieldType::NOVASEOMETAS => $seoData];
     }
 
     /**

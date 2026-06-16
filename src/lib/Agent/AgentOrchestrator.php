@@ -11,6 +11,7 @@ use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\AiConstants;
+use Masilia\AiAssistant\Field\FieldType;
 
 readonly class AgentOrchestrator
 {
@@ -42,16 +43,16 @@ readonly class AgentOrchestrator
 
         // 2. Route to appropriate handler
         return match ($intent) {
-            'create_page' => $this->handleCreatePage($params),
-            'create_content' => $this->handleCreateContent($params),
-            'update_content' => $this->handleUpdateContent($params),
-            'delete_content' => $this->executeTool(ToolName::TRASH_CONTENT, $params),
-            'search_content' => $this->executeTool(ToolName::SEARCH_CONTENT, $params),
-            'generate_image' => $this->executeTool(ToolName::GENERATE_IMAGE, $params),
-            'list_blocks' => $this->handleListBlocks(),
-            'undo' => $this->handleUndo($params),
-            'browse_site_structure' => $this->executeTool(ToolName::BROWSE_SITE_STRUCTURE, $params),
-            'create_site_structure' => $this->executeTool(ToolName::CREATE_SITE_STRUCTURE, $params),
+            IntentName::CREATE_PAGE => $this->handleCreatePage($params),
+            IntentName::CREATE_CONTENT => $this->handleCreateContent($params),
+            IntentName::UPDATE_CONTENT => $this->handleUpdateContent($params),
+            IntentName::DELETE_CONTENT => $this->executeTool(ToolName::TRASH_CONTENT, $params),
+            IntentName::SEARCH_CONTENT => $this->executeTool(ToolName::SEARCH_CONTENT, $params),
+            IntentName::GENERATE_IMAGE => $this->executeTool(ToolName::GENERATE_IMAGE, $params),
+            IntentName::LIST_BLOCKS => $this->handleListBlocks(),
+            IntentName::UNDO => $this->handleUndo($params),
+            IntentName::BROWSE_SITE_STRUCTURE => $this->executeTool(ToolName::BROWSE_SITE_STRUCTURE, $params),
+            IntentName::CREATE_SITE_STRUCTURE => $this->executeTool(ToolName::CREATE_SITE_STRUCTURE, $params),
             default => AgentResponse::error(sprintf('Unknown intent: %s', $intent)),
         };
     }
@@ -147,7 +148,7 @@ readonly class AgentOrchestrator
     private function handleUpdateContent(array $params): AgentResponse
     {
         $attributes = $params['attributes'] ?? [];
-        $isSeoUpdate = isset($attributes['novaseometas']);
+        $isSeoUpdate = isset($attributes[FieldType::NOVASEOMETAS]);
 
         try {
             $contentId = $params['content_id'] ?? null;
@@ -193,7 +194,7 @@ readonly class AgentOrchestrator
             requiresApproval: true,
         );
 
-        $preview = $this->formatSeoPreview($seoData['novaseometas'] ?? []);
+        $preview = $this->formatSeoPreview($seoData[FieldType::NOVASEOMETAS] ?? []);
 
         return AgentResponse::withPlan($plan, sprintf(
             "Here are the SEO metadata I generated for \"%s\":\n\n%s\n\nShall I apply these to the page?",
@@ -228,6 +229,7 @@ readonly class AgentOrchestrator
     {
         $siteaccess = $params['siteaccess'] ?? '';
         $pageName = $params['page_name'] ?? '';
+        $contentType = $params['content_type'] ?? 'page';
 
         if ($siteaccess === '' || $pageName === '') {
             throw new ContentNotFoundException(
@@ -235,10 +237,10 @@ readonly class AgentOrchestrator
             );
         }
 
-        $contentId = $this->contentResolver->findBySiteaccessAndName($siteaccess, $pageName);
+        $contentId = $this->contentResolver->findBySiteaccessAndName($siteaccess, $pageName, $contentType);
         if ($contentId === null) {
             throw new ContentNotFoundException(
-                sprintf('Page "%s" not found in siteaccess "%s".', $pageName, $siteaccess),
+                sprintf('Page "%s" not found in siteaccess "%s" (content type: "%s").', $pageName, $siteaccess, $contentType),
             );
         }
 

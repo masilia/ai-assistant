@@ -171,7 +171,15 @@ final class BlockCatalog
             $output .= sprintf("\n%s:\n", ucfirst($cap));
             foreach ($types as $type) {
                 $info = $blocks[$type] ?? null;
-                $fields = $info ? implode(', ', array_keys($info['fields'])) : 'unknown';
+                if ($info === null) {
+                    $fields = 'unknown';
+                } else {
+                    $fieldParts = [];
+                    foreach ($info['fields'] as $fieldId => $fieldType) {
+                        $fieldParts[] = $fieldId . ':' . $fieldType;
+                    }
+                    $fields = implode(', ', $fieldParts);
+                }
                 $output .= sprintf("  - %s (fields: %s)\n", $type, $fields);
             }
         }

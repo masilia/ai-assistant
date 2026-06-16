@@ -12,6 +12,7 @@ namespace Masilia\AiAssistant\Agent;
  */
 final class LlmResponseParser
 {
+
     /**
      * Parse the LLM response into structured intent + parameters.
      *
@@ -29,8 +30,13 @@ final class LlmResponseParser
             return null;
         }
 
+        $intent = $decoded['intent'];
+        if (!in_array($intent, IntentName::all(), true)) {
+            return null;
+        }
+
         return [
-            'intent' => $decoded['intent'],
+            'intent' => $intent,
             'parameters' => $decoded['parameters'] ?? [],
         ];
     }

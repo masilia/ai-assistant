@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent;
 
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
+use Masilia\AiAssistant\Field\FieldType;
 
 readonly class LlmPromptBuilder
 {
@@ -62,12 +63,17 @@ readonly class LlmPromptBuilder
      */
     private function rulesAndSchemaSection(): string
     {
-        return <<<'EOT'
+        $intentList = implode(' | ', array_map(
+            static fn (string $i): string => '"' . $i . '"',
+            IntentName::all(),
+        ));
+
+        return <<<EOT
 Rules:
 1. Return ONLY valid JSON, no markdown, no explanation.
 2. The JSON must match this schema:
 {
-  "intent": "create_page" | "create_content" | "update_content" | "delete_content" | "search_content" | "list_blocks" | "undo" | "generate_image" | "browse_site_structure" | "create_site_structure",
+  "intent": {$intentList},
   "parameters": { ... }
 }
 EOT;
@@ -206,6 +212,7 @@ For "update_content":
   "parameters": {
     "siteaccess": "mattcch",
     "page_name": "homepage",
+    "content_type": "page",
     "attributes": { "field_identifier": "new_value" }
   }
 }
@@ -215,6 +222,21 @@ For "update_content":
   "parameters": {
     "content_id": 123,
     "attributes": { "field_identifier": "new_value" }
+  }
+}
+- For SEO metadata updates, nest under "novaseometas":
+{
+  "intent": "update_content",
+  "parameters": {
+    "siteaccess": "mattcch",
+    "page_name": "cookie policy",
+    "content_type": "page",
+    "attributes": {
+      "novaseometas": {
+        "title": "Cookie Policy - MATTCCH",
+        "description": "Learn about how MATTCCH uses cookies."
+      }
+    }
   }
 }
 EOT;
@@ -327,6 +349,12 @@ Field format rules:
 - ezobjectrelation: Output a content ID as integer (the system resolves it).
 - ezobjectrelationlist: Output an array of content IDs as integers.
 - ezimage: Output a detailed description of the desired image. This will be used as an AI image generation prompt. Be specific about the scene, subject, colors, and mood.
+- ezselection: Output a label string (e.g. "Dark"). The system resolves to the option index automatically.
+- ezdate: Output an ISO 8601 date string (e.g. "2026-06-16").
+- ezdatetime: Output an ISO 8601 datetime string (e.g. "2026-06-16T14:30:00").
+- ezkeyword: Output a comma-separated string or array of keyword strings (e.g. "AI, CMS, assistant").
+- ezurl: Output a URL string (e.g. "https://example.com") or { "link": "url", "text": "label" }.
+- ezmaplocation: Output { "latitude": 51.5, "longitude": -0.1, "address": "London, UK" }.
 - novaseometas: Output a JSON object with meta keys as keys and content as string values. Example: {"title": "Page Title", "description": "A description", "og:title": "OG Title"}. For image keys (og:image, twitter:image), output a descriptive search query to find an appropriate image in the media library (e.g. "african integration conference banner"). For other keys (canonical, robots), output the appropriate value as a string. Leave empty string if not applicable.
 EOT;
     }
@@ -351,7 +379,7 @@ EOT;
 
         foreach ($blocks as $type => $info) {
             foreach ($info['fields'] as $fieldId => $fieldType) {
-                if ($fieldType !== 'ezobjectrelationlist') {
+                if ($fieldType !== FieldType::EZOBJECTRELATIONLIST) {
                     continue;
                 }
 

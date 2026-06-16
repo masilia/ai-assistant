@@ -73,12 +73,30 @@ readonly class UpdateContentTool implements ToolInterface
             $updateStruct = $contentService->newContentUpdateStruct();
             $updateStruct->initialLanguageCode = $languageCode;
 
-            foreach ($attributes as $fieldIdentifier => $value) {
-                $fieldDef = $content->getContentType()->getFieldDefinition($fieldIdentifier);
-                $fieldType = $fieldDef?->getFieldTypeIdentifier();
+            $validIdentifiers = [];
+            foreach ($content->getContentType()->getFieldDefinitions() as $fieldDef) {
+                $validIdentifiers[] = $fieldDef->identifier;
 
-                $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value, $fieldDef);
-                $updateStruct->setField($fieldIdentifier, $transformedValue, $languageCode);
+                if (!array_key_exists($fieldDef->identifier, $attributes)) {
+                    continue;
+                }
+
+                $fieldType = $fieldDef->getFieldTypeIdentifier();
+                $transformedValue = $this->transformerRegistry->transform(
+                    $fieldType,
+                    $fieldDef->identifier,
+                    $attributes[$fieldDef->identifier],
+                    $fieldDef,
+                );
+                $updateStruct->setField($fieldDef->identifier, $transformedValue, $languageCode);
+            }
+
+            $unknownFields = array_diff(array_keys($attributes), $validIdentifiers);
+            if (!empty($unknownFields)) {
+                $this->aiLogger->info(
+                    '[Agent] Skipped unknown fields for content {id}: {fields}',
+                    ['id' => $contentId, 'fields' => implode(', ', $unknownFields)],
+                );
             }
 
             // Apply update

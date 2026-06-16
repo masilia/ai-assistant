@@ -64,7 +64,7 @@ readonly class LoadContentTypeTool implements ToolInterface
                 [
                     'identifier' => $contentType->identifier,
                     'name' => $contentType->getName(),
-                    'group' => $contentType->contentTypeGroup->identifier,
+                    'group' => $contentType->contentTypeGroups[0]->identifier ?? 'unknown',
                     'is_container' => $contentType->isContainer,
                     'fields' => $fields,
                 ],

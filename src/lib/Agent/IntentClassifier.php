@@ -9,18 +9,6 @@ use Psr\Log\LoggerInterface;
 
 readonly class IntentClassifier
 {
-    private const INTENTS = [
-        'create_page',
-        'create_content',
-        'update_content',
-        'delete_content',
-        'search_content',
-        'generate_image',
-        'list_blocks',
-        'undo',
-        'browse_site_structure',
-        'create_site_structure',
-    ];
 
     public function __construct(
         private AiClientInterface $aiClient,
@@ -61,6 +49,6 @@ readonly class IntentClassifier
      */
     public function getSupportedIntents(): array
     {
-        return self::INTENTS;
+        return IntentName::all();
     }
 }

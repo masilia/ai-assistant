@@ -12,6 +12,7 @@ use Masilia\AiAssistant\Agent\Tool\ImageFileHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\Client\ImageGenerationClient;
 use Masilia\AiAssistant\ContentTypeId;
 use Masilia\AiAssistant\FieldId;
@@ -100,7 +101,7 @@ readonly class CreateSiteStructureTool implements ToolInterface
             $homePageContentTypeId = $this->resolveConfig('home_page_content_type', ContentTypeId::HOME_PAGE);
             $layoutContentTypeId = $this->resolveConfig('layout_content_type', ContentTypeId::LAYOUT);
             $folderContentTypeId = $this->resolveConfig('folder_content_type', ContentTypeId::FOLDER);
-            $mediaRootLocationId = (int) $this->resolveConfig('media_root_location_id', 43);
+            $mediaRootLocationId = (int) $this->resolveConfig('media_root_location_id', AiConstants::MEDIA_ROOT_LOCATION_ID);
 
             $siteType = $contentTypeService->loadContentTypeByIdentifier($siteContentTypeId);
             $homePageType = $contentTypeService->loadContentTypeByIdentifier($homePageContentTypeId);

@@ -28,24 +28,24 @@ namespace Masilia\AiAssistant\Field;
  */
 final class FieldType
 {
-    public const EZSTRING        = 'ezstring';
-    public const EZTEXT          = 'eztext';
-    public const EZRICHTEXT      = 'ezrichtext';
-    public const NOVASEOMETAS    = 'novaseometas';
-    public const EZMATRIX        = 'ezmatrix';
+    public const EZSTRING = 'ezstring';
+    public const EZTEXT = 'eztext';
+    public const EZRICHTEXT = 'ezrichtext';
+    public const NOVASEOMETAS = 'novaseometas';
+    public const EZMATRIX = 'ezmatrix';
 
-    public const EZAUTHOR        = 'ezauthor';
-    public const EZCOUNTRY       = 'ezcountry';
-    public const EZIMAGE         = 'ezimage';
-    public const EZIMAGEASSET    = 'ezimageasset';
-    public const EZBINARYFILE    = 'ezbinaryfile';
-    public const EZMEDIA         = 'ezmedia';
-    public const EZKEYWORD       = 'ezkeyword';
-    public const EZGMAPLOCATION  = 'ezgmaplocation';
-    public const EZOBJECTRELATION        = 'ezobjectrelation';
-    public const EZOBJECTRELATIONLIST    = 'ezobjectrelationlist';
-    public const EZSELECTION     = 'ezselection';
-    public const EZTAGS          = 'eztags';
+    public const EZAUTHOR = 'ezauthor';
+    public const EZCOUNTRY = 'ezcountry';
+    public const EZIMAGE = 'ezimage';
+    public const EZIMAGEASSET = 'ezimageasset';
+    public const EZBINARYFILE = 'ezbinaryfile';
+    public const EZMEDIA = 'ezmedia';
+    public const EZKEYWORD = 'ezkeyword';
+    public const EZGMAPLOCATION = 'ezgmaplocation';
+    public const EZOBJECTRELATION = 'ezobjectrelation';
+    public const EZOBJECTRELATIONLIST = 'ezobjectrelationlist';
+    public const EZSELECTION = 'ezselection';
+    public const EZTAGS = 'eztags';
 
     /**
      * Field types the AI modal exposes the "AI" button on.

@@ -14,6 +14,8 @@ final class AiConstants
 
     public const DEFAULT_SITEACCESS = 'default';
 
+    public const MEDIA_ROOT_LOCATION_ID = 43;
+
     /**
      * Truncate a string to a maximum length, appending '...' if truncated.
      */

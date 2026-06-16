@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
-use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
-use Ibexa\Contracts\Core\Repository\Values\Content\Query;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\Agent\Tool\TrashRestorer;
 use Psr\Log\LoggerInterface;
 
 readonly class UndoLastTool implements ToolInterface
 {
     public function __construct(
-        private Repository $repository,
+        private TrashRestorer $restorer,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -48,20 +47,8 @@ readonly class UndoLastTool implements ToolInterface
 
     public function execute(array $params): ToolResult
     {
-        $trashService = $this->repository->getTrashService();
-
-        $restored = [];
-        $contentIds = $params['content_ids'] ?? [];
-
         try {
-            $trashedItems = $trashService->findTrashItems(new Query([
-                'filter' => new Query\Criterion\ContentId($contentIds),
-            ]));
-
-            foreach ($trashedItems->items as $trashed) {
-                $trashService->recover($trashed);
-                $restored[] = $trashed->contentId;
-            }
+            $restored = $this->restorer->restore($params['content_ids'] ?? []);
         } catch (UnauthorizedException $e) {
             return AgentErrorHelper::unauthorized('undo_last_operation');
         } catch (\Throwable $e) {

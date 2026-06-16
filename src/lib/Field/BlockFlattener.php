@@ -231,7 +231,7 @@ class BlockFlattener
             $output .= sprintf("\n- %s (Block %d):\n", $blockTypeName, $index);
 
 
-            foreach ($block->fields as $field) {
+            foreach ($block->getFieldsByLanguage($languageCode) as $field) {
                 // Skip novaseometas in blocks too
                 if ($field->getFieldTypeIdentifier() === FieldType::NOVASEOMETAS) {
                     continue;

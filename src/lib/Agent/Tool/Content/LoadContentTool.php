@@ -74,7 +74,7 @@ readonly class LoadContentTool implements ToolInterface
             }
 
             $fields = [];
-            foreach ($content->fields as $field) {
+            foreach ($content->getFieldsByLanguage($languageCode) as $field) {
                 $fields[$field->identifier] = $field->value?->text ?? $field->value?->toHash() ?? null;
             }
 

@@ -159,10 +159,64 @@ readonly class AgentOrchestrator
         }
 
         if ($isSeoUpdate) {
-            return $this->seoHandler->generateAndApply((int) $contentId, $params);
+            return $this->handleSeoUpdate((int) $contentId, $params);
         }
 
         return $this->executeTool(ToolName::UPDATE_CONTENT, array_merge($params, ['content_id' => $contentId]));
+    }
+
+    /**
+     * Generate SEO metadata and return a plan for user confirmation.
+     */
+    private function handleSeoUpdate(int $contentId, array $params): AgentResponse
+    {
+        $seoData = $this->seoHandler->generateMetadata($contentId, $params);
+
+        if ($seoData === null) {
+            return AgentResponse::error('Failed to generate SEO metadata. Please try again.');
+        }
+
+        $pageName = $params['page_name'] ?? sprintf('content %d', $contentId);
+
+        $plan = new AgentPlan(
+            steps: [
+                [
+                    'tool' => ToolName::UPDATE_CONTENT,
+                    'params' => array_merge($params, [
+                        'content_id' => $contentId,
+                        'attributes' => $seoData,
+                    ]),
+                    'description' => sprintf('Apply SEO metadata to "%s"', $pageName),
+                ],
+            ],
+            description: sprintf('Apply generated SEO metadata to "%s"', $pageName),
+            requiresApproval: true,
+        );
+
+        $preview = $this->formatSeoPreview($seoData['novaseometas'] ?? []);
+
+        return AgentResponse::withPlan($plan, sprintf(
+            "Here are the SEO metadata I generated for \"%s\":\n\n%s\n\nShall I apply these to the page?",
+            $pageName,
+            $preview,
+        ));
+    }
+
+    /**
+     * Format SEO data as a readable preview for the plan message.
+     */
+    private function formatSeoPreview(array $seoData): string
+    {
+        $lines = [];
+        foreach ($seoData as $key => $value) {
+            if (is_string($value)) {
+                $lines[] = sprintf('**%s**: %s', $key, $value);
+            } elseif (is_array($value)) {
+                $lines[] = sprintf('**%s**: %s', $key, json_encode($value));
+            }
+        }
+
+        return implode("\n", $lines) ?: '(empty)';
     }
 
     /**

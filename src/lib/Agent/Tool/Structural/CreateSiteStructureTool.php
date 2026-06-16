@@ -309,7 +309,7 @@ readonly class CreateSiteStructureTool implements ToolInterface
 
             $draft = $contentService->createContentDraft($siteContentInfo);
             $updateStruct = $contentService->newContentUpdateStruct();
-            $updateStruct->languageCode = $languageCode;
+            $updateStruct->initialLanguageCode = $languageCode;
             $updateStruct->setField(FieldId::FAVICON, $faviconPath, $languageCode);
             $contentService->updateContent($draft->versionInfo, $updateStruct);
             $contentService->publishVersion($draft->versionInfo);

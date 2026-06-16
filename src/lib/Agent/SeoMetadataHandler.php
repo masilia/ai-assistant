@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * Generates SEO metadata via the LLM and applies it to a content item.
  *
  * Flow: load content → flatten blocks → extract sibling fields →
- * build SEO prompt → call LLM → parse JSON → invoke update_content tool.
+ * build SEO prompt → call LLM → parse JSON → return data for plan.
  */
 readonly class SeoMetadataHandler
 {
@@ -37,9 +37,14 @@ readonly class SeoMetadataHandler
     }
 
     /**
-     * @param array{content_id: int, attributes: array{novaseometas: array{metaKeys?: array}}} $params
+     * Generate SEO metadata for a content item and return it as a preview.
+     *
+     * Does NOT write to the database. The caller should return an AgentPlan
+     * so the user can review and confirm before applying.
+     *
+     * @return array{novaseometas: array}|null  The parsed SEO data, or null on error
      */
-    public function generateAndApply(int $contentId, array $params): AgentResponse
+    public function generateMetadata(int $contentId, array $params): ?array
     {
         $contentService = $this->repository->getContentService();
 
@@ -51,7 +56,7 @@ readonly class SeoMetadataHandler
                 ['id' => $contentId, 'message' => $e->getMessage()],
             );
 
-            return AgentResponse::error(sprintf('Could not load content with ID %d.', $contentId));
+            return null;
         }
 
         $languageCode = $content->contentInfo->mainLanguageCode;
@@ -95,7 +100,7 @@ readonly class SeoMetadataHandler
                 ['id' => $contentId, 'message' => $e->getMessage()],
             );
 
-            return AgentResponse::error('Failed to generate SEO metadata. Please try again.');
+            return null;
         }
 
         $seoData = json_decode($seoResponse, true);
@@ -105,24 +110,32 @@ readonly class SeoMetadataHandler
                 ['id' => $contentId, 'response' => $seoResponse],
             );
 
-            return AgentResponse::error('Failed to parse SEO metadata. Please try again.');
+            return null;
         }
 
         $this->blockFlattener->clearCache($contentId);
 
+        return ['novaseometas' => $seoData];
+    }
+
+    /**
+     * Apply pre-generated SEO metadata to a content item.
+     *
+     * Called after the user confirms the plan.
+     */
+    public function applyMetadata(int $contentId, array $seoData, array $originalParams): ToolResult
+    {
         $updateTool = $this->toolRegistry->get(ToolName::UPDATE_CONTENT);
         if ($updateTool === null) {
-            return AgentResponse::error('update_content tool is not available.');
+            return ToolResult::error('update_content tool is not available.');
         }
 
-        $updateParams = array_merge($params, [
+        $updateParams = array_merge($originalParams, [
             'content_id' => $contentId,
-            'attributes' => ['novaseometas' => $seoData],
+            'attributes' => $seoData,
         ]);
 
-        $result = $updateTool->execute($updateParams);
-
-        return AgentResponse::withResults([$result], $result->message);
+        return $updateTool->execute($updateParams);
     }
 
     private function scrubForPrompt(string $value): string

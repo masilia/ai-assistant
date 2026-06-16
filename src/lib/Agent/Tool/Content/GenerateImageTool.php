@@ -90,7 +90,7 @@ readonly class GenerateImageTool implements ToolInterface
                     $draft = $contentService->createContentDraft($content->contentInfo);
 
                     $updateStruct = $contentService->newContentUpdateStruct();
-                    $updateStruct->languageCode = $languageCode;
+                    $updateStruct->initialLanguageCode = $languageCode;
                     $updateStruct->setField($fieldIdentifier, $tempPath, $languageCode);
 
                     $contentService->updateContent($draft->versionInfo, $updateStruct);

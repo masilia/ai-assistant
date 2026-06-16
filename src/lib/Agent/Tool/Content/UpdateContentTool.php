@@ -71,11 +71,11 @@ readonly class UpdateContentTool implements ToolInterface
 
             // Create update struct
             $updateStruct = $contentService->newContentUpdateStruct();
-            $updateStruct->languageCode = $languageCode;
+            $updateStruct->initialLanguageCode = $languageCode;
 
             foreach ($attributes as $fieldIdentifier => $value) {
                 $fieldDef = $content->getContentType()->getFieldDefinition($fieldIdentifier);
-                $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
+                $fieldType = $fieldDef?->getFieldTypeIdentifier();
 
                 $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldIdentifier, $value, $fieldDef);
                 $updateStruct->setField($fieldIdentifier, $transformedValue, $languageCode);

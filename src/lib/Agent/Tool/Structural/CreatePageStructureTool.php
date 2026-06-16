@@ -9,7 +9,7 @@ use Ibexa\Contracts\Core\Repository\ContentTypeService;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
-use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
+use Masilia\AiAssistant\Agent\Tool\ContentPublishHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
@@ -22,7 +22,7 @@ readonly class CreatePageStructureTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
-        private FieldValueTransformerRegistry $transformerRegistry,
+        private ContentPublishHelper $publishHelper,
         private ImageGenerationClient $imageClient,
         private LoggerInterface $aiLogger,
         private BlockImagePreGenerator $imagePreGenerator,
@@ -244,7 +244,7 @@ readonly class CreatePageStructureTool implements ToolInterface
         $relationFieldId = $relationFieldDef?->identifier;
 
         // Set non-relation fields with transformation
-        $this->applyFields($createStruct, $blockType, $blockFields, $languageCode, $relationFieldId);
+        $this->publishHelper->applyFields($createStruct, $blockType, $blockFields, $languageCode, $relationFieldId);
 
         // Initialize empty relation list (filled after items are created)
         if ($relationFieldId !== null) {
@@ -320,7 +320,7 @@ readonly class CreatePageStructureTool implements ToolInterface
             $itemFields = $itemData;
             unset($itemFields['type']);
 
-            $this->applyFields($createStruct, $itemType, $itemFields, $languageCode);
+            $this->publishHelper->applyFields($createStruct, $itemType, $itemFields, $languageCode);
 
             $locStruct = $locationService->newLocationCreateStruct($blockLocationId);
             $itemDraft = $contentService->createContent($createStruct, [$locStruct]);
@@ -329,33 +329,6 @@ readonly class CreatePageStructureTool implements ToolInterface
         }
 
         return $itemContentIds;
-    }
-
-    /**
-     * Apply transformed field values to a create struct.
-     * Skips the relation field (if any) and any field not on the content type.
-     */
-    private function applyFields(
-        \Ibexa\Contracts\Core\Repository\Values\Content\ContentCreateStruct $createStruct,
-        ContentType $contentType,
-        array $fields,
-        string $languageCode,
-        ?string $skipFieldId = null,
-    ): void {
-        foreach ($fields as $fieldId => $value) {
-            if ($fieldId === $skipFieldId) {
-                continue;
-            }
-            if (!$contentType->hasFieldDefinition($fieldId)) {
-                continue;
-            }
-
-            $fieldDef = $contentType->getFieldDefinition($fieldId);
-            $fieldType = $fieldDef?->fieldTypeIdentifier ?? '';
-
-            $transformedValue = $this->transformerRegistry->transform($fieldType, $fieldId, $value, $fieldDef);
-            $createStruct->setField($fieldId, $transformedValue, $languageCode);
-        }
     }
 
     /**

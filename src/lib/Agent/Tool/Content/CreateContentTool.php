@@ -6,7 +6,7 @@ namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
-use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerRegistry;
+use Masilia\AiAssistant\Agent\Tool\ContentPublishHelper;
 use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
@@ -17,7 +17,7 @@ readonly class CreateContentTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
-        private FieldValueTransformerRegistry $transformerRegistry,
+        private ContentPublishHelper $publishHelper,
         private SiteaccessLocationResolver $locationResolver,
         private LoggerInterface $aiLogger,
     ) {
@@ -89,66 +89,25 @@ readonly class CreateContentTool implements ToolInterface
                 return ToolResult::error('Provide either parent_location_id or a siteaccess name to resolve the parent location.');
             }
 
-            $contentService = $this->repository->getContentService();
-            $locationService = $this->repository->getLocationService();
-            $contentTypeService = $this->repository->getContentTypeService();
-
-            // Load content type
-            $contentType = $contentTypeService->loadContentTypeByIdentifier($contentTypeIdentifier);
-
-            // Create content draft with inline location
-            $createStruct = $contentService->newContentCreateStruct($contentType, $languageCode);
-            $createStruct->remoteId = $remoteId;
-
-            // Set field values with transformation — loop over definitions, not LLM params
-            $validIdentifiers = [];
-            foreach ($contentType->getFieldDefinitions() as $fieldDef) {
-                $validIdentifiers[] = $fieldDef->identifier;
-
-                if (!array_key_exists($fieldDef->identifier, $attributes)) {
-                    continue;
-                }
-
-                $fieldType = $fieldDef->getFieldTypeIdentifier();
-                $transformedValue = $this->transformerRegistry->transform(
-                    $fieldType,
-                    $fieldDef->identifier,
-                    $attributes[$fieldDef->identifier],
-                    $fieldDef,
-                );
-                $createStruct->setField($fieldDef->identifier, $transformedValue, $languageCode);
-            }
-
-            $unknownFields = array_diff(array_keys($attributes), $validIdentifiers);
-            if (!empty($unknownFields)) {
-                $this->aiLogger->info(
-                    '[Agent] Skipped unknown fields for {content_type}: {fields}',
-                    ['content_type' => $contentTypeIdentifier, 'fields' => implode(', ', $unknownFields)],
-                );
-            }
-
-            $locationCreateStruct = $locationService->newLocationCreateStruct($parentLocationId);
-            $locationCreateStruct->remoteId = $locationRemoteId;
-
-            $draft = $contentService->createContent($createStruct, [$locationCreateStruct]);
-
-            // Publish
-            $published = $contentService->publishVersion($draft->versionInfo);
-            $location = $locationService->loadLocation($published->contentInfo->mainLocationId);
-
-            $result = [
-                'content_id' => $published->id,
-                'location_id' => $location->id,
-                'remote_id' => $published->remoteId,
-            ];
+            $result = $this->publishHelper->createAndPublish(
+                $contentTypeIdentifier,
+                [$parentLocationId],
+                $attributes,
+                $languageCode,
+                $remoteId,
+                $locationRemoteId,
+            );
 
             return ToolResult::ok(
-                sprintf('Created %s (ID: %d)', $contentTypeIdentifier, $result['content_id']),
-                $result,
+                sprintf('Created %s (ID: %d)', $contentTypeIdentifier, $result['content']->id),
+                [
+                    'content_id' => $result['content']->id,
+                    'location_id' => $result['location']->id,
+                    'remote_id' => $result['content']->remoteId,
+                ],
             );
         } catch (\Throwable $e) {
             return AgentErrorHelper::handle($this->aiLogger, $e, 'create content');
         }
     }
-
 }

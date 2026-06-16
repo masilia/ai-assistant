@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
+use Masilia\AiAssistant\Agent\Tool\ContentPublishHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
@@ -17,6 +18,7 @@ readonly class CreateFolderTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
+        private ContentPublishHelper $publishHelper,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -57,30 +59,21 @@ readonly class CreateFolderTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $contentService = $this->repository->getContentService();
-            $locationService = $this->repository->getLocationService();
-            $contentTypeService = $this->repository->getContentTypeService();
-
             $languageCode = $params['language']
                 ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
-            $folderType = $contentTypeService->loadContentTypeByIdentifier(ContentTypeId::FOLDER);
-
-            $createStruct = $contentService->newContentCreateStruct($folderType, $languageCode);
-            $createStruct->setField(FieldId::NAME, $params['name'], $languageCode);
-
-            $locStruct = $locationService->newLocationCreateStruct((int) $params['parent_location_id']);
-
-            $draft = $contentService->createContent($createStruct, [$locStruct]);
-
-            $published = $contentService->publishVersion($draft->versionInfo);
-            $location = $locationService->loadLocation($published->contentInfo->mainLocationId);
+            $result = $this->publishHelper->createAndPublish(
+                ContentTypeId::FOLDER,
+                [(int) $params['parent_location_id']],
+                [FieldId::NAME => $params['name']],
+                $languageCode,
+            );
 
             return ToolResult::ok(
-                sprintf('Created folder "%s" (ID: %d)', $params['name'], $published->id),
+                sprintf('Created folder "%s" (ID: %d)', $params['name'], $result['content']->id),
                 [
-                    'content_id' => $published->id,
-                    'location_id' => $location->id,
+                    'content_id' => $result['content']->id,
+                    'location_id' => $result['location']->id,
                 ],
             );
         } catch (\Throwable $e) {

@@ -172,6 +172,10 @@ $color-plan-confirm: #10b981;
         display: flex;
         flex-direction: column;
         gap: 8px;
+
+        &--grouped {
+            margin-top: -4px;
+        }
     }
 
     // Bubbles
@@ -184,6 +188,13 @@ $color-plan-confirm: #10b981;
 
         &--agent {
             align-self: flex-start;
+        }
+
+        &--grouped {
+            .agent-chat__bubble-content {
+                padding-top: 4px;
+                border-radius: 10px;
+            }
         }
 
         &--error &-content {

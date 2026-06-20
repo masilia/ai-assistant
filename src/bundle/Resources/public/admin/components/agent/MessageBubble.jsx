@@ -117,9 +117,9 @@ function renderInline(text) {
 /**
  * Renders a single chat message (user or agent) with copy button.
  *
- * @param {{ role: 'user'|'agent', content: string, timestamp?: string, isError?: boolean }} props
+ * @param {{ role: 'user'|'agent', content: string, timestamp?: string, isError?: boolean, grouped?: boolean }} props
  */
-function MessageBubble({ role, content, timestamp, isError }) {
+function MessageBubble({ role, content, timestamp, isError, grouped }) {
     const isUser = role === 'user';
     const [copied, setCopied] = useState(false);
 
@@ -134,7 +134,8 @@ function MessageBubble({ role, content, timestamp, isError }) {
     }, [content]);
 
     return (
-        <div className={`agent-chat__bubble agent-chat__bubble--${isUser ? 'user' : 'agent'}${isError ? ' agent-chat__bubble--error' : ''}`}>
+        <div className={`agent-chat__bubble agent-chat__bubble--${isUser ? 'user' : 'agent'}${isError ? ' agent-chat__bubble--error' : ''}${grouped ? ' agent-chat__bubble--grouped' : ''}`}>
+            {!grouped && (
             <div className="agent-chat__bubble-header">
                 <span className="agent-chat__bubble-role">{isUser ? 'You' : 'Agent'}</span>
                 {timestamp && <span className="agent-chat__bubble-time">{timestamp}</span>}
@@ -158,6 +159,7 @@ function MessageBubble({ role, content, timestamp, isError }) {
                     </button>
                 )}
             </div>
+            )}
             <div className="agent-chat__bubble-content">
                 {isUser ? content : renderContent(content)}
             </div>

@@ -308,13 +308,18 @@ function AgentChatWidget() {
                             </div>
                         )}
 
-                        {messages.map((msg, index) => (
-                            <div key={index} className="agent-chat__message">
+                        {messages.map((msg, index) => {
+                            const prevMsg = index > 0 ? messages[index - 1] : null;
+                            const isGrouped = prevMsg && prevMsg.role === msg.role;
+
+                            return (
+                            <div key={index} className={`agent-chat__message${isGrouped ? ' agent-chat__message--grouped' : ''}`}>
                                 <MessageBubble
                                     role={msg.role}
                                     content={msg.content}
                                     timestamp={msg.timestamp}
                                     isError={msg.isError}
+                                    grouped={isGrouped}
                                 />
                                 {msg.options && msg.options.length > 0 && (
                                     <div className="agent-chat__options">
@@ -353,7 +358,8 @@ function AgentChatWidget() {
                                     </div>
                                 )}
                             </div>
-                        ))}
+                            );
+                        })}
 
                         {loading && (
                             <div className="agent-chat__typing">

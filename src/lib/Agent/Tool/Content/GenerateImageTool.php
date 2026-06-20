@@ -6,11 +6,13 @@ namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
+use Masilia\AiAssistant\Agent\Tool\ContentUpdater;
 use Masilia\AiAssistant\Agent\Tool\ImageFileHelper;
 use Masilia\AiAssistant\Client\ImageGenerationClient;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -19,6 +21,7 @@ readonly class GenerateImageTool implements ToolInterface
     public function __construct(
         private Repository $repository,
         private ImageGenerationClient $imageClient,
+        private ContentUpdater $contentUpdater,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -58,7 +61,7 @@ readonly class GenerateImageTool implements ToolInterface
                 'language' => [
                     'type' => 'string',
                     'description' => 'Language code (default: eng-GB)',
-                    'default' => 'eng-GB',
+                    'default' => AiConstants::DEFAULT_LANGUAGE_CODE,
                 ],
             ],
             'required' => ['content_id', 'field', 'prompt'],
@@ -75,6 +78,13 @@ readonly class GenerateImageTool implements ToolInterface
             $languageCode = $params['language']
                 ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
+            if (!$this->imageClient->isConfigured()) {
+                return ToolResult::error(
+                    'Image generation is not configured for the current siteaccess. '
+                    . 'Assign an image model in the admin dashboard first.',
+                );
+            }
+
             // 1. Generate image via provider
             $imageResult = $this->imageClient->generate($prompt, $size);
 
@@ -82,25 +92,17 @@ readonly class GenerateImageTool implements ToolInterface
             $tempPath = ImageFileHelper::saveTempFile($imageResult->imageData, $imageResult->mimeType);
 
             try {
-                // 3. Update content's image field
-                $result = $this->repository->sudo(function () use ($contentId, $fieldIdentifier, $tempPath, $languageCode) {
-                    $contentService = $this->repository->getContentService();
+                // 3. Update content's image field (runs as the current admin user)
+                $published = $this->contentUpdater->updateFields(
+                    $contentId,
+                    [$fieldIdentifier => $tempPath],
+                    $languageCode,
+                );
 
-                    $content = $contentService->loadContent($contentId);
-                    $draft = $contentService->createContentDraft($content->contentInfo);
-
-                    $updateStruct = $contentService->newContentUpdateStruct();
-                    $updateStruct->initialLanguageCode = $languageCode;
-                    $updateStruct->setField($fieldIdentifier, $tempPath, $languageCode);
-
-                    $contentService->updateContent($draft->versionInfo, $updateStruct);
-                    $published = $contentService->publishVersion($draft->versionInfo);
-
-                    return [
-                        'content_id' => $published->id,
-                        'version_no' => $published->versionInfo->versionNo,
-                    ];
-                });
+                $result = [
+                    'content_id' => $published->id,
+                    'version_no' => $published->versionInfo->versionNo,
+                ];
             } finally {
                 // Clean up temp file
                 if (file_exists($tempPath)) {

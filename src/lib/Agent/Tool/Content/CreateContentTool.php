@@ -6,18 +6,19 @@ namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
-use Masilia\AiAssistant\Agent\Tool\ContentPublishHelper;
+use Masilia\AiAssistant\Agent\Tool\ContentCreator;
 use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Psr\Log\LoggerInterface;
 
 readonly class CreateContentTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
-        private ContentPublishHelper $publishHelper,
+        private ContentCreator $contentCreator,
         private SiteaccessLocationResolver $locationResolver,
         private LoggerInterface $aiLogger,
     ) {
@@ -65,7 +66,7 @@ readonly class CreateContentTool implements ToolInterface
                 'language' => [
                     'type' => 'string',
                     'description' => 'Language code (default: eng-GB)',
-                    'default' => 'eng-GB',
+                    'default' => AiConstants::DEFAULT_LANGUAGE_CODE,
                 ],
             ],
             'required' => ['content_type', 'attributes'],
@@ -89,7 +90,7 @@ readonly class CreateContentTool implements ToolInterface
                 return ToolResult::error('Provide either parent_location_id or a siteaccess name to resolve the parent location.');
             }
 
-            $result = $this->publishHelper->createAndPublish(
+            $result = $this->contentCreator->createAndPublish(
                 $contentTypeIdentifier,
                 [$parentLocationId],
                 $attributes,

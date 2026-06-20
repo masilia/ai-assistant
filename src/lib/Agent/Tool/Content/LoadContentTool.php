@@ -84,7 +84,7 @@ readonly class LoadContentTool implements ToolInterface
                     'content_id' => $content->id,
                     'content_type' => $content->contentInfo->contentTypeId,
                     'name' => $content->contentInfo->name,
-                    'remote_id' => $content->remoteId,
+                    'remote_id' => $content->contentInfo->remoteId,
                     'main_location_id' => $content->contentInfo->mainLocationId,
                     'fields' => $fields,
                 ],

@@ -15,6 +15,7 @@ use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Psr\Log\LoggerInterface;
 
 readonly class SearchContentTool implements ToolInterface
@@ -64,7 +65,7 @@ readonly class SearchContentTool implements ToolInterface
                 'language' => [
                     'type' => 'string',
                     'description' => 'Language code (default: eng-GB)',
-                    'default' => 'eng-GB',
+                    'default' => AiConstants::DEFAULT_LANGUAGE_CODE,
                 ],
             ],
         ];
@@ -93,7 +94,7 @@ readonly class SearchContentTool implements ToolInterface
                     );
                 } catch (UnauthorizedException $e) {
                     return ToolResult::error(
-                        sprintf('unable to load Location %d not found', (int) $params['subtree_location_id']),
+                        sprintf('Access denied to location %d', (int) $params['subtree_location_id']),
                     );
                 }
             }

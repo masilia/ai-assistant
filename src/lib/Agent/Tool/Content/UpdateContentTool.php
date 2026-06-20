@@ -6,17 +6,18 @@ namespace Masilia\AiAssistant\Agent\Tool\Content;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
-use Masilia\AiAssistant\Agent\Tool\ContentPublishHelper;
+use Masilia\AiAssistant\Agent\Tool\ContentUpdater;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Psr\Log\LoggerInterface;
 
 readonly class UpdateContentTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
-        private ContentPublishHelper $publishHelper,
+        private ContentUpdater $contentUpdater,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -47,7 +48,7 @@ readonly class UpdateContentTool implements ToolInterface
                 'language' => [
                     'type' => 'string',
                     'description' => 'Language code (default: eng-GB)',
-                    'default' => 'eng-GB',
+                    'default' => AiConstants::DEFAULT_LANGUAGE_CODE,
                 ],
             ],
             'required' => ['content_id', 'attributes'],
@@ -62,7 +63,9 @@ readonly class UpdateContentTool implements ToolInterface
             $languageCode = $params['language']
                 ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
-            $published = $this->publishHelper->updateFields($contentId, $attributes, $languageCode);
+            dump($params);die;
+
+            $published = $this->contentUpdater->updateFields($contentId, $attributes, $languageCode);
 
             return ToolResult::ok(
                 sprintf('Updated content %d', $contentId),

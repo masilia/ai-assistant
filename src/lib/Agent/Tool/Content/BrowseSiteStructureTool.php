@@ -14,6 +14,7 @@ use Masilia\AiAssistant\Agent\Tool\SiteaccessLocationResolver;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Psr\Log\LoggerInterface;
 
 readonly class BrowseSiteStructureTool implements ToolInterface
@@ -65,7 +66,7 @@ readonly class BrowseSiteStructureTool implements ToolInterface
                 'language' => [
                     'type' => 'string',
                     'description' => 'Language code (default: eng-GB)',
-                    'default' => 'eng-GB',
+                    'default' => AiConstants::DEFAULT_LANGUAGE_CODE,
                 ],
             ],
         ];

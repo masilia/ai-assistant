@@ -6,10 +6,11 @@ namespace Masilia\AiAssistant\Agent\Tool\Structural;
 
 use Ibexa\Contracts\Core\Repository\Repository;
 use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
-use Masilia\AiAssistant\Agent\Tool\ContentPublishHelper;
+use Masilia\AiAssistant\Agent\Tool\ContentCreator;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\ContentTypeId;
 use Masilia\AiAssistant\FieldId;
 use Psr\Log\LoggerInterface;
@@ -18,7 +19,7 @@ readonly class CreateFolderTool implements ToolInterface
 {
     public function __construct(
         private Repository $repository,
-        private ContentPublishHelper $publishHelper,
+        private ContentCreator $contentCreator,
         private LoggerInterface $aiLogger,
     ) {
     }
@@ -49,7 +50,7 @@ readonly class CreateFolderTool implements ToolInterface
                 'language' => [
                     'type' => 'string',
                     'description' => 'Language code (default: eng-GB)',
-                    'default' => 'eng-GB',
+                    'default' => AiConstants::DEFAULT_LANGUAGE_CODE,
                 ],
             ],
             'required' => ['name', 'parent_location_id'],
@@ -62,7 +63,7 @@ readonly class CreateFolderTool implements ToolInterface
             $languageCode = $params['language']
                 ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
-            $result = $this->publishHelper->createAndPublish(
+            $result = $this->contentCreator->createAndPublish(
                 ContentTypeId::FOLDER,
                 [(int) $params['parent_location_id']],
                 [FieldId::NAME => $params['name']],

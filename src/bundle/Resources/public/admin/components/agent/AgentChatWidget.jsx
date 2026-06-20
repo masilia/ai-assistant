@@ -331,13 +331,27 @@ function AgentChatWidget() {
                                         ))}
                                     </div>
                                 )}
-                                {msg.toolOutputs && msg.toolOutputs.map((output, outIdx) => (
-                                    <ToolOutput
-                                        key={outIdx}
-                                        toolName={output.tool}
-                                        output={output.output}
-                                    />
-                                ))}
+                                {msg.toolOutputs && msg.toolOutputs.length > 0 && (
+                                    <div className="agent-chat__tool-outputs">
+                                        {msg.toolOutputs.length > 1 && (
+                                            <div className="agent-chat__tool-summary">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M20 6 9 17l-5-5" />
+                                                </svg>
+                                                <span>{msg.toolOutputs.length} actions completed</span>
+                                            </div>
+                                        )}
+                                        {msg.toolOutputs.map((output, outIdx) => (
+                                            <ToolOutput
+                                                key={outIdx}
+                                                toolName={output.tool}
+                                                output={output.output}
+                                                stepIndex={outIdx}
+                                                totalSteps={msg.toolOutputs.length}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))}
 

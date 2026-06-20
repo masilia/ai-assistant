@@ -3,9 +3,9 @@ import React from 'react';
 /**
  * Renders structured tool output (search results, content details, folder, plan, etc.).
  *
- * @param {{ output: object, toolName: string }} props
+ * @param {{ output: object, toolName: string, stepIndex?: number, totalSteps?: number }} props
  */
-function ToolOutput({ output, toolName }) {
+function ToolOutput({ output, toolName, stepIndex, totalSteps }) {
     if (!output) return null;
 
     const renderSearchResults = (data) => {
@@ -215,9 +215,18 @@ function ToolOutput({ output, toolName }) {
         return renderDefault(output);
     };
 
+    const isMultiStep = totalSteps != null && totalSteps > 1;
+
     return (
-        <div className="agent-chat__tool-output">
-            <div className="agent-chat__tool-output-label">{formatToolName(toolName)}</div>
+        <div className={`agent-chat__tool-output${isMultiStep ? ' agent-chat__tool-output--stepped' : ''}`}>
+            <div className="agent-chat__tool-output-header-row">
+                {isMultiStep && (
+                    <span className="agent-chat__tool-output-step-badge">
+                        {stepIndex + 1}/{totalSteps}
+                    </span>
+                )}
+                <span className="agent-chat__tool-output-label">{formatToolName(toolName)}</span>
+            </div>
             {renderOutput()}
         </div>
     );

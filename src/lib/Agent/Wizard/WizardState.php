@@ -124,6 +124,18 @@ final class WizardState
 
         if (count($otherMessages) > self::MAX_MESSAGES) {
             $otherMessages = array_slice($otherMessages, -self::MAX_MESSAGES);
+
+            // Ensure the window doesn't start with an orphaned tool result
+            // or an assistant message with tool_calls. Anthropic/MiniMax require
+            // every tool_result to be preceded by its assistant+tool_use block.
+            while ($otherMessages !== []
+                && (
+                    ($otherMessages[0]['role'] ?? '') === 'tool'
+                    || (($otherMessages[0]['role'] ?? '') === 'assistant' && !empty($otherMessages[0]['tool_calls']))
+                )
+            ) {
+                array_shift($otherMessages);
+            }
         }
 
         $clone->messages = array_merge($systemMessages, $otherMessages);

@@ -19,8 +19,9 @@ trait ContentTypeSchemaHelper
     /**
      * Build a detailed schema entry for a single field definition.
      *
-     * Always returns at minimum `{type, required}`. Adds `columns` for
-     * ezmatrix fields and `allowedTypes` for ezobjectrelationlist fields.
+     * Always returns at minimum `{type, required, translatable}`. Adds `description`
+     * when the field definition has a non-empty admin description, plus field-type-
+     * specific extras (columns, allowedTypes, options, length/size limits, etc.).
      *
      * @return array<string, mixed>
      */
@@ -29,29 +30,48 @@ trait ContentTypeSchemaHelper
         $info = [
             'type' => $fieldDef->fieldTypeIdentifier,
             'required' => $this->isFieldRequired($fieldDef),
+            'translatable' => (bool) $fieldDef->isTranslatable,
         ];
 
-        if ($fieldDef->fieldTypeIdentifier === FieldType::EZMATRIX) {
-            $columns = [];
-            foreach ((array) ($fieldDef->fieldSettings['columns'] ?? []) as $column) {
-                $columns[] = [
-                    'identifier' => (string) ($column['identifier'] ?? ''),
-                    'name' => (string) ($column['name'] ?? ''),
-                ];
-            }
-            $info['columns'] = $columns;
+        $description = trim((string) $fieldDef->getDescription());
+        if ($description !== '') {
+            $info['description'] = $description;
         }
 
-        if ($fieldDef->fieldTypeIdentifier === FieldType::EZOBJECTRELATIONLIST) {
-            $info['allowedTypes'] = array_values(
-                (array) ($fieldDef->fieldSettings['selectionContentTypes'] ?? [])
-            );
-        }
+        switch ($fieldDef->fieldTypeIdentifier) {
+            case FieldType::EZMATRIX:
+                $columns = [];
+                foreach ((array) ($fieldDef->fieldSettings['columns'] ?? []) as $column) {
+                    $columns[] = [
+                        'identifier' => (string) ($column['identifier'] ?? ''),
+                        'name' => (string) ($column['name'] ?? ''),
+                    ];
+                }
+                $info['columns'] = $columns;
+                $this->appendMatrixRowLimits($info, $fieldDef);
+                break;
 
-        if ($fieldDef->fieldTypeIdentifier === FieldType::EZSELECTION) {
-            $info['options'] = array_values(
-                (array) ($fieldDef->fieldSettings['options'] ?? [])
-            );
+            case FieldType::EZOBJECTRELATIONLIST:
+                $info['allowedTypes'] = array_values(
+                    (array) ($fieldDef->fieldSettings['selectionContentTypes'] ?? [])
+                );
+                $this->appendRelationListItemLimits($info, $fieldDef);
+                break;
+
+            case FieldType::EZSELECTION:
+                $info['options'] = array_values(
+                    (array) ($fieldDef->fieldSettings['options'] ?? [])
+                );
+                break;
+
+            case FieldType::EZSTRING:
+            case FieldType::EZTEXT:
+                $this->appendStringConstraints($info, $fieldDef);
+                break;
+
+            case FieldType::EZIMAGE:
+                $this->appendImageConstraints($info, $fieldDef);
+                break;
         }
 
         return $info;
@@ -72,7 +92,7 @@ trait ContentTypeSchemaHelper
             return true;
         }
 
-        if ($fieldDef->fieldTypeIdentifier === 'ezimage') {
+        if ($fieldDef->fieldTypeIdentifier === FieldType::EZIMAGE) {
             return true;
         }
 
@@ -109,5 +129,73 @@ trait ContentTypeSchemaHelper
         }
 
         return $fields;
+    }
+
+    /**
+     * @param array<string, mixed> $info
+     */
+    private function appendStringConstraints(array &$info, FieldDefinition $fieldDef): void
+    {
+        $v = $fieldDef->getValidatorConfiguration()['StringLengthValidator'] ?? null;
+        if (!is_array($v)) {
+            return;
+        }
+        $min = isset($v['minStringLength']) ? (int) $v['minStringLength'] : 0;
+        $max = isset($v['maxStringLength']) ? (int) $v['maxStringLength'] : 0;
+        if ($min > 0) {
+            $info['minLength'] = $min;
+        }
+        if ($max > 0) {
+            $info['maxLength'] = $max;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $info
+     */
+    private function appendImageConstraints(array &$info, FieldDefinition $fieldDef): void
+    {
+        $v = $fieldDef->getValidatorConfiguration();
+        if (isset($v['FileSizeValidator']['maxFileSize'])
+            && (int) $v['FileSizeValidator']['maxFileSize'] > 0) {
+            $info['maxFileSize'] = (int) $v['FileSizeValidator']['maxFileSize'];
+        }
+        if (!empty($v['AlternativeTextValidator']['required'])) {
+            $info['altTextRequired'] = true;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $info
+     */
+    private function appendMatrixRowLimits(array &$info, FieldDefinition $fieldDef): void
+    {
+        $v = $fieldDef->getValidatorConfiguration()['MatrixValueValidator'] ?? null;
+        if (!is_array($v)) {
+            return;
+        }
+        if (isset($v['minimumRowCount']) && (int) $v['minimumRowCount'] > 0) {
+            $info['minRows'] = (int) $v['minimumRowCount'];
+        }
+        if (isset($v['maximumRowCount']) && (int) $v['maximumRowCount'] > 0) {
+            $info['maxRows'] = (int) $v['maximumRowCount'];
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $info
+     */
+    private function appendRelationListItemLimits(array &$info, FieldDefinition $fieldDef): void
+    {
+        $v = $fieldDef->getValidatorConfiguration()['RelationValidator'] ?? null;
+        if (!is_array($v)) {
+            return;
+        }
+        if (isset($v['minimumRelationLimit']) && (int) $v['minimumRelationLimit'] > 0) {
+            $info['minItems'] = (int) $v['minimumRelationLimit'];
+        }
+        if (isset($v['maximumRelationLimit']) && (int) $v['maximumRelationLimit'] > 0) {
+            $info['maxItems'] = (int) $v['maximumRelationLimit'];
+        }
     }
 }

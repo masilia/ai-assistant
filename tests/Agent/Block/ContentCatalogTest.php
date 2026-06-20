@@ -176,4 +176,160 @@ final class ContentCatalogTest extends TestCase
         self::assertArrayHasKey('article', $types);
         self::assertCount(2, $types);
     }
+
+    public function testEzimageFieldIncludesFileSizeValidator(): void
+    {
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'hero_image' => [
+                            'type' => 'ezimage',
+                            'validator' => [
+                                'FileSizeValidator' => ['maxFileSize' => 8],
+                                'AlternativeTextValidator' => ['required' => true],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getContentTypeSchema('page');
+
+        self::assertNotNull($schema);
+        self::assertSame(8, $schema['fields']['hero_image']['maxFileSize']);
+        self::assertTrue($schema['fields']['hero_image']['altTextRequired']);
+    }
+
+    public function testEzimageFieldDescriptionPassthrough(): void
+    {
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'hero_image' => [
+                            'type' => 'ezimage',
+                            'description' => 'Banner 1920x600 px, JPEG or PNG, max 8 MB',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getContentTypeSchema('page');
+
+        self::assertNotNull($schema);
+        self::assertSame('Banner 1920x600 px, JPEG or PNG, max 8 MB', $schema['fields']['hero_image']['description']);
+    }
+
+    public function testEzstringFieldIncludesLengthConstraints(): void
+    {
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'subtitle' => [
+                            'type' => 'ezstring',
+                            'validator' => [
+                                'StringLengthValidator' => ['minStringLength' => 2, 'maxStringLength' => 120],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getContentTypeSchema('page');
+
+        self::assertNotNull($schema);
+        self::assertSame(2, $schema['fields']['subtitle']['minLength']);
+        self::assertSame(120, $schema['fields']['subtitle']['maxLength']);
+    }
+
+    public function testEzmatrixFieldIncludesRowLimits(): void
+    {
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'blocks' => [
+                            'type' => 'ezmatrix',
+                            'settings' => [
+                                'columns' => [
+                                    ['identifier' => 'title', 'name' => 'Title'],
+                                ],
+                            ],
+                            'validator' => [
+                                'MatrixValueValidator' => ['minimumRowCount' => 1, 'maximumRowCount' => 10],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getContentTypeSchema('page');
+
+        self::assertNotNull($schema);
+        self::assertSame(1, $schema['fields']['blocks']['minRows']);
+        self::assertSame(10, $schema['fields']['blocks']['maxRows']);
+    }
+
+    public function testRelationListFieldIncludesItemLimits(): void
+    {
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'related' => [
+                            'type' => 'ezobjectrelationlist',
+                            'settings' => ['selectionContentTypes' => ['article']],
+                            'validator' => [
+                                'RelationValidator' => ['minimumRelationLimit' => 1],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getContentTypeSchema('page');
+
+        self::assertNotNull($schema);
+        self::assertSame(1, $schema['fields']['related']['minItems']);
+        self::assertArrayNotHasKey('maxItems', $schema['fields']['related']);
+    }
+
+    public function testTranslatableFlagExposedOnFields(): void
+    {
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'title' => [
+                            'type' => 'ezstring',
+                            'translatable' => true,
+                        ],
+                        'slug' => [
+                            'type' => 'ezstring',
+                            'translatable' => false,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getContentTypeSchema('page');
+
+        self::assertNotNull($schema);
+        self::assertTrue($schema['fields']['title']['translatable']);
+        self::assertFalse($schema['fields']['slug']['translatable']);
+    }
 }

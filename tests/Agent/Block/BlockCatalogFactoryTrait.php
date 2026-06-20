@@ -78,6 +78,11 @@ final class FakeFieldDefinition extends FieldDefinition
     /** @var bool */
     protected $isRequired = false;
 
+    /** @var bool */
+    protected $isTranslatable = false;
+
+    private ?string $description = null;
+
     /**
      * @param array<string, mixed> $fieldSettings
      * @param array<string, mixed> $validatorConfiguration
@@ -88,10 +93,14 @@ final class FakeFieldDefinition extends FieldDefinition
         array $fieldSettings = [],
         array $validatorConfiguration = [],
         bool $isRequired = false,
+        string $description = '',
+        bool $isTranslatable = false,
     ) {
         $this->fieldSettings = $fieldSettings;
         $this->validatorConfiguration = $validatorConfiguration;
         $this->isRequired = $isRequired;
+        $this->description = $description !== '' ? $description : null;
+        $this->isTranslatable = $isTranslatable;
 
         $reflection = new \ReflectionClass($this);
         foreach (['identifier' => $identifier, 'fieldTypeIdentifier' => $fieldTypeIdentifier] as $property => $value) {
@@ -130,12 +139,12 @@ final class FakeFieldDefinition extends FieldDefinition
 
     public function getDescription($languageCode = null)
     {
-        return null;
+        return $this->description;
     }
 
     public function getDescriptions()
     {
-        return [];
+        return $this->description !== null ? ['eng-GB' => $this->description] : [];
     }
 }
 
@@ -176,6 +185,8 @@ trait BlockCatalogFactoryTrait
                     $fieldConfig['settings'] ?? [],
                     $fieldConfig['validator'] ?? [],
                     $fieldConfig['required'] ?? false,
+                    $fieldConfig['description'] ?? '',
+                    $fieldConfig['translatable'] ?? false,
                 );
             }
 

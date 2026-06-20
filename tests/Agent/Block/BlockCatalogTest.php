@@ -45,7 +45,7 @@ final class BlockCatalogTest extends TestCase
         $fields = $blocks['info_cards']['fields'];
 
         self::assertSame(
-            ['type' => 'ezmatrix', 'required' => false, 'columns' => [
+            ['type' => 'ezmatrix', 'required' => false, 'translatable' => false, 'columns' => [
                 ['identifier' => 'icon', 'name' => 'Icon'],
                 ['identifier' => 'title', 'name' => 'Title'],
                 ['identifier' => 'body', 'name' => 'Body'],
@@ -54,11 +54,11 @@ final class BlockCatalogTest extends TestCase
         );
 
         self::assertSame(
-            ['type' => 'ezobjectrelationlist', 'required' => false, 'allowedTypes' => ['card_item']],
+            ['type' => 'ezobjectrelationlist', 'required' => false, 'translatable' => false, 'allowedTypes' => ['card_item']],
             $fields['items'],
         );
 
-        self::assertSame(['type' => 'ezstring', 'required' => false], $fields['heading']);
+        self::assertSame(['type' => 'ezstring', 'required' => false, 'translatable' => false], $fields['heading']);
     }
 
     public function testGetBlockSchemaReturnsNullForUnknownBlock(): void
@@ -66,6 +66,161 @@ final class BlockCatalogTest extends TestCase
         $catalog = $this->makeCatalog();
 
         self::assertNull($catalog->getBlockSchema('unknown_block'));
+    }
+
+    public function testSchemaIncludesDescriptionWhenProvided(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'image' => [
+                        'type' => 'ezimage',
+                        'description' => 'Recommended: 1920x600 px, JPEG/PNG',
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertSame('Recommended: 1920x600 px, JPEG/PNG', $schema['fields']['image']['description']);
+    }
+
+    public function testSchemaOmitsDescriptionWhenEmpty(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'title' => ['type' => 'ezstring'],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertArrayNotHasKey('description', $schema['fields']['title']);
+    }
+
+    public function testSchemaExposesImageFileSizeAndAltTextConstraints(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'image' => [
+                        'type' => 'ezimage',
+                        'validator' => [
+                            'FileSizeValidator' => ['maxFileSize' => 5],
+                            'AlternativeTextValidator' => ['required' => true],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertSame(5, $schema['fields']['image']['maxFileSize']);
+        self::assertTrue($schema['fields']['image']['altTextRequired']);
+    }
+
+    public function testSchemaExposesStringLengthConstraints(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'title' => [
+                        'type' => 'ezstring',
+                        'validator' => [
+                            'StringLengthValidator' => ['minStringLength' => 2, 'maxStringLength' => 100],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertSame(2, $schema['fields']['title']['minLength']);
+        self::assertSame(100, $schema['fields']['title']['maxLength']);
+    }
+
+    public function testSchemaExposesMatrixRowLimits(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'cards' => [
+                        'type' => 'ezmatrix',
+                        'settings' => [
+                            'columns' => [
+                                ['identifier' => 'title', 'name' => 'Title'],
+                            ],
+                        ],
+                        'validator' => [
+                            'MatrixValueValidator' => ['minimumRowCount' => 2, 'maximumRowCount' => 6],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertSame(2, $schema['fields']['cards']['minRows']);
+        self::assertSame(6, $schema['fields']['cards']['maxRows']);
+    }
+
+    public function testSchemaExposesRelationListMinItems(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'items' => [
+                        'type' => 'ezobjectrelationlist',
+                        'settings' => ['selectionContentTypes' => ['card_item']],
+                        'validator' => [
+                            'RelationValidator' => ['minimumRelationLimit' => 1],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertSame(1, $schema['fields']['items']['minItems']);
+    }
+
+    public function testSchemaExposesTranslatableFlag(): void
+    {
+        $catalog = $this->createBlockCatalog([
+            'hero' => [
+                'name' => 'Hero',
+                'fields' => [
+                    'title' => [
+                        'type' => 'ezstring',
+                        'translatable' => true,
+                    ],
+                ],
+            ],
+        ]);
+
+        $schema = $catalog->getBlockSchema('hero');
+
+        self::assertNotNull($schema);
+        self::assertTrue($schema['fields']['title']['translatable']);
     }
 
     public function testRenderBlockSummaryIsFlatListWithoutCapabilityHeaders(): void

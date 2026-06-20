@@ -43,13 +43,15 @@ trait ContentCatalogFactoryTrait
                         $fieldConfig = ['type' => $fieldConfig];
                     }
 
-                    $fieldDefinitions[] = new FakeFieldDefinition(
-                        $fieldIdentifier,
-                        $fieldConfig['type'],
-                        $fieldConfig['settings'] ?? [],
-                        $fieldConfig['validator'] ?? [],
-                        $fieldConfig['required'] ?? false,
-                    );
+                $fieldDefinitions[] = new FakeFieldDefinition(
+                    $fieldIdentifier,
+                    $fieldConfig['type'],
+                    $fieldConfig['settings'] ?? [],
+                    $fieldConfig['validator'] ?? [],
+                    $fieldConfig['required'] ?? false,
+                    $fieldConfig['description'] ?? '',
+                    $fieldConfig['translatable'] ?? false,
+                );
                 }
 
                 $contentType = new FakeContentType(

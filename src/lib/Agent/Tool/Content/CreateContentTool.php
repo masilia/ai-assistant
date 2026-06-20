@@ -104,7 +104,7 @@ readonly class CreateContentTool implements ToolInterface
                 [
                     'content_id' => $result['content']->id,
                     'location_id' => $result['location']->id,
-                    'remote_id' => $result['content']->remoteId,
+                    'remote_id' => $result['content']->contentInfo->remoteId,
                 ],
             );
         } catch (\Throwable $e) {

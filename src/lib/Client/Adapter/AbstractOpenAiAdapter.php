@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Client\Adapter;
 
 use Masilia\AiAssistant\Client\ProviderId;
+use Masilia\AiAssistant\Client\ToolCall;
+use Masilia\AiAssistant\Client\ToolCallResult;
 
 /**
  * Base adapter for providers that follow the OpenAI-compatible chat completions API
@@ -13,7 +15,7 @@ use Masilia\AiAssistant\Client\ProviderId;
  * Subclasses only need to define their provider identifier, default base URL,
  * and default test model. All request/response logic is shared.
  */
-abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
+abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface, ToolCapableAdapterInterface
 {
     use EndpointUrlHelperTrait;
 
@@ -179,5 +181,49 @@ abstract class AbstractOpenAiAdapter implements ProviderAdapterInterface, Stream
             'output' => isset($usage['completion_tokens']) ? (int)$usage['completion_tokens'] : null,
             'finishReason' => $finish,
         ];
+    }
+
+    public function buildToolRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        array  $messages,
+        array  $tools,
+    ): array {
+        return [
+            'model' => $modelIdentifier,
+            'temperature' => $this->getLimits()->clampTemperature($temperature),
+            'max_tokens' => $maxTokens,
+            'messages' => $messages,
+            'tools' => array_map(static fn (array $tool): array => [
+                'type' => 'function',
+                'function' => [
+                    'name' => $tool['name'],
+                    'description' => $tool['description'],
+                    'parameters' => $tool['parameters'],
+                ],
+            ], $tools),
+        ];
+    }
+
+    public function parseToolResponse(array $data): ToolCallResult
+    {
+        $message = $data['choices'][0]['message'] ?? [];
+        $text = $message['content'] ?? null;
+        $rawCalls = $message['tool_calls'] ?? [];
+
+        $toolCalls = [];
+        foreach ($rawCalls as $call) {
+            $toolCalls[] = new ToolCall(
+                id: $call['id'] ?? '',
+                name: $call['function']['name'] ?? '',
+                arguments: json_decode($call['function']['arguments'] ?? '{}', true) ?: [],
+            );
+        }
+
+        return new ToolCallResult(
+            text: $text !== null && $text !== '' ? $text : null,
+            toolCalls: $toolCalls,
+        );
     }
 }

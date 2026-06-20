@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Client;
 
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterInterface;
 use Masilia\AiAssistant\Client\Adapter\StreamingProviderAdapterInterface;
+use Masilia\AiAssistant\Client\Adapter\ToolCapableAdapterInterface;
 use RuntimeException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -67,6 +68,55 @@ class AiClient implements AiClientInterface
             $this->assertOk($response, $target->providerIdentifier);
             $rawData = $response->toArray();
             $result = $target->adapter->parseResponse($rawData);
+            $rawUsage = $target->adapter->extractUsage($rawData);
+
+            $this->logSuccess($target, $start, $rawUsage !== null ? UsageData::fromArray($rawUsage) : null);
+
+            return $result;
+        } catch (Throwable $e) {
+            $this->logFailure($target, $start, $e);
+            throw $e;
+        }
+    }
+
+    public function chatWithTools(array $messages, array $tools): ToolCallResult
+    {
+        $start = microtime(true);
+
+        try {
+            $target = $this->resolver->resolve();
+        } catch (Throwable $e) {
+            $this->logResolutionFailure($start, $e);
+            throw $e;
+        }
+
+        if (!$target->adapter instanceof ToolCapableAdapterInterface) {
+            $e = new RuntimeException(sprintf(
+                'Provider "%s" does not support tool-calling (adapter %s).',
+                $target->providerIdentifier,
+                $target->adapter::class
+            ));
+            $this->logFailure($target, $start, $e);
+            throw $e;
+        }
+
+        try {
+            $body = $target->adapter->buildToolRequestBody(
+                $target->modelIdentifier,
+                $target->temperature,
+                $target->maxTokens,
+                $messages,
+                $tools,
+            );
+
+            $response = $this->httpClient->request('POST', $target->url, [
+                'headers' => $target->headers,
+                'json' => $body,
+            ]);
+
+            $this->assertOk($response, $target->providerIdentifier);
+            $rawData = $response->toArray();
+            $result = $target->adapter->parseToolResponse($rawData);
             $rawUsage = $target->adapter->extractUsage($rawData);
 
             $this->logSuccess($target, $start, $rawUsage !== null ? UsageData::fromArray($rawUsage) : null);

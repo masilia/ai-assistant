@@ -6,8 +6,9 @@ namespace Masilia\AiAssistant\Client\Adapter;
 
 use Masilia\AiAssistant\Client\ProviderId;
 use Masilia\AiAssistant\Client\ProviderLimits;
+use Masilia\AiAssistant\Client\ToolCallResult;
 
-class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
+class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface, ToolCapableAdapterInterface
 {
     use AnthropicMessagesResponseTrait;
     use EndpointUrlHelperTrait;
@@ -155,5 +156,26 @@ class AnthropicAdapter implements ProviderAdapterInterface, StreamingProviderAda
     public function extractFinishReason(array $data): ?string
     {
         return $this->extractAnthropicFinishReason($data);
+    }
+
+    public function buildToolRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        array  $messages,
+        array  $tools,
+    ): array {
+        return $this->buildAnthropicToolRequestBody(
+            $modelIdentifier,
+            $temperature,
+            $maxTokens,
+            $messages,
+            $tools,
+        );
+    }
+
+    public function parseToolResponse(array $data): ToolCallResult
+    {
+        return $this->parseAnthropicToolResponse($data);
     }
 }

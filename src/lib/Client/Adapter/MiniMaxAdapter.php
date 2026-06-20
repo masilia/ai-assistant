@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Client\Adapter;
 
 use Masilia\AiAssistant\Client\ProviderId;
+use Masilia\AiAssistant\Client\ToolCallResult;
 
 /**
  * MiniMax uses the Anthropic Messages API format but with its own
@@ -16,7 +17,7 @@ use Masilia\AiAssistant\Client\ProviderId;
  * URL, auth header, request body shape quirks, test body) is
  * adapter-specific.
  */
-class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface
+class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapterInterface, TestableProviderAdapterInterface, ToolCapableAdapterInterface
 {
     use AnthropicMessagesResponseTrait;
     use EndpointUrlHelperTrait;
@@ -163,5 +164,26 @@ class MiniMaxAdapter implements ProviderAdapterInterface, StreamingProviderAdapt
     public function extractFinishReason(array $data): ?string
     {
         return $this->extractAnthropicFinishReason($data);
+    }
+
+    public function buildToolRequestBody(
+        string $modelIdentifier,
+        float  $temperature,
+        int    $maxTokens,
+        array  $messages,
+        array  $tools,
+    ): array {
+        return $this->buildAnthropicToolRequestBody(
+            $modelIdentifier,
+            $temperature,
+            $maxTokens,
+            $messages,
+            $tools,
+        );
+    }
+
+    public function parseToolResponse(array $data): ToolCallResult
+    {
+        return $this->parseAnthropicToolResponse($data);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool\FieldValueTransformer;
 
+use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Ibexa\Contracts\FieldTypeRichText\RichText\InputHandlerInterface;
 use Ibexa\FieldTypeRichText\FieldType\RichText\Value;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
@@ -32,7 +33,7 @@ readonly class RichTextTransformer implements FieldValueTransformerInterface
         return 'ezrichtext';
     }
 
-    public function transform(string $fieldTypeIdentifier, string $fieldIdentifier, mixed $value): mixed
+    public function transform(FieldDefinition $fieldDef, mixed $value): mixed
     {
         if (!is_string($value) || $value === '') {
             return $value;

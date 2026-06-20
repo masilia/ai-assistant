@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool\FieldValueTransformer;
 
+use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
 
 /**
@@ -19,7 +20,7 @@ readonly class RelationTransformer implements FieldValueTransformerInterface
         return 'ezobjectrelation';
     }
 
-    public function transform(string $fieldTypeIdentifier, string $fieldIdentifier, mixed $value): mixed
+    public function transform(FieldDefinition $fieldDef, mixed $value): mixed
     {
         if ($value === null) {
             return null;

@@ -8,10 +8,12 @@ use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion;
+use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Ibexa\Contracts\Core\Variation\VariationHandler;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
-use Novactive\Bundle\SeoBundle\Core\FieldType\Metas\Value;
-use Novactive\Bundle\SeoBundle\Core\Meta;
+use Novactive\Bundle\eZSEOBundle\Core\FieldType\Metas\Value;
+use Novactive\Bundle\eZSEOBundle\Core\FieldType\Metas;
+use Novactive\Bundle\eZSEOBundle\Core\Meta;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -39,10 +41,10 @@ readonly class NovaSeoMetasTransformer implements FieldValueTransformerInterface
 
     public function getFieldTypeIdentifier(): string
     {
-        return 'novaseometas';
+        return Metas\Type::IDENTIFIER;
     }
 
-    public function transform(string $fieldTypeIdentifier, string $fieldIdentifier, mixed $value): mixed
+    public function transform(FieldDefinition $fieldDef, mixed $value): mixed
     {
         if (!is_array($value)) {
             return $value;

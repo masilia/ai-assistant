@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Agent\Tool\FieldValueTransformer;
 
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
+use Masilia\AiAssistant\Field\FieldType;
 
 /**
  * Maps ezselection label strings to option indices.
@@ -13,22 +14,17 @@ use Masilia\AiAssistant\Agent\Tool\FieldValueTransformerInterface;
  * The LLM typically outputs the human-readable label (e.g. "Dark"),
  * but Ibexa's ezselection expects an array of integer indices.
  *
- * This transformer requires the FieldDefinition to resolve labels.
- * It is invoked by the FieldValueTransformerRegistry, but because the
- * interface does not pass the FieldDefinition, the actual label→index
- * resolution must be performed by the caller before reaching the registry.
- *
- * This transformer handles the array-wrapping part: if the value is
- * already an integer, it wraps it in an array.
+ * Uses the field definition's option list (field settings) to resolve
+ * labels to their index values.
  */
 readonly class SelectionTransformer implements FieldValueTransformerInterface
 {
     public function getFieldTypeIdentifier(): string
     {
-        return 'ezselection';
+        return FieldType::EZSELECTION;
     }
 
-    public function transform(string $fieldTypeIdentifier, string $fieldIdentifier, mixed $value): mixed
+    public function transform(FieldDefinition $fieldDef, mixed $value): mixed
     {
         // Already an array of indices — pass through
         if (is_array($value)) {
@@ -40,30 +36,15 @@ readonly class SelectionTransformer implements FieldValueTransformerInterface
             return [$value];
         }
 
-        // String label — cannot resolve without FieldDefinition context,
-        // return as-is (caller must resolve via resolveLabel() first)
-        return $value;
-    }
+        // String label — resolve against the field's option list
+        if (is_string($value)) {
+            $options = $fieldDef->getFieldSettings()['options'] ?? [];
+            $labelToIndex = array_flip($options);
+            $index = $labelToIndex[$value] ?? null;
 
-    /**
-     * Resolve a label string to its option index using field settings.
-     *
-     * Call this before passing through the transformer registry.
-     *
-     * @return int[]|mixed Resolved index array, or original value if unresolvable
-     */
-    public static function resolveLabel(FieldDefinition $fieldDef, mixed $value): mixed
-    {
-        if (!is_string($value)) {
-            return $value;
-        }
-
-        $options = $fieldDef->getFieldSettings()['options'] ?? [];
-        $labelToIndex = array_flip($options);
-        $index = $labelToIndex[$value] ?? null;
-
-        if ($index !== null) {
-            return [$index];
+            if ($index !== null) {
+                return [$index];
+            }
         }
 
         return $value;

@@ -32,7 +32,16 @@ readonly class RelationListTransformer implements FieldValueTransformerInterface
             return $value['destinationContentIds'];
         }
 
-        // Flat array of integers — pass through
-        return $value;
+        // Flatten nested arrays (e.g. [[1176], [1177]] → [1176, 1177])
+        $flat = [];
+        foreach ($value as $entry) {
+            if (is_array($entry)) {
+                array_push($flat, ...$entry);
+            } else {
+                $flat[] = $entry;
+            }
+        }
+
+        return $flat;
     }
 }

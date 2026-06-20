@@ -63,8 +63,6 @@ readonly class UpdateContentTool implements ToolInterface
             $languageCode = $params['language']
                 ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
 
-            dump($params);die;
-
             $published = $this->contentUpdater->updateFields($contentId, $attributes, $languageCode);
 
             return ToolResult::ok(

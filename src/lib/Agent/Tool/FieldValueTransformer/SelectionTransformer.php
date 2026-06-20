@@ -37,16 +37,19 @@ readonly class SelectionTransformer implements FieldValueTransformerInterface
         }
 
         // String label — resolve against the field's option list
+        // Options is an indexed array of labels: ['Dark', 'Light', 'Auto']
         if (is_string($value)) {
             $options = $fieldDef->getFieldSettings()['options'] ?? [];
-            $labelToIndex = array_flip($options);
-            $index = $labelToIndex[$value] ?? null;
+            $index = array_search($value, $options, true);
 
-            if ($index !== null) {
+            if ($index !== false) {
                 return [$index];
             }
+
+            // Label not found — return empty array so Ibexa gets a valid Selection\Value
+            return [];
         }
 
-        return $value;
+        return [];
     }
 }

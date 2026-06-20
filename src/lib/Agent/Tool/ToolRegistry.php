@@ -23,10 +23,10 @@ readonly class ToolRegistry
 
     public function register(ToolInterface $tool): self
     {
-        $clone = clone $this;
-        $clone->tools[$tool->getName()] = $tool;
+        $tools = $this->tools;
+        $tools[$tool->getName()] = $tool;
 
-        return $clone;
+        return new self($tools);
     }
 
     public function get(string $name): ?ToolInterface

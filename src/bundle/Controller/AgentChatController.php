@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\Controller;
 
+use Ibexa\Contracts\Core\Repository\Values\User\User;
 use Masilia\AiAssistant\Agent\AgentOrchestrator;
-use Masilia\AiAssistant\Agent\AgentPlan;
+use Masilia\AiAssistant\Agent\Wizard\WizardStoreInterface;
 use Masilia\AiAssistant\DTO\AiError;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Psr\Log\LoggerInterface;
@@ -13,6 +14,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\Security;
+use Throwable;
 
 readonly class AgentChatController
 {
@@ -22,9 +25,11 @@ readonly class AgentChatController
     private const GENERIC_SERVICE_ERROR = 'The AI agent service is currently unavailable. Please try again later or contact an administrator.';
 
     public function __construct(
-        private AgentOrchestrator  $orchestrator,
-        private PermissionResolver $permissionResolver,
-        private LoggerInterface    $aiLogger,
+        private AgentOrchestrator     $agentOrchestrator,
+        private WizardStoreInterface  $wizardStore,
+        private PermissionResolver    $permissionResolver,
+        private Security              $security,
+        private LoggerInterface       $aiLogger,
     ) {
     }
 
@@ -44,18 +49,28 @@ readonly class AgentChatController
         }
 
         $message = trim($payload['message'] ?? '');
-        if ($message === '') {
+        $selectedOption = $payload['selected_option'] ?? null;
+
+        if ($message === '' && $selectedOption === null) {
             return new JsonResponse(
-                AiError::validationError('Missing required field: message')->toArray(),
+                AiError::validationError('Missing required field: message or selected_option')->toArray(),
                 Response::HTTP_BAD_REQUEST,
             );
         }
 
+        $userId = $this->resolveUserId();
+        if ($userId === null) {
+            return new JsonResponse(
+                AiError::validationError('Authentication required')->toArray(),
+                Response::HTTP_UNAUTHORIZED,
+            );
+        }
+
         try {
-            $response = $this->orchestrator->chat($message);
+            $response = $this->agentOrchestrator->run($userId, $message, $selectedOption);
 
             return new JsonResponse($response->toArray());
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->aiLogger->error('[AI Agent] Chat failed: {message}', [
                 'message' => $e->getMessage(),
                 'exception' => $e,
@@ -68,49 +83,130 @@ readonly class AgentChatController
         }
     }
 
-    #[Route('/admin/api/ai/agent/execute', name: 'app.ai.agent.execute', methods: ['POST'])]
-    public function execute(Request $request): JsonResponse
+    #[Route('/admin/api/ai/agent/history', name: 'app.ai.agent.history', methods: ['GET'])]
+    public function history(): JsonResponse
     {
         if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
             return $denied;
         }
 
-        $payload = $this->decodeJsonRequest($request);
-        if ($payload === null) {
-            return new JsonResponse(
-                AiError::validationError('Invalid JSON payload')->toArray(),
-                Response::HTTP_BAD_REQUEST,
-            );
+        $userId = $this->resolveUserId();
+        if ($userId === null) {
+            return new JsonResponse(['messages' => []]);
         }
 
-        $steps = $payload['steps'] ?? [];
-        if (empty($steps)) {
-            return new JsonResponse(
-                AiError::validationError('Missing required field: steps')->toArray(),
-                Response::HTTP_BAD_REQUEST,
-            );
+        $state = $this->wizardStore->get($userId);
+        if ($state === null) {
+            return new JsonResponse(['messages' => []]);
         }
 
-        try {
-            $plan = new AgentPlan(
-                steps: $steps,
-                description: $payload['description'] ?? '',
-                requiresApproval: false,
-            );
+        return new JsonResponse([
+            'messages' => $this->transformMessages($state->messages),
+        ]);
+    }
 
-            $response = $this->orchestrator->executePlan($plan);
+    /**
+     * Transform provider-native messages to frontend ChatMessage format.
+     *
+     * Provider format:
+     *   {role: 'system', content: '...'}
+     *   {role: 'user', content: '...'}
+     *   {role: 'assistant', content: '...', tool_calls: [{id, name, arguments}]}
+     *   {role: 'tool', tool_call_id: '...', content: '...'}
+     *
+     * Frontend format:
+     *   {role: 'user'|'agent', content: '...', timestamp: '...', toolOutputs?: [...], options?: [...]}
+     *
+     * @param array $messages Provider-native messages
+     * @return array Frontend ChatMessage array
+     */
+    private function transformMessages(array $messages): array
+    {
+        $result = [];
+        $pendingToolCalls = [];
+        $timestamp = date('H:i');
 
-            return new JsonResponse($response->toArray());
-        } catch (\Throwable $e) {
-            $this->aiLogger->error('[AI Agent] Execution failed: {message}', [
-                'message' => $e->getMessage(),
-                'exception' => $e,
-            ]);
+        foreach ($messages as $msg) {
+            $role = $msg['role'] ?? '';
 
-            return new JsonResponse(
-                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
-                Response::HTTP_SERVICE_UNAVAILABLE,
-            );
+            if ($role === 'system') {
+                continue;
+            }
+
+            if ($role === 'user') {
+                $result[] = [
+                    'role' => 'user',
+                    'content' => $msg['content'] ?? '',
+                    'timestamp' => $timestamp,
+                ];
+                continue;
+            }
+
+            if ($role === 'assistant') {
+                $toolCalls = $msg['tool_calls'] ?? [];
+                if ($toolCalls !== []) {
+                    $pendingToolCalls = $toolCalls;
+                }
+
+                $content = $msg['content'] ?? '';
+                if ($content !== '' && $toolCalls === []) {
+                    $result[] = [
+                        'role' => 'agent',
+                        'content' => $content,
+                        'timestamp' => $timestamp,
+                    ];
+                }
+                continue;
+            }
+
+            if ($role === 'tool') {
+                $toolCallId = $msg['tool_call_id'] ?? '';
+                $toolName = '';
+                foreach ($pendingToolCalls as $tc) {
+                    if (($tc['id'] ?? '') === $toolCallId) {
+                        $toolName = $tc['name'] ?? '';
+                        break;
+                    }
+                }
+
+                $toolOutput = [
+                    'tool' => $toolName,
+                    'output' => json_decode($msg['content'] ?? '{}', true) ?? [],
+                ];
+
+                // Find the last agent message and append tool output
+                $lastIdx = array_key_last($result);
+                if ($lastIdx !== null && ($result[$lastIdx]['role'] ?? '') === 'agent') {
+                    $result[$lastIdx]['toolOutputs'][] = $toolOutput;
+                } else {
+                    // Standalone tool result — create an agent entry
+                    $result[] = [
+                        'role' => 'agent',
+                        'content' => '',
+                        'timestamp' => $timestamp,
+                        'toolOutputs' => [$toolOutput],
+                    ];
+                }
+            }
         }
+
+        return $result;
+    }
+
+    private function resolveUserId(): ?int
+    {
+        $user = $this->security->getUser();
+
+        if ($user instanceof \Ibexa\Core\MVC\Symfony\Security\User) {
+            return $user->getAPIUser()->id;
+        }
+
+        if (method_exists($user, 'getId')) {
+            $id = $user->getId();
+
+            return is_numeric($id) ? (int) $id : null;
+        }
+
+        return null;
     }
 }

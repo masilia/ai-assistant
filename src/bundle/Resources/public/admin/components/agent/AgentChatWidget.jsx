@@ -2,12 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AI_ROUTES } from '../ai-settings/api-routes.js';
 import { cleanErrorMessage } from '../ai-settings/constants.js';
 import MessageBubble from './MessageBubble.jsx';
-import PlanDisplay from './PlanDisplay.jsx';
 import ToolOutput from './ToolOutput.jsx';
 import ActionConfirmDialog from './ActionConfirmDialog.jsx';
 
 /**
- * @typedef {{ role: 'user'|'agent', content: string, timestamp: string, isError?: boolean, plan?: object, toolOutputs?: Array<{tool: string, output: object}> }} ChatMessage
+ * @typedef {{ role: 'user'|'agent', content: string, timestamp: string, isError?: boolean, options?: Array<{label: string, value: string}>, toolOutputs?: Array<{tool: string, output: object}> }} ChatMessage
  */
 
 /**
@@ -18,7 +17,6 @@ function AgentChatWidget() {
     const [messages, setMessages] = useState(/** @type {ChatMessage[]} */ ([]));
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [pendingPlan, setPendingPlan] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
 
     const messagesEndRef = useRef(null);
@@ -38,6 +36,18 @@ function AgentChatWidget() {
         }
     }, [isOpen]);
 
+    // Fetch chat history from backend on mount
+    useEffect(() => {
+        fetch(AI_ROUTES.agentHistory)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.messages && data.messages.length > 0) {
+                    setMessages(data.messages);
+                }
+            })
+            .catch(() => {});
+    }, []);
+
     const getTimestamp = () => {
         return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
@@ -49,6 +59,32 @@ function AgentChatWidget() {
         ]);
     }, []);
 
+    const postChat = useCallback(async (body) => {
+        const res = await fetch(AI_ROUTES.agentChat, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            addMessage('agent', cleanErrorMessage(data.error || 'Request failed'), { isError: true });
+            return;
+        }
+
+        if (data.results && data.results.length > 0) {
+            addMessage('agent', data.message || 'Done!', {
+                toolOutputs: data.results,
+                ...(data.options ? { options: data.options } : {}),
+            });
+        } else {
+            addMessage('agent', data.message || 'Done.', {
+                ...(data.options ? { options: data.options } : {}),
+            });
+        }
+    }, [addMessage]);
+
     const handleSend = useCallback(async () => {
         const text = input.trim();
         if (!text || loading) return;
@@ -58,82 +94,27 @@ function AgentChatWidget() {
         setLoading(true);
 
         try {
-            const res = await fetch(AI_ROUTES.agentChat, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                addMessage('agent', cleanErrorMessage(data.error || 'Request failed'), { isError: true });
-                return;
-            }
-
-            if (data.plan) {
-                setPendingPlan(data.plan);
-                addMessage('agent', data.message || 'I have a plan for you. Please review it below.', {
-                    plan: data.plan,
-                });
-            } else if (data.results && data.results.length > 0) {
-                addMessage('agent', data.message || 'Done!', {
-                    toolOutputs: data.results,
-                });
-            } else {
-                addMessage('agent', data.message || 'Done.');
-            }
+            await postChat({ message: text });
         } catch (err) {
             addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
         } finally {
             setLoading(false);
         }
-    }, [input, loading, addMessage]);
+    }, [input, loading, addMessage, postChat]);
 
-    const handlePlanConfirm = useCallback(async () => {
-        if (!pendingPlan) return;
+    const handleOptionSelect = useCallback(async (value) => {
+        if (loading) return;
 
-        const plan = pendingPlan;
-        setPendingPlan(null);
         setLoading(true);
 
-        addMessage('agent', 'Executing plan...');
-
         try {
-            const res = await fetch(AI_ROUTES.agentExecute, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    steps: plan.steps,
-                    description: plan.description,
-                }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                addMessage('agent', cleanErrorMessage(data.error || 'Execution failed'), { isError: true });
-                return;
-            }
-
-            if (data.results && data.results.length > 0) {
-                addMessage('agent', data.message || 'Plan executed successfully!', {
-                    toolOutputs: data.results,
-                });
-            } else {
-                addMessage('agent', data.message || 'Plan executed successfully!');
-            }
+            await postChat({ message: value, selected_option: value });
         } catch (err) {
             addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
         } finally {
             setLoading(false);
         }
-    }, [pendingPlan, addMessage]);
-
-    const handlePlanCancel = useCallback(() => {
-        setPendingPlan(null);
-        addMessage('agent', 'Plan cancelled.');
-    }, [addMessage]);
+    }, [loading, addMessage, postChat]);
 
     const handleUndo = useCallback(async () => {
         setLoading(true);
@@ -239,12 +220,20 @@ function AgentChatWidget() {
                                     timestamp={msg.timestamp}
                                     isError={msg.isError}
                                 />
-                                {msg.plan && (
-                                    <PlanDisplay
-                                        plan={msg.plan}
-                                        onConfirm={handlePlanConfirm}
-                                        onCancel={handlePlanCancel}
-                                    />
+                                {msg.options && msg.options.length > 0 && (
+                                    <div className="agent-chat__options">
+                                        {msg.options.map((opt) => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                className="agent-chat__option-btn"
+                                                onClick={() => handleOptionSelect(opt.value)}
+                                                disabled={loading}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                                 {msg.toolOutputs && msg.toolOutputs.map((output, outIdx) => (
                                     <ToolOutput
@@ -256,7 +245,7 @@ function AgentChatWidget() {
                             </div>
                         ))}
 
-                        {loading && !pendingPlan && (
+                        {loading && (
                             <div className="agent-chat__typing">
                                 <span className="agent-chat__typing-dot" />
                                 <span className="agent-chat__typing-dot" />

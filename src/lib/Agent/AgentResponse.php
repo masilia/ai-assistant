@@ -10,21 +10,14 @@ readonly class AgentResponse
 {
     /**
      * @param ToolResult[] $results
+     * @param array<int, array{label: string, value: string}>|null $options
      */
     public function __construct(
         public string $message,
         public array  $results = [],
-        public ?AgentPlan $plan = null,
         public bool   $success = true,
+        public ?array $options = null,
     ) {
-    }
-
-    public static function withPlan(AgentPlan $plan, string $message = ''): self
-    {
-        return new self(
-            message: $message ?: 'Here is the plan for your request:',
-            plan: $plan,
-        );
     }
 
     public static function withResults(array $results, string $message = ''): self
@@ -53,7 +46,7 @@ readonly class AgentResponse
     }
 
     /**
-     * @return array{message: string, results: array, plan: array|null, success: bool}
+     * @return array{message: string, results: array, success: bool, options: array|null}
      */
     public function toArray(): array
     {
@@ -63,8 +56,8 @@ readonly class AgentResponse
                 static fn(ToolResult $r) => $r->toArray(),
                 $this->results,
             ),
-            'plan' => $this->plan?->toArray(),
             'success' => $this->success,
+            'options' => $this->options,
         ];
     }
 }

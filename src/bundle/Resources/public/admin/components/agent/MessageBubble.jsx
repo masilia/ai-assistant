@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 
 /**
  * Minimal markdown renderer for agent messages.
- * Handles **bold**, bullet lists, and category headers.
+ * Handles **bold**, bullet lists, `code`, and [links](url).
  */
 function renderContent(text) {
     if (!text) return null;
@@ -31,7 +31,6 @@ function renderContent(text) {
     lines.forEach((line, idx) => {
         const trimmed = line.trim();
 
-        // Empty line: flush list
         if (trimmed === '') {
             flushList();
             return;
@@ -48,14 +47,13 @@ function renderContent(text) {
             return;
         }
 
-        // Bullet item: starts with -
+        // Bullet item
         if (trimmed.startsWith('- ')) {
             inList = true;
             listItems.push(trimmed.slice(2));
             return;
         }
 
-        // Regular line
         flushList();
         elements.push(
             <div key={idx} className="agent-chat__text-line">
@@ -69,11 +67,11 @@ function renderContent(text) {
 }
 
 /**
- * Render inline formatting: **bold** and `code`.
+ * Render inline formatting: **bold**, `code`, and [text](url).
  */
 function renderInline(text) {
     const parts = [];
-    const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+    const regex = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
     let lastIndex = 0;
     let match;
 
@@ -87,6 +85,23 @@ function renderInline(text) {
             parts.push(<strong key={match.index}>{token.slice(2, -2)}</strong>);
         } else if (token.startsWith('`')) {
             parts.push(<code key={match.index} className="agent-chat__code">{token.slice(1, -1)}</code>);
+        } else if (token.startsWith('[')) {
+            const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+            if (linkMatch) {
+                parts.push(
+                    <a
+                        key={match.index}
+                        href={linkMatch[2]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="agent-chat__link"
+                    >
+                        {linkMatch[1]}
+                    </a>
+                );
+            } else {
+                parts.push(token);
+            }
         }
 
         lastIndex = match.index + token.length;
@@ -100,18 +115,48 @@ function renderInline(text) {
 }
 
 /**
- * Renders a single chat message (user or agent).
+ * Renders a single chat message (user or agent) with copy button.
  *
  * @param {{ role: 'user'|'agent', content: string, timestamp?: string, isError?: boolean }} props
  */
 function MessageBubble({ role, content, timestamp, isError }) {
     const isUser = role === 'user';
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(content);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // clipboard API may fail in some contexts
+        }
+    }, [content]);
 
     return (
         <div className={`agent-chat__bubble agent-chat__bubble--${isUser ? 'user' : 'agent'}${isError ? ' agent-chat__bubble--error' : ''}`}>
             <div className="agent-chat__bubble-header">
                 <span className="agent-chat__bubble-role">{isUser ? 'You' : 'Agent'}</span>
                 {timestamp && <span className="agent-chat__bubble-time">{timestamp}</span>}
+                {!isUser && (
+                    <button
+                        type="button"
+                        className="agent-chat__copy-btn"
+                        onClick={handleCopy}
+                        title={copied ? 'Copied!' : 'Copy message'}
+                    >
+                        {copied ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                        ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect width="14" height="14" x="8" y="8" rx="2" />
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                            </svg>
+                        )}
+                    </button>
+                )}
             </div>
             <div className="agent-chat__bubble-content">
                 {isUser ? content : renderContent(content)}

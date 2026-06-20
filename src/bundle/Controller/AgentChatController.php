@@ -83,6 +83,38 @@ readonly class AgentChatController
         }
     }
 
+    #[Route('/admin/api/ai/agent/clear', name: 'app.ai.agent.clear', methods: ['POST'])]
+    public function clear(): JsonResponse
+    {
+        if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
+            return $denied;
+        }
+
+        $userId = $this->resolveUserId();
+        if ($userId === null) {
+            return new JsonResponse(
+                AiError::validationError('Authentication required')->toArray(),
+                Response::HTTP_UNAUTHORIZED,
+            );
+        }
+
+        try {
+            $this->wizardStore->clear($userId);
+
+            return new JsonResponse(['success' => true]);
+        } catch (Throwable $e) {
+            $this->aiLogger->error('[AI Agent] Clear failed: {message}', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            return new JsonResponse(
+                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
+                Response::HTTP_SERVICE_UNAVAILABLE,
+            );
+        }
+    }
+
     #[Route('/admin/api/ai/agent/history', name: 'app.ai.agent.history', methods: ['GET'])]
     public function history(): JsonResponse
     {

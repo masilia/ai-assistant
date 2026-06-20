@@ -9,9 +9,13 @@ import ActionConfirmDialog from './ActionConfirmDialog.jsx';
  * @typedef {{ role: 'user'|'agent', content: string, timestamp: string, isError?: boolean, options?: Array<{label: string, value: string}>, toolOutputs?: Array<{tool: string, output: object}> }} ChatMessage
  */
 
-/**
- * Main agent chat widget — floating button + slide-out panel.
- */
+const EXAMPLES = [
+    'Create a team page with hero and cards',
+    'Find all articles about climate',
+    'What block types are available?',
+    'Undo that last page creation',
+];
+
 function AgentChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState(/** @type {ChatMessage[]} */ ([]));
@@ -21,6 +25,7 @@ function AgentChatWidget() {
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+    const abortRef = useRef(/** @type {AbortController|null} */ (null));
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -34,6 +39,20 @@ function AgentChatWidget() {
         if (isOpen && inputRef.current) {
             inputRef.current.focus();
         }
+    }, [isOpen]);
+
+    // Escape key closes panel
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
     }, [isOpen]);
 
     // Fetch chat history from backend on mount
@@ -60,28 +79,36 @@ function AgentChatWidget() {
     }, []);
 
     const postChat = useCallback(async (body) => {
-        const res = await fetch(AI_ROUTES.agentChat, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
+        const controller = new AbortController();
+        abortRef.current = controller;
 
-        const data = await res.json();
-
-        if (!res.ok) {
-            addMessage('agent', cleanErrorMessage(data.error || 'Request failed'), { isError: true });
-            return;
-        }
-
-        if (data.results && data.results.length > 0) {
-            addMessage('agent', data.message || 'Done!', {
-                toolOutputs: data.results,
-                ...(data.options ? { options: data.options } : {}),
+        try {
+            const res = await fetch(AI_ROUTES.agentChat, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: controller.signal,
             });
-        } else {
-            addMessage('agent', data.message || 'Done.', {
-                ...(data.options ? { options: data.options } : {}),
-            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                addMessage('agent', cleanErrorMessage(data.error || 'Request failed'), { isError: true });
+                return;
+            }
+
+            if (data.results && data.results.length > 0) {
+                addMessage('agent', data.message || 'Done!', {
+                    toolOutputs: data.results,
+                    ...(data.options ? { options: data.options } : {}),
+                });
+            } else {
+                addMessage('agent', data.message || 'Done.', {
+                    ...(data.options ? { options: data.options } : {}),
+                });
+            }
+        } finally {
+            abortRef.current = null;
         }
     }, [addMessage]);
 
@@ -96,7 +123,9 @@ function AgentChatWidget() {
         try {
             await postChat({ message: text });
         } catch (err) {
-            addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+            if (err.name !== 'AbortError') {
+                addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+            }
         } finally {
             setLoading(false);
         }
@@ -110,37 +139,68 @@ function AgentChatWidget() {
         try {
             await postChat({ message: value, selected_option: value });
         } catch (err) {
-            addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+            if (err.name !== 'AbortError') {
+                addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+            }
         } finally {
             setLoading(false);
         }
     }, [loading, addMessage, postChat]);
 
-    const handleUndo = useCallback(async () => {
-        setLoading(true);
-        addMessage('user', '/undo');
-
-        try {
-            const res = await fetch(AI_ROUTES.agentChat, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: 'undo' }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                addMessage('agent', cleanErrorMessage(data.error || 'Undo failed'), { isError: true });
-                return;
-            }
-
-            addMessage('agent', data.message || 'Undone.');
-        } catch (err) {
-            addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
-        } finally {
+    const handleCancel = useCallback(() => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+            abortRef.current = null;
             setLoading(false);
+            addMessage('agent', 'Cancelled.');
         }
     }, [addMessage]);
+
+    const handleUndo = useCallback(() => {
+        setConfirmAction({
+            message: 'Undo the last action? This cannot be undone.',
+            onConfirm: async () => {
+                setLoading(true);
+                addMessage('user', '/undo');
+
+                try {
+                    const res = await fetch(AI_ROUTES.agentChat, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: 'undo' }),
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        addMessage('agent', cleanErrorMessage(data.error || 'Undo failed'), { isError: true });
+                        return;
+                    }
+
+                    addMessage('agent', data.message || 'Undone.');
+                } catch (err) {
+                    addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+                } finally {
+                    setLoading(false);
+                }
+            },
+        });
+    }, [addMessage]);
+
+    const handleNewConversation = useCallback(() => {
+        setConfirmAction({
+            message: 'Start a new conversation? Current chat will be cleared.',
+            onConfirm: async () => {
+                try {
+                    await fetch(AI_ROUTES.agentClear, { method: 'POST' });
+                } catch {
+                    // ignore clear errors
+                }
+                setMessages([]);
+                setInput('');
+            },
+        });
+    }, []);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -148,6 +208,23 @@ function AgentChatWidget() {
             handleSend();
         }
     }, [handleSend]);
+
+    // Auto-resize textarea
+    const handleInputChange = useCallback((e) => {
+        setInput(e.target.value);
+        const el = e.target;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }, []);
+
+    const handleExampleClick = useCallback((example) => {
+        setInput(example);
+        if (inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+        }
+    }, []);
 
     return (
         <div className="agent-chat">
@@ -175,8 +252,20 @@ function AgentChatWidget() {
                             <button
                                 type="button"
                                 className="agent-chat__header-btn"
-                                onClick={handleUndo}
+                                onClick={handleNewConversation}
                                 disabled={loading}
+                                title="New conversation"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 5v14" />
+                                    <path d="M5 12h14" />
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                className="agent-chat__header-btn"
+                                onClick={handleUndo}
+                                disabled={loading || messages.length === 0}
                                 title="Undo last action"
                             >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -202,12 +291,19 @@ function AgentChatWidget() {
                         {messages.length === 0 && (
                             <div className="agent-chat__empty">
                                 <p>Ask me to create pages, manage content, or list available blocks.</p>
-                                <p className="agent-chat__empty-hint">Examples:</p>
+                                <p className="agent-chat__empty-hint">Try one of these:</p>
                                 <ul className="agent-chat__empty-examples">
-                                    <li>"Create a team page with hero and cards"</li>
-                                    <li>"Find all articles about climate"</li>
-                                    <li>"What block types are available?"</li>
-                                    <li>"Undo that last page creation"</li>
+                                    {EXAMPLES.map((ex) => (
+                                        <li key={ex}>
+                                            <button
+                                                type="button"
+                                                className="agent-chat__example-btn"
+                                                onClick={() => handleExampleClick(ex)}
+                                            >
+                                                {ex}
+                                            </button>
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
                         )}
@@ -250,6 +346,17 @@ function AgentChatWidget() {
                                 <span className="agent-chat__typing-dot" />
                                 <span className="agent-chat__typing-dot" />
                                 <span className="agent-chat__typing-dot" />
+                                <button
+                                    type="button"
+                                    className="agent-chat__cancel-btn"
+                                    onClick={handleCancel}
+                                    title="Cancel"
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M18 6 6 18" />
+                                        <path d="m6 6 12 12" />
+                                    </svg>
+                                </button>
                             </div>
                         )}
 
@@ -261,7 +368,7 @@ function AgentChatWidget() {
                             ref={inputRef}
                             className="agent-chat__input"
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
                             placeholder="Ask the agent..."
                             rows={1}

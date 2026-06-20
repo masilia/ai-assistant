@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Renders structured tool output (search results, content details, etc.).
+ * Renders structured tool output (search results, content details, folder, plan, etc.).
  *
  * @param {{ output: object, toolName: string }} props
  */
@@ -45,26 +45,123 @@ function ToolOutput({ output, toolName }) {
             <div className="agent-chat__tool-output-card">
                 {data.content_id && (
                     <div className="agent-chat__tool-output-field">
-                        <span className="agent-chat__tool-output-label">Content ID:</span>
+                        <span className="agent-chat__tool-output-label">Content ID</span>
                         <span>{data.content_id}</span>
                     </div>
                 )}
                 {data.remote_id && (
                     <div className="agent-chat__tool-output-field">
-                        <span className="agent-chat__tool-output-label">Remote ID:</span>
+                        <span className="agent-chat__tool-output-label">Remote ID</span>
                         <span className="agent-chat__tool-output-code">{data.remote_id}</span>
                     </div>
                 )}
                 {data.location_id && (
                     <div className="agent-chat__tool-output-field">
-                        <span className="agent-chat__tool-output-label">Location ID:</span>
+                        <span className="agent-chat__tool-output-label">Location ID</span>
                         <span>{data.location_id}</span>
                     </div>
                 )}
                 {data.name && (
                     <div className="agent-chat__tool-output-field">
-                        <span className="agent-chat__tool-output-label">Name:</span>
+                        <span className="agent-chat__tool-output-label">Name</span>
                         <span>{data.name}</span>
+                    </div>
+                )}
+                {data.content_type && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Type</span>
+                        <span>{data.content_type}</span>
+                    </div>
+                )}
+                {data.version_no && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Version</span>
+                        <span>{data.version_no}</span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderFolderResult = (data) => {
+        return (
+            <div className="agent-chat__tool-output-card">
+                <div className="agent-chat__tool-output-field">
+                    <span className="agent-chat__tool-output-label">Folder</span>
+                    <span>{data.name || data.remote_id || 'Created'}</span>
+                </div>
+                {data.location_id && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Location ID</span>
+                        <span>{data.location_id}</span>
+                    </div>
+                )}
+                {data.content_id && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Content ID</span>
+                        <span>{data.content_id}</span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderPlanResult = (data) => {
+        const steps = data.steps || data.toolCalls || [];
+        return (
+            <div className="agent-chat__tool-output-card">
+                {data.siteaccess && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Site</span>
+                        <span>{data.siteaccess}</span>
+                    </div>
+                )}
+                {data.parent_location_id && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Parent</span>
+                        <span>{data.parent_location_id}</span>
+                    </div>
+                )}
+                {steps.length > 0 && (
+                    <div className="agent-chat__tool-output-steps">
+                        <span className="agent-chat__tool-output-label">{steps.length} step{steps.length !== 1 ? 's' : ''}</span>
+                        {steps.map((step, i) => (
+                            <div key={i} className="agent-chat__tool-output-step">
+                                <span className="agent-chat__tool-output-step-num">{i + 1}</span>
+                                <span>{step.name || step.tool || 'step'}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderImageResult = (data) => {
+        const imageUrl = data.url || data.image_url || data.imageUri;
+        return (
+            <div className="agent-chat__tool-output-card">
+                {imageUrl && (
+                    <div className="agent-chat__tool-output-image">
+                        <img src={imageUrl} alt="Generated image" loading="lazy" />
+                    </div>
+                )}
+                {data.content_id && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Content ID</span>
+                        <span>{data.content_id}</span>
+                    </div>
+                )}
+                {data.remote_id && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Remote ID</span>
+                        <span className="agent-chat__tool-output-code">{data.remote_id}</span>
+                    </div>
+                )}
+                {!imageUrl && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Image</span>
+                        <span>Generated</span>
                     </div>
                 )}
             </div>
@@ -72,6 +169,17 @@ function ToolOutput({ output, toolName }) {
     };
 
     const renderDefault = (data) => {
+        // Try to extract a meaningful summary
+        if (data.message) {
+            return (
+                <div className="agent-chat__tool-output-card">
+                    <div className="agent-chat__tool-output-field">
+                        <span>{data.message}</span>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <pre className="agent-chat__tool-output-json">
                 {JSON.stringify(data, null, 2)}
@@ -88,15 +196,36 @@ function ToolOutput({ output, toolName }) {
             return renderContentResult(output);
         }
 
+        if (toolName === 'create_folder') {
+            return renderFolderResult(output);
+        }
+
+        if (toolName === 'propose_plan') {
+            return renderPlanResult(output);
+        }
+
+        if (['create_image', 'generate_image'].includes(toolName)) {
+            return renderImageResult(output);
+        }
+
+        if (['trash_content', 'restore_content'].includes(toolName)) {
+            return renderContentResult(output);
+        }
+
         return renderDefault(output);
     };
 
     return (
         <div className="agent-chat__tool-output">
-            <div className="agent-chat__tool-output-label">{toolName}</div>
+            <div className="agent-chat__tool-output-label">{formatToolName(toolName)}</div>
             {renderOutput()}
         </div>
     );
+}
+
+function formatToolName(name) {
+    if (!name) return '';
+    return name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default ToolOutput;

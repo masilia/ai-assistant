@@ -23,5 +23,6 @@ export const AI_ROUTES = {
     fieldTypes:        '/admin/api/ai/field-types',
     languages:         (contentId) => `/admin/api/ai/languages/${contentId}`,
     agentChat:         '/admin/api/ai/agent/chat',
+    agentClear:        '/admin/api/ai/agent/clear',
     agentHistory:      '/admin/api/ai/agent/history',
 };

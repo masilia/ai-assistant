@@ -98,8 +98,6 @@ readonly class CreateSiteStructureTool implements ToolInterface
 
             $config = $this->resolveSiteConfig();
 
-            $this->repository->beginTransaction();
-
             // 1-3. Create site skeleton (container + layout + home page)
             [$sitePublished, $siteLocation, $homePublished, $homeLocation, $layoutPublished]
                 = $this->createSiteSkeleton(
@@ -127,8 +125,6 @@ readonly class CreateSiteStructureTool implements ToolInterface
                 $languageCode,
             );
 
-            $this->repository->commit();
-
             // 5. Pre-generate site images (after commit — updates content)
             $tempFiles = $this->preGenerateSiteImages($siteName, $sitePublished->id, $languageCode);
 
@@ -145,7 +141,6 @@ readonly class CreateSiteStructureTool implements ToolInterface
                 ],
             );
         } catch (Throwable $e) {
-            $this->repository->rollback();
             return AgentErrorHelper::handle($this->aiLogger, $e, 'create site structure');
         } finally {
             foreach ($tempFiles as $path) {

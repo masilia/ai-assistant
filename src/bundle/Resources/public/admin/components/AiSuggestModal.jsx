@@ -181,7 +181,7 @@ function AiSuggestModal() {
     const handleImageGeneration = useCallback(async (selectedAspectRatio) => {
         setImageGenLoading(true);
         setImageGenResult(null);
-        stream.setError(null);
+        stream.setError('');
 
         // Build a contextual prompt that includes field/content info
         const contextParts = [];
@@ -217,7 +217,10 @@ function AiSuggestModal() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Image generation failed.');
+                const errMsg = (data && data.error && data.error.message)
+                    || (typeof data?.error === 'string' ? data.error : null)
+                    || 'Image generation failed.';
+                throw new Error(errMsg);
             }
 
             setImageGenResult({

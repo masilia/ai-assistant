@@ -10,6 +10,7 @@ use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 readonly class TrashContentTool implements ToolInterface
 {
@@ -72,7 +73,7 @@ readonly class TrashContentTool implements ToolInterface
                     'trashed' => true,
                 ],
             );
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return AgentErrorHelper::handle($this->aiLogger, $e, 'trash content');
         }
     }

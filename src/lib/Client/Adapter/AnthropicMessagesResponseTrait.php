@@ -114,11 +114,18 @@ trait AnthropicMessagesResponseTrait
                     $content[] = ['type' => 'text', 'text' => $text];
                 }
                 foreach ($msg['tool_calls'] as $tc) {
+                    // Support both OpenAI-compatible nested format and legacy flat format.
+                    // Nested: {id, type: "function", function: {name, arguments: "json_string"}}
+                    // Flat:   {id, name, arguments: mixed}
+                    $name = $tc['function']['name'] ?? $tc['name'] ?? '';
+                    $rawArgs = $tc['function']['arguments'] ?? $tc['arguments'] ?? [];
+                    $input = is_string($rawArgs) ? (json_decode($rawArgs, true) ?? []) : $rawArgs;
+
                     $content[] = [
                         'type' => 'tool_use',
                         'id' => $tc['id'] ?? '',
-                        'name' => $tc['name'] ?? '',
-                        'input' => $tc['arguments'] ?? [],
+                        'name' => $name,
+                        'input' => $input,
                     ];
                 }
                 $convertedMessages[] = ['role' => 'assistant', 'content' => $content];

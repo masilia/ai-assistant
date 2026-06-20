@@ -82,6 +82,37 @@ final class AnthropicMessagesResponseTraitTest extends TestCase
         self::assertSame(['siteaccess' => 'fossilexit'], $toolUse['input']);
     }
 
+    public function testAssistantToolCallsNestedFormatBecomeContentBlocks(): void
+    {
+        $body = $this->subject->convert([
+            ['role' => 'system', 'content' => 'sys'],
+            ['role' => 'user', 'content' => 'do it'],
+            [
+                'role' => 'assistant',
+                'content' => 'Calling tool',
+                'tool_calls' => [
+                    [
+                        'id' => 'toolu_abc',
+                        'type' => 'function',
+                        'function' => [
+                            'name' => 'explore_site',
+                            'arguments' => '{"siteaccess":"fossilexit"}',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $assistant = $body['messages'][1];
+        self::assertSame('assistant', $assistant['role']);
+
+        $toolUse = $assistant['content'][1];
+        self::assertSame('tool_use', $toolUse['type']);
+        self::assertSame('toolu_abc', $toolUse['id']);
+        self::assertSame('explore_site', $toolUse['name']);
+        self::assertSame(['siteaccess' => 'fossilexit'], $toolUse['input']);
+    }
+
     public function testToolMessageBecomesUserMessageWithToolResultBlock(): void
     {
         $body = $this->subject->convert([

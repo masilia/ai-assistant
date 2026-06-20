@@ -183,13 +183,18 @@ final readonly class AgentOrchestrator
             return ['response' => null, 'state' => $state];
         }
 
-        // Append assistant message (with tool calls) to history
+        // Append assistant message (with tool calls) to history.
+        // Use OpenAI-compatible format: {id, type: "function", function: {name, arguments}}.
+        // The arguments value must be a JSON string per the API spec.
         $state = $state->withAssistantToolCalls(
             $result->text ?? '',
             array_map(static fn($c) => [
                 'id' => $c->id,
-                'name' => $c->name,
-                'arguments' => $c->arguments,
+                'type' => 'function',
+                'function' => [
+                    'name' => $c->name,
+                    'arguments' => is_string($c->arguments) ? $c->arguments : json_encode($c->arguments, JSON_THROW_ON_ERROR),
+                ],
             ], $result->toolCalls),
         );
 

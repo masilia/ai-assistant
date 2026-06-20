@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\AiAssistant\Agent\Worker;
 
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
+use Masilia\AiAssistant\Agent\Block\ContentCatalog;
 
 /**
  * Validates and constructs a Plan from orchestrator tool arguments.
@@ -18,7 +19,7 @@ use Masilia\AiAssistant\Agent\Block\BlockCatalog;
  *   2. Schema validation (validateBlockSchemas()) — block fields match
  *      the actual content type schema, especially matrix column names.
  *   3. Required-field validation (validateRequiredFields()) — required
- *      fields are not empty/null.
+ *      fields are not empty.
  *
  * No default-block suggestion: the LLM is the source of truth for which
  * blocks to use. create_content plans with empty `blocks` are accepted and
@@ -29,6 +30,7 @@ final class PlanBuilder
 {
     public function __construct(
         private readonly ?BlockCatalog $blockCatalog = null,
+        private readonly ?ContentCatalog $contentCatalog = null,
     ) {
     }
 
@@ -78,9 +80,6 @@ final class PlanBuilder
      */
     private function validateBlockSchemas(Plan $plan): ?string
     {
-        if ($this->blockCatalog === null) {
-            return null;
-        }
         if ($plan->intent !== Plan::INTENT_CREATE_CONTENT) {
             return null;
         }
@@ -88,7 +87,7 @@ final class PlanBuilder
             return null;
         }
 
-        $schema = $this->blockCatalog->getBlockSchema($plan->contentType);
+        $schema = $this->resolveContentTypeSchema($plan->contentType);
         if ($schema === null) {
             return null;
         }
@@ -148,9 +147,6 @@ final class PlanBuilder
      */
     private function validateRequiredFields(Plan $plan): ?string
     {
-        if ($this->blockCatalog === null) {
-            return null;
-        }
         if ($plan->intent !== Plan::INTENT_CREATE_CONTENT) {
             return null;
         }
@@ -158,7 +154,7 @@ final class PlanBuilder
             return null;
         }
 
-        $schema = $this->blockCatalog->getBlockSchema($plan->contentType);
+        $schema = $this->resolveContentTypeSchema($plan->contentType);
         if ($schema === null) {
             return null;
         }
@@ -204,5 +200,15 @@ final class PlanBuilder
         }
 
         return false;
+    }
+
+    /**
+     * Resolve a content type schema from BlockCatalog (block types) or
+     * ContentCatalog (standard types like page, article, folder, etc.).
+     */
+    private function resolveContentTypeSchema(string $identifier): ?array
+    {
+        return $this->blockCatalog?->getBlockSchema($identifier)
+            ?? $this->contentCatalog?->getContentTypeSchema($identifier);
     }
 }

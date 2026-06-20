@@ -8,11 +8,13 @@ use Masilia\AiAssistant\Agent\Worker\ExplorationResult;
 use Masilia\AiAssistant\Agent\Worker\Plan;
 use Masilia\AiAssistant\Agent\Worker\PlanBuilder;
 use Masilia\AiAssistant\Tests\Agent\Block\BlockCatalogFactoryTrait;
+use Masilia\AiAssistant\Tests\Agent\Block\ContentCatalogFactoryTrait;
 use PHPUnit\Framework\TestCase;
 
 final class PlanBuilderTest extends TestCase
 {
     use BlockCatalogFactoryTrait;
+    use ContentCatalogFactoryTrait;
 
     public function testBuildCreateContentPlan(): void
     {
@@ -545,5 +547,114 @@ final class PlanBuilderTest extends TestCase
             'content_type' => 'page',
             'parent_location_id' => 42,
         ]);
+    }
+
+    // --- ContentCatalog: standard content type validation ---
+
+    public function testContentCatalogValidatesRequiredFieldsForPage(): void
+    {
+        $contentCatalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'title' => ['type' => 'ezstring', 'required' => true],
+                        'description' => 'eztext',
+                    ],
+                ],
+            ],
+        ]);
+        $builder = new PlanBuilder(contentCatalog: $contentCatalog);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Content type "page": required field "title" is empty');
+
+        $builder->build([
+            'intent' => 'create_content',
+            'content_type' => 'page',
+            'parent_location_id' => 42,
+            'fields' => ['description' => 'Some description'],
+        ]);
+    }
+
+    public function testContentCatalogAcceptsValidPagePlan(): void
+    {
+        $contentCatalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'title' => ['type' => 'ezstring', 'required' => true],
+                        'description' => 'eztext',
+                    ],
+                ],
+            ],
+        ]);
+        $builder = new PlanBuilder(contentCatalog: $contentCatalog);
+
+        $plan = $builder->build([
+            'intent' => 'create_content',
+            'content_type' => 'page',
+            'parent_location_id' => 42,
+            'fields' => ['title' => 'About Us', 'description' => 'Our story'],
+        ]);
+
+        self::assertSame('create_content', $plan->intent);
+    }
+
+    public function testContentCatalogFallsBackFromBlockCatalog(): void
+    {
+        // BlockCatalog doesn't know about 'page', ContentCatalog does
+        $blockCatalog = $this->createBlockCatalog([
+            'hero_banner' => [
+                'name' => 'Hero Banner',
+                'fields' => ['title' => 'ezstring'],
+            ],
+        ]);
+        $contentCatalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'title' => ['type' => 'ezstring', 'required' => true],
+                    ],
+                ],
+            ],
+        ]);
+        $builder = new PlanBuilder($blockCatalog, $contentCatalog);
+
+        // page is in ContentCatalog, not BlockCatalog — should still validate
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Content type "page": required field "title" is empty');
+
+        $builder->build([
+            'intent' => 'create_content',
+            'content_type' => 'page',
+            'parent_location_id' => 42,
+            'fields' => ['subtitle' => 'optional'],
+        ]);
+    }
+
+    public function testContentCatalogSkipsUnknownContentTypes(): void
+    {
+        $contentCatalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => ['title' => ['type' => 'ezstring', 'required' => true]],
+                ],
+            ],
+        ]);
+        $builder = new PlanBuilder(contentCatalog: $contentCatalog);
+
+        // 'unknown_type' is not in any catalog — validation is skipped
+        $plan = $builder->build([
+            'intent' => 'create_content',
+            'content_type' => 'unknown_type',
+            'parent_location_id' => 42,
+            'fields' => ['title' => 'Hello'],
+        ]);
+
+        self::assertSame('create_content', $plan->intent);
     }
 }

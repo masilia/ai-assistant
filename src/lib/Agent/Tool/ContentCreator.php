@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool;
 
-use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
-use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
-use Ibexa\Contracts\Core\Repository\Exceptions\ContentValidationException;
-use Ibexa\Contracts\Core\Repository\Exceptions\InvalidArgumentException;
-use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\ContentCreateStruct;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
@@ -55,13 +50,8 @@ final readonly class ContentCreator
             $locStructs[] = $locStruct;
         }
 
-        try {
-            $draft = $contentService->createContent($createStruct, $locStructs);
-            $published = $contentService->publishVersion($draft->versionInfo);
-        } catch (BadStateException|ContentFieldValidationException|ContentValidationException
-        |InvalidArgumentException|UnauthorizedException $e) {
-            dump($e, $contentTypeIdentifier);die;
-        }
+        $draft = $contentService->createContent($createStruct, $locStructs);
+        $published = $contentService->publishVersion($draft->versionInfo);
 
 
         return [

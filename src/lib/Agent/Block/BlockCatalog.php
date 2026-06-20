@@ -7,12 +7,13 @@ namespace Masilia\AiAssistant\Agent\Block;
 use Ibexa\Contracts\Core\Repository\ContentTypeService;
 use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
-use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Masilia\AiAssistant\Field\FieldType;
 use Psr\Cache\CacheItemPoolInterface;
 
 final class BlockCatalog
 {
+    use ContentTypeSchemaHelper;
+
     private const BLOCK_GROUP = 'Blocks';
     private const CACHE_KEY = 'masilia_ai.block_catalog.available_blocks.v2';
     private const CACHE_TTL = 3600; // 1 hour; invalidated by AI cache warmer too
@@ -59,15 +60,10 @@ final class BlockCatalog
 
         $blocks = [];
         foreach ($this->loadBlockTypes() as $type) {
-            $fields = [];
-            foreach ($type->fieldDefinitions as $fieldDef) {
-                $fields[$fieldDef->identifier] = $this->describeField($fieldDef);
-            }
-
             $blocks[$type->identifier] = [
                 'identifier' => $type->identifier,
                 'name' => $type->getName(),
-                'fields' => $fields,
+                'fields' => $this->buildFieldSchemas($type),
             ];
         }
 
@@ -150,87 +146,6 @@ final class BlockCatalog
         }
 
         return '';
-    }
-
-    /**
-     * Build a detailed schema entry for a single field definition.
-     *
-     * Always returns at minimum `{type, required}`. Adds `columns` for
-     * ezmatrix fields and `allowedTypes` for ezobjectrelationlist fields.
-     *
-     * Required detection: trusts $fieldDef->isRequired() (set by the
-     * Ibexa ContentTypeDomainMapper from the database). Adds fallback
-     * rules for field types that are intrinsically required (ezimage
-     * can't be "blank", and any field with a minimum-value validator).
-     *
-     * @return array<string, mixed>
-     */
-    private function describeField(FieldDefinition $fieldDef): array
-    {
-        $info = [
-            'type' => $fieldDef->fieldTypeIdentifier,
-            'required' => $this->isFieldRequired($fieldDef),
-        ];
-
-        if ($fieldDef->fieldTypeIdentifier === FieldType::EZMATRIX) {
-            $columns = [];
-            foreach ((array) ($fieldDef->fieldSettings['columns'] ?? []) as $column) {
-                $columns[] = [
-                    'identifier' => (string) ($column['identifier'] ?? ''),
-                    'name' => (string) ($column['name'] ?? ''),
-                ];
-            }
-            $info['columns'] = $columns;
-        }
-
-        if ($fieldDef->fieldTypeIdentifier === FieldType::EZOBJECTRELATIONLIST) {
-            $info['allowedTypes'] = array_values(
-                (array) ($fieldDef->fieldSettings['selectionContentTypes'] ?? [])
-            );
-        }
-
-        return $info;
-    }
-
-    /**
-     * Determine whether a field is required based on its definition and type.
-     *
-     * Strategy (in priority order):
-     *   1. Trust the content type's isRequired flag (set by Ibexa's mapper).
-     *   2. ezimage is always required — there is no "empty" image value.
-     *   3. Fall back to validator configuration (StringLength min > 0,
-     *      minimum row count, minimum relation limit, etc.).
-     *
-     * @internal Exposed for testing via describeField(); not part of the public API.
-     */
-    private function isFieldRequired(FieldDefinition $fieldDef): bool
-    {
-        if ($fieldDef->isRequired()) {
-            return true;
-        }
-
-        if ($fieldDef->fieldTypeIdentifier === 'ezimage') {
-            return true;
-        }
-
-        $validator = $fieldDef->getValidatorConfiguration();
-
-        if (isset($validator['StringLengthValidator']['minStringLength'])
-            && (int) $validator['StringLengthValidator']['minStringLength'] > 0) {
-            return true;
-        }
-
-        if (isset($validator['MatrixValueValidator']['minimumRowCount'])
-            && (int) $validator['MatrixValueValidator']['minimumRowCount'] > 0) {
-            return true;
-        }
-
-        if (isset($validator['RelationValidator']['minimumRelationLimit'])
-            && (int) $validator['RelationValidator']['minimumRelationLimit'] > 0) {
-            return true;
-        }
-
-        return false;
     }
 
     /**

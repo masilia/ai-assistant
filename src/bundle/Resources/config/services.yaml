@@ -110,9 +110,14 @@ services:
         arguments:
             $cache: '@cache.app'
 
+    Masilia\AiAssistant\Agent\Block\ContentCatalog:
+        arguments:
+            $cache: '@cache.app'
+
     Masilia\AiAssistant\Agent\Worker\PlanBuilder:
         arguments:
             $blockCatalog: '@Masilia\AiAssistant\Agent\Block\BlockCatalog'
+            $contentCatalog: '@Masilia\AiAssistant\Agent\Block\ContentCatalog'
 
     Masilia\AiAssistant\Agent\Tool\ToolRegistry:
         arguments:

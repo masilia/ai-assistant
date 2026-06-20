@@ -16,6 +16,7 @@ readonly class ExplorationResult
      * @param array<string, mixed>     $siteStructure        Browse result (children, etc.)
      * @param list<array<string, mixed>> $parentCandidates   Candidate parent locations
      * @param list<array<string, mixed>> $blockTypes         Available block types
+     * @param list<string>             $parentBlocksAllowedTypes  Allowed block type identifiers on the parent page's "blocks" field
      * @param string|null              $errorMessage         If exploration failed
      */
     public function __construct(
@@ -25,6 +26,7 @@ readonly class ExplorationResult
         public array  $siteStructure,
         public array  $parentCandidates,
         public array  $blockTypes,
+        public array  $parentBlocksAllowedTypes = [],
         public ?string $errorMessage = null,
     ) {
     }
@@ -51,6 +53,7 @@ readonly class ExplorationResult
             'siteStructure' => $this->siteStructure,
             'parentCandidates' => $this->parentCandidates,
             'blockTypes' => $this->blockTypes,
+            'parentBlocksAllowedTypes' => $this->parentBlocksAllowedTypes,
             'errorMessage' => $this->errorMessage,
         ];
     }

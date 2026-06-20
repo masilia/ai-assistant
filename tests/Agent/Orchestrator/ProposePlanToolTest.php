@@ -232,4 +232,23 @@ final class ProposePlanToolTest extends TestCase
         self::assertNull($response->proposedPlanDelta);
         self::assertSame(0, self::$executions);
     }
+
+    public function testCreateItemsWithLinkFieldPassesThrough(): void
+    {
+        $tool = $this->makeTool();
+        $state = new WizardState();
+
+        $response = $tool->execute([
+            'intent' => 'create_items',
+            'content_id' => 200,
+            'link_field' => 'blocks',
+            'items' => [
+                ['type' => 'hero_banner', 'fields' => ['title' => 'Hero']],
+            ],
+        ], new WorkerContext(1, $state));
+
+        self::assertTrue($response->success);
+        self::assertNotNull($response->proposedPlanDelta);
+        self::assertSame('blocks', $response->proposedPlanDelta['link_field']);
+    }
 }

@@ -35,7 +35,7 @@ use Throwable;
  */
 final readonly class AgentOrchestrator
 {
-    private const MAX_ITERATIONS = 8;
+    private const MAX_ITERATIONS = 12;
 
     public function __construct(
         private AiClientInterface    $aiClient,

@@ -84,6 +84,21 @@ final readonly class ProposePlanTool implements OrchestratorTool
                 ],
                 'content_id' => ['type' => 'integer', 'description' => 'Content ID (for updates, trash, restore)'],
                 'description' => ['type' => 'string', 'description' => 'Description or page summary'],
+                'items' => [
+                    'type' => 'array',
+                    'description' => 'Child items to create (for create_items intent). Each: {type, fields}',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'fields' => ['type' => 'object'],
+                        ],
+                    ],
+                ],
+                'link_field' => [
+                    'type' => 'string',
+                    'description' => 'Relation list field on the parent content to link created items to (e.g. "blocks" for pages, "items" for blocks with child items). Used with create_items intent.',
+                ],
             ],
             'required' => ['intent'],
         ];

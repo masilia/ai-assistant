@@ -48,6 +48,12 @@ trait ContentTypeSchemaHelper
             );
         }
 
+        if ($fieldDef->fieldTypeIdentifier === FieldType::EZSELECTION) {
+            $info['options'] = array_values(
+                (array) ($fieldDef->fieldSettings['options'] ?? [])
+            );
+        }
+
         return $info;
     }
 

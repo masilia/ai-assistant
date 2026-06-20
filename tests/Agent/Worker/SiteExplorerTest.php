@@ -7,6 +7,7 @@ namespace Masilia\AiAssistant\Tests\Agent\Worker;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
+use Masilia\AiAssistant\Agent\Block\ContentCatalog;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
@@ -17,6 +18,7 @@ use Psr\Log\NullLogger;
 
 final class SiteExplorerTest extends TestCase
 {
+    use \Masilia\AiAssistant\Tests\Agent\Block\ContentCatalogFactoryTrait;
     private function makeService(array $names): SiteAccessServiceInterface
     {
         $service = $this->createMock(SiteAccessServiceInterface::class);
@@ -150,5 +152,64 @@ final class SiteExplorerTest extends TestCase
         self::assertTrue($browse->called);
         self::assertTrue($parent->called);
         self::assertTrue($blocks->called);
+    }
+
+    public function testExploreReturnsParentBlocksAllowedTypesFromContentCatalog(): void
+    {
+        $service = $this->makeService(['fossilexit']);
+        $cr = $this->makeConfigResolver(42);
+        $registry = new ToolRegistry();
+
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'page' => [
+                    'name' => 'Page',
+                    'fields' => [
+                        'blocks' => [
+                            'type' => 'ezobjectrelationlist',
+                            'settings' => ['selectionContentTypes' => ['hero_banner', 'text_block', 'info_cards']],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $explorer = new SiteExplorer($service, $cr, $registry, new NullLogger(), $catalog);
+        $result = $explorer->explore('fossilexit');
+
+        self::assertSame(['hero_banner', 'text_block', 'info_cards'], $result->parentBlocksAllowedTypes);
+    }
+
+    public function testExploreReturnsEmptyAllowedTypesWhenContentCatalogIsNull(): void
+    {
+        $service = $this->makeService(['fossilexit']);
+        $cr = $this->makeConfigResolver(42);
+        $registry = new ToolRegistry();
+
+        $explorer = new SiteExplorer($service, $cr, $registry, new NullLogger(), null);
+        $result = $explorer->explore('fossilexit');
+
+        self::assertSame([], $result->parentBlocksAllowedTypes);
+    }
+
+    public function testExploreReturnsEmptyAllowedTypesWhenPageNotInCatalog(): void
+    {
+        $service = $this->makeService(['fossilexit']);
+        $cr = $this->makeConfigResolver(42);
+        $registry = new ToolRegistry();
+
+        $catalog = $this->createContentCatalog([
+            'Content' => [
+                'article' => [
+                    'name' => 'Article',
+                    'fields' => ['title' => 'ezstring'],
+                ],
+            ],
+        ]);
+
+        $explorer = new SiteExplorer($service, $cr, $registry, new NullLogger(), $catalog);
+        $result = $explorer->explore('fossilexit');
+
+        self::assertSame([], $result->parentBlocksAllowedTypes);
     }
 }

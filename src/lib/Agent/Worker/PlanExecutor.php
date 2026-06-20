@@ -13,6 +13,7 @@ use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\ContentTypeId;
 use Masilia\AiAssistant\FieldId;
+use Masilia\AiAssistant\Field\FieldType;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -167,6 +168,14 @@ final readonly class PlanExecutor
         $contentInfo = $contentService->loadContentInfo($plan->contentId);
         $parentLocation = $contentInfo->getMainLocation();
 
+        // Validate allowed types for link_field before creating items
+        if ($plan->linkField !== null) {
+            $typeError = $this->validateAllowedTypes($contentInfo, $plan->linkField, $plan->items);
+            if ($typeError !== null) {
+                return ExecutionResult::fail($typeError, 'INVALID_RELATION_TARGET');
+            }
+        }
+
         $folderName = trim(($contentInfo->name ?? 'items') . ' items') ?: 'items';
         $folderLocationId = $this->findOrCreateFolder(
             $parentLocation->id,
@@ -211,12 +220,115 @@ final readonly class PlanExecutor
             }
         }
 
+        if ($plan->linkField !== null && $itemIds !== []) {
+            $this->linkItemsToParent($plan->contentId, $plan->linkField, $itemIds, $languageCode);
+        }
+
         return ExecutionResult::ok(
             sprintf('Created %d items under content %d', count($itemIds), $plan->contentId),
             null,
             null,
             ['item_ids' => $itemIds],
         );
+    }
+
+    /**
+     * Link created item IDs to the parent content's relation list field.
+     *
+     * @param list<int> $itemIds
+     */
+    private function linkItemsToParent(int $contentId, string $linkField, array $itemIds, string $languageCode): void
+    {
+        if ($this->repository === null) {
+            return;
+        }
+
+        $contentService = $this->repository->getContentService();
+        $contentTypeService = $this->repository->getContentTypeService();
+
+        $contentInfo = $contentService->loadContentInfo($contentId);
+        $contentType = $contentTypeService->loadContentType($contentInfo->contentTypeId);
+
+        $fieldDef = null;
+        foreach ($contentType->getFieldDefinitions() as $def) {
+            if ($def->identifier === $linkField) {
+                $fieldDef = $def;
+                break;
+            }
+        }
+
+        if ($fieldDef === null) {
+            $this->aiLogger->warning('[PlanExecutor] Link field "{field}" not found on content type "{type}"', [
+                'field' => $linkField,
+                'type' => $contentType->identifier,
+            ]);
+
+            return;
+        }
+
+        $draft = $contentService->createContentDraft($contentInfo);
+        $updateStruct = $contentService->newContentUpdateStruct();
+        $updateStruct->initialLanguageCode = $languageCode;
+        $updateStruct->setField($linkField, $itemIds, $languageCode);
+
+        $contentService->updateContent($draft->versionInfo, $updateStruct);
+        $contentService->publishVersion($draft->versionInfo);
+
+        $this->aiLogger->info('[PlanExecutor] Linked {count} items to content {id} via "{field}"', [
+            'count' => count($itemIds),
+            'id' => $contentId,
+            'field' => $linkField,
+        ]);
+    }
+
+    /**
+     * Validate that all item types are allowed on the parent's relation list field.
+     *
+     * @param array<int, array<string, mixed>> $items
+     */
+    private function validateAllowedTypes(
+        \Ibexa\Contracts\Core\Repository\Values\Content\ContentInfo $contentInfo,
+        string $linkField,
+        array $items,
+    ): ?string {
+        $contentType = $this->contentTypeService->loadContentType($contentInfo->contentTypeId);
+
+        $fieldDef = null;
+        foreach ($contentType->getFieldDefinitions() as $def) {
+            if ($def->identifier === $linkField) {
+                $fieldDef = $def;
+                break;
+            }
+        }
+
+        if ($fieldDef === null) {
+            return null;
+        }
+
+        $allowedTypes = array_values((array) ($fieldDef->fieldSettings['selectionContentTypes'] ?? []));
+        if ($allowedTypes === []) {
+            return null;
+        }
+
+        $invalidTypes = [];
+        foreach ($items as $item) {
+            $itemType = (string) ($item['type'] ?? '');
+            if ($itemType !== '' && !in_array($itemType, $allowedTypes, true)) {
+                $invalidTypes[] = $itemType;
+            }
+        }
+
+        if ($invalidTypes !== []) {
+            return sprintf(
+                'Link field "%s" on content type "%s" allows: [%s]. Got invalid types: [%s]',
+                $linkField,
+                $contentType->identifier,
+                implode(', ', $allowedTypes),
+                implode(', ', $invalidTypes),
+            );
+        }
+
+        return null;
     }
 
     private function findOrCreateFolder(int $parentLocationId, string $name): ?int

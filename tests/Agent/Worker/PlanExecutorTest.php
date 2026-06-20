@@ -11,6 +11,7 @@ use Masilia\AiAssistant\Agent\Tool\ToolResult;
 use Masilia\AiAssistant\Agent\Worker\ExecutionResult;
 use Masilia\AiAssistant\Agent\Worker\Plan;
 use Masilia\AiAssistant\Agent\Worker\PlanExecutor;
+use Masilia\AiAssistant\Tests\Agent\Block\FakeFieldDefinition;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
@@ -219,7 +220,7 @@ final class PlanExecutorTest extends TestCase
         $published = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Content::class);
         $folderContentInfo = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\ContentInfo::class);
         $folderLocation = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Location::class);
-        $folderLocation->id = 300;
+        $folderLocation->method('__get')->willReturnMap([['id', 300]]);
         $folderContentInfo->method('getMainLocation')->willReturn($folderLocation);
 
         $contentService->method('newContentCreateStruct')->willReturn($createStruct);
@@ -300,5 +301,191 @@ final class PlanExecutorTest extends TestCase
 
         // Without dependencies, the early "not configured" check fires first.
         self::assertFalse($result->success);
+    }
+
+    public function testCreateItemsWithLinkFieldDoesNotThrowWhenRepositoryMissing(): void
+    {
+        $registry = $this->makeRegistry([]);
+
+        $executor = new PlanExecutor($registry, new NullLogger());
+
+        // Without repository, linkItemsToParent returns early — items still created
+        $result = $executor->execute(new Plan(
+            intent: Plan::INTENT_CREATE_ITEMS,
+            contentId: 200,
+            linkField: 'blocks',
+            items: [
+                ['fields' => []],  // no type → skipped
+            ],
+        ));
+
+        // Without dependencies, the early "not configured" check fires first.
+        self::assertFalse($result->success);
+        self::assertSame('EXECUTOR_NOT_CONFIGURED', $result->errorCode);
+    }
+
+    public function testCreateItemsRejectsInvalidBlockTypeAgainstAllowedTypes(): void
+    {
+        $registry = $this->makeRegistry([]);
+
+        $logger = new NullLogger();
+
+        $contentService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentService::class);
+        $contentTypeService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentTypeService::class);
+        $locationService = $this->createMock(\Ibexa\Contracts\Core\Repository\LocationService::class);
+        $languageService = $this->createMock(\Ibexa\Contracts\Core\Repository\LanguageService::class);
+        $repository = $this->createMock(\Ibexa\Contracts\Core\Repository\Repository::class);
+        $contentInfo = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\ContentInfo::class);
+        $pageType = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType::class);
+        $parentLocation = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Location::class);
+
+        $repository->method('getContentService')->willReturn($contentService);
+        $repository->method('getLocationService')->willReturn($locationService);
+        $repository->method('getContentTypeService')->willReturn($contentTypeService);
+        $repository->method('getContentLanguageService')->willReturn($languageService);
+        $languageService->method('getDefaultLanguageCode')->willReturn('eng-GB');
+
+        $contentInfo->method('__get')->willReturnCallback(function (string $name) use ($parentLocation) {
+            return match ($name) {
+                'name' => 'Page',
+                'mainLocation' => $parentLocation,
+                'contentTypeId' => 42,
+                default => null,
+            };
+        });
+        $contentInfo->method('getMainLocation')->willReturn($parentLocation);
+        $contentService->method('loadContentInfo')->with(200)->willReturn($contentInfo);
+
+        $parentLocation->method('__get')->willReturnMap([['id', 105]]);
+
+        $blocksFieldDef = new FakeFieldDefinition('blocks', 'ezobjectrelationlist', ['selectionContentTypes' => ['hero_banner', 'text_block']]);
+        $fieldDefCollection = new \Ibexa\Core\Repository\Values\ContentType\FieldDefinitionCollection([$blocksFieldDef]);
+        $pageType->method('getFieldDefinitions')->willReturn($fieldDefCollection);
+        $contentTypeService->method('loadContentType')->with(42)->willReturn($pageType);
+
+        $dummyFactory = static fn (): array => ['content' => null, 'location' => null];
+
+        $executor = new PlanExecutor($registry, $logger, $repository, $contentTypeService, null, $dummyFactory);
+
+        $result = $executor->execute(new Plan(
+            intent: Plan::INTENT_CREATE_ITEMS,
+            contentId: 200,
+            linkField: 'blocks',
+            items: [
+                ['type' => 'hero_banner', 'fields' => ['title' => 'Hero']],
+                ['type' => 'info_cards', 'fields' => ['title' => 'Cards']],  // invalid type
+            ],
+        ));
+
+        self::assertFalse($result->success);
+        self::assertSame('INVALID_RELATION_TARGET', $result->errorCode);
+        self::assertStringContainsString('info_cards', $result->message);
+        self::assertStringContainsString('hero_banner, text_block', $result->message);
+    }
+
+    public function testCreateItemsAcceptsValidBlockTypeAgainstAllowedTypes(): void
+    {
+        $registry = $this->makeRegistry([
+            ToolName::CREATE_CONTENT => ToolResult::ok('Created', [
+                'content_id' => 300,
+                'location_id' => 400,
+            ]),
+        ]);
+
+        $logger = new NullLogger();
+
+        $contentService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentService::class);
+        $contentTypeService = $this->createMock(\Ibexa\Contracts\Core\Repository\ContentTypeService::class);
+        $locationService = $this->createMock(\Ibexa\Contracts\Core\Repository\LocationService::class);
+        $languageService = $this->createMock(\Ibexa\Contracts\Core\Repository\LanguageService::class);
+        $repository = $this->createMock(\Ibexa\Contracts\Core\Repository\Repository::class);
+        $contentInfo = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\ContentInfo::class);
+        $pageType = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType::class);
+        $parentLocation = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Location::class);
+        $folderType = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType::class);
+
+        $repository->method('getContentService')->willReturn($contentService);
+        $repository->method('getLocationService')->willReturn($locationService);
+        $repository->method('getContentTypeService')->willReturn($contentTypeService);
+        $repository->method('getContentLanguageService')->willReturn($languageService);
+        $languageService->method('getDefaultLanguageCode')->willReturn('eng-GB');
+
+        $contentInfo->method('__get')->willReturnCallback(function (string $name) use ($parentLocation) {
+            return match ($name) {
+                'name' => 'Page',
+                'mainLocation' => $parentLocation,
+                'contentTypeId' => 42,
+                default => null,
+            };
+        });
+        $contentInfo->method('getMainLocation')->willReturn($parentLocation);
+        $contentService->method('loadContentInfo')->willReturnMap([
+            [200, $contentInfo],
+        ]);
+
+        $parentLocation->method('__get')->willReturnMap([['id', 105]]);
+        $locationService->method('loadLocation')->with(105)->willReturn($parentLocation);
+
+        $blocksFieldDef = new FakeFieldDefinition('blocks', 'ezobjectrelationlist', ['selectionContentTypes' => ['hero_banner', 'text_block', 'info_cards']]);
+        $fieldDefCollection = new \Ibexa\Core\Repository\Values\ContentType\FieldDefinitionCollection([$blocksFieldDef]);
+        $pageType->method('getFieldDefinitions')->willReturn($fieldDefCollection);
+        $contentTypeService->method('loadContentType')->with(42)->willReturn($pageType);
+
+        $contentService->method('loadContent')->willThrowException(new \RuntimeException('boom'));
+
+        $locationList = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\LocationList::class);
+        $locationList->method('getIterator')->willReturn(new \ArrayIterator([]));
+        $locationService->method('loadLocationChildren')->with($parentLocation)->willReturn($locationList);
+
+        $folderType->method('__get')->willReturnMap([['id', 99]]);
+        $contentTypeService->method('loadContentTypeByIdentifier')
+            ->with(\Masilia\AiAssistant\ContentTypeId::FOLDER)
+            ->willReturn($folderType);
+
+        $createStruct = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\ContentCreateStruct::class);
+        $locStruct = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\LocationCreateStruct::class);
+        $draft = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Content::class);
+        $versionInfo = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\VersionInfo::class);
+        $published = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Content::class);
+        $folderContentInfo = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\ContentInfo::class);
+        $folderLocation = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Location::class);
+        $folderLocation->method('__get')->willReturnMap([['id', 300]]);
+        $folderContentInfo->method('getMainLocation')->willReturn($folderLocation);
+
+        $contentService->method('newContentCreateStruct')->willReturn($createStruct);
+        $locationService->method('newLocationCreateStruct')->willReturn($locStruct);
+        $contentService->method('createContent')->willReturn($draft);
+        $draft->method('__get')->willReturnCallback(function (string $name) use ($versionInfo) {
+            return $name === 'versionInfo' ? $versionInfo : null;
+        });
+        $contentService->method('publishVersion')->willReturn($published);
+        $published->method('__get')->willReturnMap([['contentInfo', $folderContentInfo]]);
+
+        $contentService->method('createContentDraft')->willReturn($draft);
+        $updateStruct = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\ContentUpdateStruct::class);
+        $contentService->method('newContentUpdateStruct')->willReturn($updateStruct);
+        $contentService->method('updateContent')->willReturn($draft);
+
+        $itemContent = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Content::class);
+        $itemContent->method('__get')->willReturnCallback(fn (string $name) => $name === 'id' ? 500 : null);
+
+        $contentFactory = static fn (): array => [
+            'content' => $itemContent,
+            'location' => null,
+        ];
+
+        $executor = new PlanExecutor($registry, $logger, $repository, $contentTypeService, null, $contentFactory);
+
+        $result = $executor->execute(new Plan(
+            intent: Plan::INTENT_CREATE_ITEMS,
+            contentId: 200,
+            linkField: 'blocks',
+            items: [
+                ['type' => 'hero_banner', 'fields' => ['title' => 'Hero']],
+                ['type' => 'text_block', 'fields' => ['body' => 'Text']],
+            ],
+        ));
+
+        self::assertTrue($result->success, $result->message);
     }
 }

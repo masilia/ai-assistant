@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Tool;
 
+use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\ContentValidationException;
+use Ibexa\Contracts\Core\Repository\Exceptions\InvalidArgumentException;
+use Ibexa\Contracts\Core\Repository\Exceptions\NotFoundException;
+use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\ContentCreateStruct;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
@@ -35,7 +41,14 @@ final readonly class ContentCreator
         $locationService = $this->repository->getLocationService();
         $contentTypeService = $this->repository->getContentTypeService();
 
-        $contentType = $contentTypeService->loadContentTypeByIdentifier($contentTypeIdentifier);
+        try {
+            $contentType = $contentTypeService->loadContentTypeByIdentifier($contentTypeIdentifier);
+        } catch (NotFoundException $e) {
+            $contentType = null;
+        }
+        if (!$contentType) {
+            return [];
+        }
         $createStruct = $contentService->newContentCreateStruct($contentType, $languageCode);
         $createStruct->remoteId = $remoteId;
 
@@ -50,9 +63,15 @@ final readonly class ContentCreator
             $locStructs[] = $locStruct;
         }
 
-        $draft = $contentService->createContent($createStruct, $locStructs);
-        $published = $contentService->publishVersion($draft->versionInfo);
-
+        try {
+            $draft = $contentService->createContent($createStruct, $locStructs);
+            $published = $contentService->publishVersion($draft->versionInfo);
+        } catch (BadStateException|ContentFieldValidationException|ContentValidationException|InvalidArgumentException|UnauthorizedException $e) {
+            throw new \RuntimeException(
+                sprintf('Failed to create content of type "%s": %s', $contentTypeIdentifier, $e->getMessage()),
+                previous: $e,
+            );
+        }
 
         return [
             'content' => $published,

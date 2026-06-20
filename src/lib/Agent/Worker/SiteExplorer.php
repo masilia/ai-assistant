@@ -6,9 +6,11 @@ namespace Masilia\AiAssistant\Agent\Worker;
 
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
+use Masilia\AiAssistant\Agent\Block\ContentCatalog;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\FieldId;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -31,6 +33,7 @@ final readonly class SiteExplorer
         private ConfigResolverInterface    $configResolver,
         private ToolRegistry               $toolRegistry,
         private LoggerInterface            $aiLogger,
+        private ?ContentCatalog            $contentCatalog = null,
     ) {
     }
 
@@ -49,6 +52,7 @@ final readonly class SiteExplorer
                 $siteStructure = $this->browse($matched);
                 $parentCandidates = $this->findParents($matched);
                 $blockTypes = $this->listBlocks();
+                $parentBlocksAllowedTypes = $this->resolveParentBlocksAllowedTypes();
             }
 
             return new ExplorationResult(
@@ -58,6 +62,7 @@ final readonly class SiteExplorer
                 siteStructure: $siteStructure,
                 parentCandidates: $parentCandidates,
                 blockTypes: $blockTypes,
+                parentBlocksAllowedTypes: $parentBlocksAllowedTypes ?? [],
             );
         } catch (Throwable $e) {
             $this->aiLogger->error('[SiteExplorer] Exploration failed: {message}', [
@@ -182,5 +187,30 @@ final readonly class SiteExplorer
         $result = $tool->execute([]);
 
         return $result->success ? ($result->data['blocks'] ?? []) : [];
+    }
+
+    /**
+     * Extract the allowed block type identifiers from the page content type's
+     * "blocks" field (ezobjectrelationlist selectionContentTypes).
+     *
+     * @return list<string>
+     */
+    private function resolveParentBlocksAllowedTypes(): array
+    {
+        if ($this->contentCatalog === null) {
+            return [];
+        }
+
+        $schema = $this->contentCatalog->getContentTypeSchema('page');
+        if ($schema === null) {
+            return [];
+        }
+
+        $blocksField = $schema['fields'][FieldId::BLOCKS] ?? null;
+        if (!is_array($blocksField)) {
+            return [];
+        }
+
+        return array_values($blocksField['allowedTypes'] ?? []);
     }
 }

@@ -47,7 +47,7 @@ If the user wants a COMPLETELY DIFFERENT request (unrelated to the current plan)
   → Call `cancel()` first to clear the old plan, then start fresh (e.g. with explore_site for the new request).
 
 ## Field Value Formats
-When populating `blocks[].fields` in a `propose_plan` call, use these formats:
+When populating field values in a `propose_plan` call, use these formats:
 
 - `ezstring` — plain text string.
 - `eztext` — plain text string.
@@ -72,8 +72,6 @@ When populating `blocks[].fields` in a `propose_plan` call, use these formats:
 - `ezdatetime` — ISO 8601 datetime string (e.g. "2026-06-14T10:00:00").
 - `novaseometas` — `{title: "...", description: "...", "og:image": "search query"}`.
 
-For child items (blocks with relation fields), include the items under the relation field identifier as an array of `{type, fields}` objects.
-
 ## Required Fields
 A plan with empty required fields will be REJECTED before user approval. When populating block fields:
 - String fields (`title`, `subtitle`, `heading`, `description`, `body`, etc.) — provide a non-empty string. Empty `""` is rejected.
@@ -84,14 +82,17 @@ A plan with empty required fields will be REJECTED before user approval. When po
 ## Rules
 1. If the user has not told you which siteaccess to use, call `ask_user` first with options listing the available siteaccesses (you can include them in the question text). If they did specify one, call `explore_site(siteaccess="...")` once.
 2. After `explore_site` returns, you have full site context. Decide and call `propose_plan` immediately. Do NOT re-call `explore_site`.
-3. For content creation, use the multi-step flow described below. Start with `create_content` for the parent, then create children, then link via `update_content`.
+3. For content creation, use the batch flow described below. Create the parent first, then batch all children in one `create_items` call.
 4. Make reasonable assumptions. Don't ask for every detail — the user will see and can adjust the plan before approving.
 5. If the user just wants to read information (no creation), you may return a text reply after `explore_site` instead of proposing a plan.
 
-## Content Creation Flow (Multi-Step)
-Content with relation-list fields (e.g. a page with a `blocks` field, or a block with an `items` field) is created via multiple tool calls in sequence. Each step returns IDs you use in the next step.
+## Allowed Block Types (IMPORTANT)
+The `explore_site` response includes `parentBlocksAllowedTypes` — the list of block content type identifiers allowed on the page's `blocks` field. Use ONLY those types when proposing blocks in `create_items` with `link_field="blocks"`. If you use a type not in this list, the plan will be rejected.
 
-Step 1 — Create the parent content.
+## Content Creation Flow (Batch)
+Content with relation-list fields (e.g. a page with a `blocks` field) is created in 3 steps. Each step is a separate `propose_plan` call that the user approves.
+
+### Step 1 — Create the parent content.
   propose_plan(intent="create_content",
     content_type="page",
     title="About X",
@@ -100,39 +101,47 @@ Step 1 — Create the parent content.
     fields={title: "About X", subtitle: "...", description: "..."})
   Returns: {content_id: 100, location_id: 105}
 
-Step 2 — For each child content (block, item, etc.), create it as a separate `create_content` call.
-  propose_plan(intent="create_content",
-    content_type="hero_banner",
-    parent_location_id=105,
-    fields={title: "...", subtitle: "...", image: "A photo of..."})
-  Returns: {content_id: 200, location_id: 206}
-  Repeat for each block/item, using the parent location ID from a previous step.
-
-Step 3 — If any content has nested relation-list items, create them via `create_items`.
+### Step 2 — Create ALL child blocks in one batch, linked to the parent.
   propose_plan(intent="create_items",
-    content_id=200,
-    items=[{type: "card_item", fields: {icon: "...", title: "...", body: "..."}}, ...])
-  Returns: {item_ids: [300, 301, 302]}
+    content_id=100,
+    link_field="blocks",
+    items=[
+      {type: "hero_banner", fields: {title: "...", subtitle: "...", image: "..."}},
+      {type: "text_block", fields: {title: "...", body: "..."}},
+      {type: "info_cards", fields: {cards: [...]}}
+    ])
+  This creates all blocks under a folder, then links their IDs to the parent's `blocks` field automatically.
+  Returns: {item_ids: [200, 201, 202]}
 
-Step 4 — Link parent content to its children via `update_content`.
-  propose_plan(intent="update_content",
-    content_id=200,
-    fields={items: [300, 301, 302]})
-  Repeat for each content that needs to be linked.
+### Step 3 — For blocks that have nested relation-list items, create those items in one batch.
+  If a block (e.g. info_cards) has an `items` field linking to child content (e.g. card_item), create them:
+  propose_plan(intent="create_items",
+    content_id=201,
+    link_field="items",
+    items=[
+      {type: "card_item", fields: {icon: "...", title: "...", body: "..."}},
+      {type: "card_item", fields: {icon: "...", title: "...", body: "..."}}
+    ])
+  Returns: {item_ids: [300, 301]}
 
-The full block data is in your chat history from the planning step. Re-send it verbatim in the appropriate step. Use the IDs returned from each step in subsequent steps.
+  Repeat for each block that has nested items.
+
+### Key points:
+- Use `link_field` to specify which relation list field on the parent should receive the created item IDs.
+- Common `link_field` values: `"blocks"` for pages, `"items"` for blocks with child items.
+- All blocks for a page are created in ONE `create_items` call — do NOT create blocks one by one.
+- Each step requires user approval (propose → approve cycle).
 
 ## Workflow Example
 1. User: "design page about fossil exit"
 2. You: `explore_site(siteaccess="fossilexit")`
 3. You: `propose_plan(intent="create_content", content_type="page", parent_location_id=1049, fields={title: "About Fossil Exit", ...})`
-4. Returns: {content_id: 100, location_id: 105}
-5. You: `propose_plan(intent="create_content", content_type="hero_banner", parent_location_id=105, fields={title: "...", image: "A photo of..."})`
-6. Returns: {content_id: 200, location_id: 206}
-7. You: `propose_plan(intent="create_items", content_id=200, items=[{type: "card_item", fields: {icon: "...", title: "..."}}])`
-8. Returns: {item_ids: [300, 301]}
-9. You: `propose_plan(intent="update_content", content_id=200, fields={items: [300, 301]})`
-10. Repeat for each content that needs children or links.
+4. User: "yes"
+5. You: `propose_plan(intent="create_content", ...)` (same args — approval detected → page created, returns {content_id: 100, location_id: 105})
+6. You: `propose_plan(intent="create_items", content_id=100, link_field="blocks", items=[{type: "hero_banner", ...}, {type: "text_block", ...}, ...])`
+7. User: "yes"
+8. You: `propose_plan(intent="create_items", ...)` (same args — approval detected → blocks created + linked)
+9. If any blocks have nested items, repeat steps 6-8 for each block with `link_field="items"`.
 PROMPT;
     }
 }

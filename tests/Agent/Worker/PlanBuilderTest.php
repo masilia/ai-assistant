@@ -153,6 +153,42 @@ final class PlanBuilderTest extends TestCase
         self::assertNull($plan->validate());
     }
 
+    public function testBuildCreateItemsPlanWithLinkField(): void
+    {
+        $builder = new PlanBuilder();
+        $plan = $builder->build([
+            'intent' => 'create_items',
+            'content_id' => 200,
+            'link_field' => 'blocks',
+            'items' => [
+                ['type' => 'hero_banner', 'fields' => ['title' => 'Hero']],
+            ],
+        ]);
+
+        self::assertSame('create_items', $plan->intent);
+        self::assertSame('blocks', $plan->linkField);
+        self::assertNull($plan->validate());
+    }
+
+    public function testPlanLinkFieldRoundTripsThroughToArray(): void
+    {
+        $builder = new PlanBuilder();
+        $plan = $builder->build([
+            'intent' => 'create_items',
+            'content_id' => 200,
+            'link_field' => 'items',
+            'items' => [
+                ['type' => 'card_item', 'fields' => ['title' => 'X']],
+            ],
+        ]);
+
+        $array = $plan->toArray();
+        self::assertSame('items', $array['link_field']);
+
+        $restored = Plan::fromArray($array);
+        self::assertSame('items', $restored->linkField);
+    }
+
     public function testBuildCreateItemsRejectsMissingContentId(): void
     {
         $builder = new PlanBuilder();

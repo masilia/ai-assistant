@@ -43,6 +43,7 @@ final class Plan
         public ?int   $contentId = null,
         public ?string $description = null,
         public array  $items = [],
+        public ?string $linkField = null,
     ) {
     }
 
@@ -144,6 +145,7 @@ final class Plan
             'content_id' => $this->contentId,
             'description' => $this->description,
             'items' => $this->items,
+            'link_field' => $this->linkField,
         ];
     }
 
@@ -163,6 +165,7 @@ final class Plan
             contentId: isset($data['content_id']) ? (int) $data['content_id'] : ($data['contentId'] ?? null),
             description: $data['description'] ?? null,
             items: $data['items'] ?? [],
+            linkField: $data['link_field'] ?? $data['linkField'] ?? null,
         );
     }
 }

@@ -65,7 +65,7 @@ final class FieldValueStringifierRegistryTest extends TestCase
     private function createFieldDefStub(string $typeIdentifier): FieldDefinition
     {
         $stub = $this->createStub(FieldDefinition::class);
-        $stub->fieldTypeIdentifier = $typeIdentifier;
+        $stub->method('getFieldTypeIdentifier')->willReturn($typeIdentifier);
 
         return $stub;
     }

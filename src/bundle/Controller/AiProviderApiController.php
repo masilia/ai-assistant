@@ -8,7 +8,6 @@ use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 use Masilia\Bundle\AiAssistant\ApiKey;
-use Masilia\Bundle\AiAssistant\Entity\AiModel;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Masilia\Bundle\AiAssistant\Service\HealthChecker;

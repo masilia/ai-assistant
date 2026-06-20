@@ -12,6 +12,7 @@ use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Masilia\AiAssistant\AiConstants;
+use Masilia\AiAssistant\FieldId;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
@@ -25,7 +26,7 @@ final class BlockFlattener
 {
     private const CACHE_PREFIX = 'ai_block_flattener_';
     private const CACHE_TTL = 3600; // 1 hour
-    private const BLOCKS_FIELD = 'blocks';
+    private const BLOCKS_FIELD = FieldId::BLOCKS;
     /** Block context uses a higher limit than sibling fields (500 vs 250) because the full page summary can tolerate more detail. */
     private const MAX_FLATTEN_CHARS = 500;
 
@@ -60,7 +61,7 @@ final class BlockFlattener
      */
     public function flatten(
         Content $content,
-        string $languageCode = 'eng-GB',
+        string $languageCode = AiConstants::DEFAULT_LANGUAGE_CODE,
         string $blocksFieldIdentifier = self::BLOCKS_FIELD,
     ): string {
         $cacheKey = self::CACHE_PREFIX . $content->id . '-' . $languageCode;
@@ -170,7 +171,7 @@ final class BlockFlattener
             $stringValue = AiConstants::truncate($stringValue, self::MAX_FLATTEN_CHARS);
 
             $label = $fieldDef->getName() ?: $fieldDef->identifier;
-            $output .= sprintf("%s: %s\n", $label, $this->scrubForPrompt($stringValue));
+            $output .= sprintf("%s: %s\n", $label, AiConstants::scrubForPrompt($stringValue));
         }
 
         return $output !== '' ? $output . "\n" : '';
@@ -250,21 +251,13 @@ final class BlockFlattener
                 $stringValue = AiConstants::truncate($stringValue, self::MAX_FLATTEN_CHARS);
 
                 $label = $field->getFieldDefinitionIdentifier();
-                $output .= sprintf("  %s: %s\n", $label, $this->scrubForPrompt($stringValue));
+                $output .= sprintf("  %s: %s\n", $label, AiConstants::scrubForPrompt($stringValue));
             }
 
             $index++;
         }
 
         return $output;
-    }
-
-    /**
-     * Scrub a string value for safe inclusion in LLM prompts.
-     */
-    private function scrubForPrompt(string $value): string
-    {
-        return AiConstants::scrubForPrompt($value);
     }
 
     /**
@@ -288,7 +281,7 @@ final class BlockFlattener
                 continue;
             }
             $cacheKey = self::CACHE_PREFIX . $contentId . '-' . $language->languageCode;
-            $this->cachePool->delete($cacheKey);
+            $this->cachePool->deleteItem($cacheKey);
         }
     }
 }

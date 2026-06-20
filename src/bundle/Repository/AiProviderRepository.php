@@ -60,62 +60,6 @@ class AiProviderRepository extends ServiceEntityRepository implements AiProvider
         return $provider !== null ? $this->toResolvedImageTarget($provider) : null;
     }
 
-    /**
-     * Returns the raw AiProvider entity for the active row (any
-     * siteaccess scope). Used by the admin dashboard controller.
-     */
-    public function findActiveEntity(): ?AiProvider
-    {
-        return $this->createQueryBuilder('p')
-            ->innerJoin('p.activeChatModel', 'm')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    /**
-     * Siteaccess-scoped counterpart of {@see findActiveEntity()}.
-     */
-    public function findActiveEntityForSiteaccess(string $siteaccess): ?AiProvider
-    {
-        return $this->createQueryBuilder('p')
-            ->innerJoin('p.siteaccessAssignments', 'sa')
-            ->where('sa.siteaccess = :siteaccess')
-            ->setParameter('siteaccess', $siteaccess)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    /**
-     * Find all providers assigned to a given siteaccess.
-     *
-     * @return AiProvider[]
-     */
-    public function findBySiteaccess(string $siteaccess): array
-    {
-        return $this->createQueryBuilder('p')
-            ->innerJoin('p.siteaccessAssignments', 'sa')
-            ->where('sa.siteaccess = :siteaccess')
-            ->setParameter('siteaccess', $siteaccess)
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
-     * Find all providers that have at least one siteaccess assignment.
-     *
-     * @return AiProvider[]
-     */
-    public function findAllWithSiteaccess(): array
-    {
-        return $this->createQueryBuilder('p')
-            ->innerJoin('p.siteaccessAssignments', 'sa')
-            ->groupBy('p.id')
-            ->getQuery()
-            ->getResult();
-    }
-
     private function toResolved(AiProvider $provider): ?ResolvedProvider
     {
         $chatModel = $provider->getActiveChatModel();

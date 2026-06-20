@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Client;
 
+use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\Client\Resolved\ResolvedImageTarget;
-use Masilia\AiAssistant\Client\SiteaccessResolverTrait;
 use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
@@ -22,13 +22,13 @@ use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
 class ImageTargetResolver
 {
     use SiteaccessResolverTrait;
-    private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
 
     public function __construct(
         private readonly AiProviderRepositoryInterface $providerRepository,
-        private readonly ConfigResolverInterface      $configResolver,
-        private readonly SiteAccessServiceInterface   $siteAccessService,
-    ) {
+        private readonly ConfigResolverInterface       $configResolver,
+        private readonly SiteAccessServiceInterface    $siteAccessService,
+    )
+    {
     }
 
     public function resolve(): ?ResolvedImageTarget
@@ -37,20 +37,16 @@ class ImageTargetResolver
 
         // 1. Try DB-configured providers (siteaccess-scoped → global)
         $resolved = $this->providerRepository->findActiveImageTarget($siteaccess);
-        if ($resolved !== null) {
-            return $resolved;
-        }
 
-        // 2. Fall back to siteaccess-aware YAML config
-        return $this->buildConfigTarget();
+        return $resolved ?? $this->buildConfigTarget();
     }
 
     private function buildConfigTarget(): ?ResolvedImageTarget
     {
-        $provider  = $this->configResolver->getParameter('provider', self::CONFIG_NAMESPACE);
-        $apiKey    = $this->configResolver->getParameter('api_key', self::CONFIG_NAMESPACE);
-        $apiUrl    = $this->configResolver->getParameter('api_url', self::CONFIG_NAMESPACE);
-        $imageModel = $this->configResolver->getParameter('image_model', self::CONFIG_NAMESPACE);
+        $provider = $this->configResolver->getParameter('provider', AiConstants::CONFIG_NAMESPACE);
+        $apiKey = $this->configResolver->getParameter('api_key', AiConstants::CONFIG_NAMESPACE);
+        $apiUrl = $this->configResolver->getParameter('api_url', AiConstants::CONFIG_NAMESPACE);
+        $imageModel = $this->configResolver->getParameter('image_model', AiConstants::CONFIG_NAMESPACE);
 
         if (empty($apiKey) || empty($imageModel)) {
             return null;
@@ -60,9 +56,9 @@ class ImageTargetResolver
 
         return new ResolvedImageTarget(
             providerIdentifier: $providerIdentifier,
-            apiKey: (string) $apiKey,
-            apiUrl: $apiUrl ? (string) $apiUrl : null,
-            imageModelIdentifier: (string) $imageModel,
+            apiKey: (string)$apiKey,
+            apiUrl: $apiUrl ? (string)$apiUrl : null,
+            imageModelIdentifier: (string)$imageModel,
         );
     }
 }

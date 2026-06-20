@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant;
 
-use Ibexa\FieldTypeMatrix\FieldType\Value;
 use Masilia\AiAssistant\Field\FieldType;
 use Masilia\AiAssistant\Field\FieldStringValue;
 use Masilia\AiAssistant\Field\Stringifier\MatrixStringifier;
@@ -96,7 +95,7 @@ readonly class FieldContextExtractor
      * {@see ContentService::loadContent()} — the only point in the
      * package that knows how to talk to the Ibexa content service.
      */
-    private function loadOrLog(int $contentId, string $reason): ?Content
+    public function loadOrLog(int $contentId, string $reason): ?Content
     {
         try {
             return $this->contentService->loadContent($contentId);
@@ -220,7 +219,7 @@ readonly class FieldContextExtractor
         $field = ContentFieldAccessor::getWithFallback($content, $fieldIdentifier, $language);
 
         $rowCount = 0;
-        if ($field !== null && $field->value instanceof Value) {
+        if ($field !== null && is_object($field->value) && method_exists($field->value, 'getRows')) {
             $rowCount = $field->value->getRows()->count();
         }
 

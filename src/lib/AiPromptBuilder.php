@@ -101,14 +101,14 @@ class AiPromptBuilder
         $contentContext = '';
 
         if ($ctx->contentTitle !== '') {
-            $contentContext .= "\nContent title: \"" . $this->scrubForPrompt($ctx->contentTitle) . "\".";
+            $contentContext .= "\nContent title: \"" . AiConstants::scrubForPrompt($ctx->contentTitle) . "\".";
         }
 
         if (!empty($ctx->siblingFields)) {
             $contentContext .= "\nOther fields already filled in this content item (use for context, do not repeat):";
             foreach ($ctx->siblingFields as $field) {
-                $label = $this->scrubForPrompt($field['label'] ?? '');
-                $value = $this->scrubForPrompt(mb_substr($field['value'] ?? '', 0, AiConstants::MAX_SIBLING_CHARS));
+                $label = AiConstants::scrubForPrompt($field['label'] ?? '');
+                $value = AiConstants::scrubForPrompt(mb_substr($field['value'] ?? '', 0, AiConstants::MAX_SIBLING_CHARS));
                 if ($label !== '' && $value !== '') {
                     $contentContext .= "\n  - $label: \"$value\"";
                 }
@@ -120,11 +120,6 @@ class AiPromptBuilder
         }
 
         return $contentContext;
-    }
-
-    private function scrubForPrompt(string $value): string
-    {
-        return AiConstants::scrubForPrompt($value);
     }
 
     /**
@@ -147,7 +142,7 @@ class AiPromptBuilder
             // hint. The previous "Display Name (\"id\")" ordering made the
             // AI use the display name (often uppercased by CSS) as the
             // key, which then failed to match the lowercase DOM identifier.
-            $columnLines .= "\n  - key: \"" . $this->scrubForPrompt((string)$colId) . "\" (human label: " . $this->scrubForPrompt((string)$colName) . ")";
+            $columnLines .= "\n  - key: \"" . AiConstants::scrubForPrompt((string)$colId) . "\" (human label: " . AiConstants::scrubForPrompt((string)$colName) . ")";
         }
         if ($columnLines === '') {
             $columnLines = "\n  - (no columns defined; use a single \"value\" key)";

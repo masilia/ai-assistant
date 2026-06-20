@@ -14,7 +14,13 @@ final class AiConstants
 
     public const DEFAULT_SITEACCESS = 'default';
 
+    public const DEFAULT_LANGUAGE_CODE = 'eng-GB';
+
     public const MEDIA_ROOT_LOCATION_ID = 43;
+
+    public const ROOT_LOCATION_ID = 2;
+
+    public const CONFIG_NAMESPACE = 'masilia_ai_assistant';
 
     /**
      * Truncate a string to a maximum length, appending '...' if truncated.

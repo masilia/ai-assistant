@@ -8,12 +8,3 @@ parameters:
     excludePaths:
         # Frontend assets are not PHP.
         - src/bundle/Resources
-    ignoreErrors:
-        # Ibexa field value objects expose dynamic properties at runtime
-        # (Field->value can be any of 30+ concrete value types depending
-        # on the field type identifier). Static analysis cannot know
-        # the concrete type without a runtime guard.
-        - identifier: property.notFound
-          path: src/lib/Field/Stringifier
-        - identifier: property.notFound
-          path: src/lib/FieldContextExtractor.php

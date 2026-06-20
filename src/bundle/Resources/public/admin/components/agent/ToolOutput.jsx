@@ -84,7 +84,7 @@ function ToolOutput({ output, toolName }) {
             return renderSearchResults(output);
         }
 
-        if (['create_content', 'update_content', 'load_content', 'create_page_structure'].includes(toolName)) {
+        if (['create_content', 'update_content', 'load_content'].includes(toolName)) {
             return renderContentResult(output);
         }
 

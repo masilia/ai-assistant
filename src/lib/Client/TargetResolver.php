@@ -6,6 +6,7 @@ namespace Masilia\AiAssistant\Client;
 
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
+use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\AiDefaults;
 use Masilia\AiAssistant\Client\Adapter\ProviderAdapterRegistry;
 use Masilia\AiAssistant\Client\Resolved\ResolvedProvider;
@@ -26,7 +27,6 @@ use RuntimeException;
 class TargetResolver
 {
     use SiteaccessResolverTrait;
-    private const CONFIG_NAMESPACE = 'masilia_ai_assistant';
     private const FALLBACK_PROVIDER = ProviderId::OPENAI;
 
     public function __construct(
@@ -72,12 +72,12 @@ class TargetResolver
      */
     private function buildConfigTarget(): AiTarget
     {
-        $provider  = $this->configResolver->getParameter('provider', self::CONFIG_NAMESPACE);
-        $apiKey    = $this->configResolver->getParameter('api_key', self::CONFIG_NAMESPACE);
-        $apiUrl    = $this->configResolver->getParameter('api_url', self::CONFIG_NAMESPACE);
-        $model     = $this->configResolver->getParameter('model', self::CONFIG_NAMESPACE);
-        $temp      = $this->configResolver->getParameter('temperature', self::CONFIG_NAMESPACE);
-        $maxTokens = $this->configResolver->getParameter('max_tokens', self::CONFIG_NAMESPACE);
+        $provider  = $this->configResolver->getParameter('provider', AiConstants::CONFIG_NAMESPACE);
+        $apiKey    = $this->configResolver->getParameter('api_key', AiConstants::CONFIG_NAMESPACE);
+        $apiUrl    = $this->configResolver->getParameter('api_url', AiConstants::CONFIG_NAMESPACE);
+        $model     = $this->configResolver->getParameter('model', AiConstants::CONFIG_NAMESPACE);
+        $temp      = $this->configResolver->getParameter('temperature', AiConstants::CONFIG_NAMESPACE);
+        $maxTokens = $this->configResolver->getParameter('max_tokens', AiConstants::CONFIG_NAMESPACE);
 
         $providerIdentifier = $provider ?: self::FALLBACK_PROVIDER;
 

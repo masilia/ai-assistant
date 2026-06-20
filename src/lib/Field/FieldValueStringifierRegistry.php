@@ -67,7 +67,7 @@ class FieldValueStringifierRegistry
      */
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
-        $type = $fieldDefinition->fieldTypeIdentifier;
+        $type = $fieldDefinition->getFieldTypeIdentifier();
         $stringifier = $this->map[$type] ?? $this->fallback;
 
         if ($stringifier === null) {

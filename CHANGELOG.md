@@ -218,8 +218,8 @@ Types of changes:
   method, replaced with `jsonErrorResponse()`.
 - **`AgentChatController`** — made `readonly`, imported `AgentPlan`.
 - **`FieldIdentifierResolver`** — made `final`.
-- **`FieldContextExtractor::loadOrLog()`** — changed from `public`
-  to `private` (was never called externally).
+- **`FieldContextExtractor::loadOrLog()`** — remains `public`;
+  used by `AiSuggestController::getLanguages()` for language list lookup.
 
 - **SSE UTF-8 truncation** — the reader previously dropped the
   final multi-byte characters of a non-ASCII response. Now calls

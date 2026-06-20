@@ -20,8 +20,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *
  * Resolves the active image generation provider, builds the request,
  * calls the API, and parses the response into an {@see ImageGenerationResult}.
+ *
+ * Telemetry: every call (success or failure) is recorded via
+ * {@see RequestLoggerInterface} into `app_ai_request_log`, mirroring
+ * {@see AiClient}'s text-call logging.
  */
-readonly class ImageGenerationClient
+readonly class ImageGenerationClient implements ImageGeneratorInterface
 {
     public function __construct(
         private HttpClientInterface         $httpClient,
@@ -29,12 +33,16 @@ readonly class ImageGenerationClient
         private ImageAdapterRegistry        $adapterRegistry,
         private SiteAccessServiceInterface  $siteAccessService,
         private LoggerInterface             $aiLogger,
+        private ?RequestLoggerInterface     $requestLogger = null,
     ) {
     }
 
+    public function isConfigured(): bool
+    {
+        return $this->targetResolver->resolve() !== null;
+    }
+
     /**
-     * Generate an image from a text prompt.
-     *
      * @throws ClientExceptionInterface
      * @throws DecodingExceptionInterface
      * @throws RedirectionExceptionInterface
@@ -46,9 +54,12 @@ readonly class ImageGenerationClient
         ?string $size = null,
         ?string $quality = null,
     ): ImageGenerationResult {
+        $start = microtime(true);
+
         $target = $this->targetResolver->resolve();
         if ($target === null) {
             $siteaccess = $this->siteAccessService->getCurrent()?->name ?? AiConstants::DEFAULT_SITEACCESS;
+            $this->logFailure($start, 'unknown', 'unknown', $siteaccess, new RuntimeException('No image provider configured'));
             throw new RuntimeException(
                 sprintf(
                     'No image generation provider configured for siteaccess "%s". '
@@ -59,6 +70,8 @@ readonly class ImageGenerationClient
         }
 
         $adapter = $this->adapterRegistry->getForProvider($target->providerIdentifier);
+        $providerName = ProviderId::displayName($target->providerIdentifier);
+        $siteaccess = $this->siteAccessService->getCurrent()?->name ?? AiConstants::DEFAULT_SITEACCESS;
 
         $url     = $adapter->buildEndpointUrl($target->apiUrl);
         $headers = $adapter->buildHeaders($target->apiKey);
@@ -69,7 +82,6 @@ readonly class ImageGenerationClient
             $quality,
         );
 
-        $providerName = ProviderId::displayName($target->providerIdentifier);
         $this->aiLogger->info('[ImageGeneration] Requesting image from {provider}', [
             'provider' => $providerName,
             'model' => $target->imageModelIdentifier,
@@ -105,6 +117,8 @@ readonly class ImageGenerationClient
                 'mimeType' => $parsed['mimeType'],
             ]);
 
+            $this->logSuccess($start, $target->providerIdentifier, $target->imageModelIdentifier, $siteaccess);
+
             return new ImageGenerationResult(
                 imageData:     $parsed['imageData'],
                 mimeType:      $parsed['mimeType'],
@@ -115,7 +129,38 @@ readonly class ImageGenerationClient
                 'message' => $e->getMessage(),
                 'provider' => $providerName,
             ]);
+            $this->logFailure($start, $target->providerIdentifier, $target->imageModelIdentifier, $siteaccess, $e);
             throw $e;
         }
+    }
+
+    private function logSuccess(float $startMs, string $provider, string $model, string $siteaccess): void
+    {
+        $this->requestLogger?->log([
+            'providerIdentifier' => $provider,
+            'modelIdentifier' => $model,
+            'success' => true,
+            'latencyMs' => (int) round((microtime(true) - $startMs) * 1000),
+            'errorCode' => null,
+            'tokensIn' => null,
+            'tokensOut' => null,
+            'siteaccess' => $siteaccess,
+            'finishReason' => 'image_generated',
+        ]);
+    }
+
+    private function logFailure(float $startMs, string $provider, string $model, string $siteaccess, \Throwable $e): void
+    {
+        $this->requestLogger?->log([
+            'providerIdentifier' => $provider,
+            'modelIdentifier' => $model,
+            'success' => false,
+            'latencyMs' => (int) round((microtime(true) - $startMs) * 1000),
+            'errorCode' => $e::class,
+            'tokensIn' => null,
+            'tokensOut' => null,
+            'siteaccess' => $siteaccess,
+            'finishReason' => null,
+        ]);
     }
 }

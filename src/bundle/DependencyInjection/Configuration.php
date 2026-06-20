@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Masilia\Bundle\AiAssistant\DependencyInjection;
 
 use Ibexa\Bundle\Core\DependencyInjection\Configuration\SiteAccessAware;
+use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\AiDefaults;
 use Masilia\AiAssistant\ContentTypeId;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -67,7 +68,7 @@ class Configuration extends SiteAccessAware\Configuration
                 ->info('Content type identifier for folders.')
             ->end()
             ->integerNode('media_root_location_id')
-                ->defaultValue(43)
+                ->defaultValue(AiConstants::MEDIA_ROOT_LOCATION_ID)
                 ->info('Location ID of the media root (default: 43, Ibexa standard).')
             ->end()
         ;

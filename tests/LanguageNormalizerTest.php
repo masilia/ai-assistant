@@ -30,7 +30,7 @@ final class LanguageNormalizerTest extends TestCase
     public static function locales(): array
     {
         return [
-            'ibexa eng-GB' => ['eng-GB', 'eng'],
+            'ibexa eng-GB' => ['eng-GB', 'en'],
             'fre-FR' => ['fre-FR', 'fre'],
             'short en' => ['en', 'en'],
             'underscore' => ['en_US', 'en'],

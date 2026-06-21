@@ -3,10 +3,10 @@ import React from 'react';
 /**
  * Renders structured tool output (search results, content details, folder, plan, etc.).
  *
- * @param {{ output: object, toolName: string, stepIndex?: number, totalSteps?: number }} props
+ * @param {{ output: object, toolName: string, stepIndex?: number, totalSteps?: number, loading?: boolean, progressMessage?: string }} props
  */
-function ToolOutput({ output, toolName, stepIndex, totalSteps }) {
-    if (!output) return null;
+function ToolOutput({ output, toolName, stepIndex, totalSteps, loading, progressMessage }) {
+    if (!output && !loading) return null;
 
     const renderSearchResults = (data) => {
         if (!data.results || !Array.isArray(data.results)) return null;
@@ -168,6 +168,42 @@ function ToolOutput({ output, toolName, stepIndex, totalSteps }) {
         );
     };
 
+    const renderExploreSite = (data) => {
+        const siteaccesses = data.siteaccesses || [];
+        return (
+            <div className="agent-chat__tool-output-card">
+                {siteaccesses.length > 0 && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Siteaccesses</span>
+                        <span>{siteaccesses.length} found</span>
+                    </div>
+                )}
+                {data.root_location_id && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Root Location</span>
+                        <span>{data.root_location_id}</span>
+                    </div>
+                )}
+                {data.matched_siteaccess && (
+                    <div className="agent-chat__tool-output-field">
+                        <span className="agent-chat__tool-output-label">Matched</span>
+                        <span className="agent-chat__tool-output-code">{data.matched_siteaccess}</span>
+                    </div>
+                )}
+                {siteaccesses.length > 0 && (
+                    <div className="agent-chat__tool-output-steps">
+                        {siteaccesses.map((sa, i) => (
+                            <div key={i} className="agent-chat__tool-output-step">
+                                <span className="agent-chat__tool-output-step-num">{i + 1}</span>
+                                <span>{sa}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const renderDefault = (data) => {
         // Try to extract a meaningful summary
         if (data.message) {
@@ -188,6 +224,10 @@ function ToolOutput({ output, toolName, stepIndex, totalSteps }) {
     };
 
     const renderOutput = () => {
+        if (toolName === 'explore_site') {
+            return renderExploreSite(output);
+        }
+
         if (toolName === 'search_content') {
             return renderSearchResults(output);
         }
@@ -218,7 +258,7 @@ function ToolOutput({ output, toolName, stepIndex, totalSteps }) {
     const isMultiStep = totalSteps != null && totalSteps > 1;
 
     return (
-        <div className={`agent-chat__tool-output${isMultiStep ? ' agent-chat__tool-output--stepped' : ''}`}>
+        <div className={`agent-chat__tool-output${isMultiStep ? ' agent-chat__tool-output--stepped' : ''}${loading ? ' agent-chat__tool-output--loading' : ''}`}>
             <div className="agent-chat__tool-output-header-row">
                 {isMultiStep && (
                     <span className="agent-chat__tool-output-step-badge">
@@ -226,8 +266,21 @@ function ToolOutput({ output, toolName, stepIndex, totalSteps }) {
                     </span>
                 )}
                 <span className="agent-chat__tool-output-label">{formatToolName(toolName)}</span>
+                {loading && (
+                    <span className="agent-chat__tool-output-spinner">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                    </span>
+                )}
             </div>
-            {renderOutput()}
+            {loading ? (
+                <div className="agent-chat__tool-output-loading">
+                    {progressMessage || 'Processing...'}
+                </div>
+            ) : (
+                renderOutput()
+            )}
         </div>
     );
 }

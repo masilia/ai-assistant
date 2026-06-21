@@ -121,6 +121,13 @@ final readonly class ProposePlanTool implements OrchestratorTool
                 'intent' => $newPlanData['intent'] ?? null,
                 'title' => $newPlanData['title'] ?? null,
             ]);
+
+            $context->emitEvent([
+                'type' => 'step_progress',
+                'tool' => 'propose_plan',
+                'message' => 'Executing plan...',
+            ]);
+
             return $this->executeAndRespond($plan);
         }
 

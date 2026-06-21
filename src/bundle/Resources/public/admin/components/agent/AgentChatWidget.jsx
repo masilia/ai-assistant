@@ -22,10 +22,12 @@ function AgentChatWidget() {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
+    const [, forceRender] = useState(0);
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
     const abortRef = useRef(/** @type {AbortController|null} */ (null));
+    const streamingRef = useRef(/** @type {{ steps: Array<{tool: string, call_id: string, loading: boolean, result?: object, progressMessage?: string}>, message: string, options?: Array<{label: string, value: string}>, error: boolean, done: boolean } | null} */ (null));
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,9 +80,73 @@ function AgentChatWidget() {
         ]);
     }, []);
 
-    const postChat = useCallback(async (body) => {
+    const startStreaming = useCallback(() => {
+        streamingRef.current = { steps: [], message: '', error: false, done: false };
+        forceRender((v) => v + 1);
+    }, []);
+
+    const handleStreamEvent = useCallback((event) => {
+        const s = streamingRef.current;
+        if (!s) return;
+
+        switch (event.type) {
+            case 'step_start':
+                s.steps.push({ tool: event.tool, call_id: event.call_id, loading: true });
+                break;
+            case 'step_progress':
+                // Sub-step progress (e.g. "Executing plan...")
+                if (s.steps.length > 0) {
+                    s.steps[s.steps.length - 1].progressMessage = event.message;
+                }
+                break;
+            case 'step_result': {
+                const step = s.steps.find((x) => x.call_id === event.call_id);
+                if (step) {
+                    step.loading = false;
+                    step.result = event.result;
+                    step.progressMessage = undefined;
+                }
+                break;
+            }
+            case 'message':
+                s.message = event.message;
+                break;
+            case 'options':
+                s.message = event.message;
+                s.options = event.options;
+                break;
+            case 'error':
+                s.message = event.message;
+                s.error = true;
+                break;
+        }
+
+        forceRender((v) => v + 1);
+    }, []);
+
+    const finalizeStreaming = useCallback(() => {
+        const s = streamingRef.current;
+        if (!s) return;
+
+        const toolOutputs = s.steps.map((step) => ({
+            tool: step.tool,
+            output: step.result?.data || step.result || {},
+        }));
+
+        addMessage('agent', s.message || 'Done.', {
+            isError: s.error,
+            ...(s.options ? { options: s.options } : {}),
+            ...(toolOutputs.length > 0 ? { toolOutputs } : {}),
+        });
+
+        streamingRef.current = null;
+        forceRender((v) => v + 1);
+    }, [addMessage]);
+
+    const postChatStream = useCallback(async (body) => {
         const controller = new AbortController();
         abortRef.current = controller;
+        startStreaming();
 
         try {
             const res = await fetch(AI_ROUTES.agentChat, {
@@ -90,27 +156,77 @@ function AgentChatWidget() {
                 signal: controller.signal,
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                addMessage('agent', cleanErrorMessage(data.error || 'Request failed'), { isError: true });
+                let errorMsg = 'Request failed';
+                try {
+                    const data = await res.json();
+                    errorMsg = data.error?.message || data.error || errorMsg;
+                } catch {}
+                const s = streamingRef.current;
+                if (s) {
+                    s.message = cleanErrorMessage(errorMsg);
+                    s.error = true;
+                    s.done = true;
+                    forceRender((v) => v + 1);
+                }
                 return;
             }
 
-            if (data.results && data.results.length > 0) {
-                addMessage('agent', data.message || 'Done!', {
-                    toolOutputs: data.results,
-                    ...(data.options ? { options: data.options } : {}),
-                });
-            } else {
-                addMessage('agent', data.message || 'Done.', {
-                    ...(data.options ? { options: data.options } : {}),
-                });
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete SSE events (separated by \n\n)
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop(); // Keep incomplete chunk
+
+                for (const part of parts) {
+                    const trimmed = part.trim();
+                    if (!trimmed) continue;
+
+                    for (const line of trimmed.split('\n')) {
+                        if (!line.startsWith('data: ')) continue;
+
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') {
+                            finalizeStreaming();
+                            return;
+                        }
+
+                        try {
+                            const event = JSON.parse(data);
+                            handleStreamEvent(event);
+                        } catch {
+                            // ignore malformed events
+                        }
+                    }
+                }
+            }
+
+            // If we exit the loop without [DONE], finalize anyway
+            if (streamingRef.current && !streamingRef.current.done) {
+                finalizeStreaming();
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                const s = streamingRef.current;
+                if (s) {
+                    s.message = cleanErrorMessage(err.message || 'Network error');
+                    s.error = true;
+                    forceRender((v) => v + 1);
+                }
+                finalizeStreaming();
             }
         } finally {
             abortRef.current = null;
         }
-    }, [addMessage]);
+    }, [startStreaming, handleStreamEvent, finalizeStreaming]);
 
     const handleSend = useCallback(async () => {
         const text = input.trim();
@@ -121,7 +237,7 @@ function AgentChatWidget() {
         setLoading(true);
 
         try {
-            await postChat({ message: text });
+            await postChatStream({ message: text });
         } catch (err) {
             if (err.name !== 'AbortError') {
                 addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
@@ -129,7 +245,7 @@ function AgentChatWidget() {
         } finally {
             setLoading(false);
         }
-    }, [input, loading, addMessage, postChat]);
+    }, [input, loading, addMessage, postChatStream]);
 
     const handleOptionSelect = useCallback(async (value) => {
         if (loading) return;
@@ -137,7 +253,7 @@ function AgentChatWidget() {
         setLoading(true);
 
         try {
-            await postChat({ message: value, selected_option: value });
+            await postChatStream({ message: value, selected_option: value });
         } catch (err) {
             if (err.name !== 'AbortError') {
                 addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
@@ -145,7 +261,7 @@ function AgentChatWidget() {
         } finally {
             setLoading(false);
         }
-    }, [loading, addMessage, postChat]);
+    }, [loading, addMessage, postChatStream]);
 
     const handleCancel = useCallback(() => {
         if (abortRef.current) {
@@ -164,28 +280,17 @@ function AgentChatWidget() {
                 addMessage('user', '/undo');
 
                 try {
-                    const res = await fetch(AI_ROUTES.agentChat, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: 'undo' }),
-                    });
-
-                    const data = await res.json();
-
-                    if (!res.ok) {
-                        addMessage('agent', cleanErrorMessage(data.error || 'Undo failed'), { isError: true });
-                        return;
-                    }
-
-                    addMessage('agent', data.message || 'Undone.');
+                    await postChatStream({ message: 'undo' });
                 } catch (err) {
-                    addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+                    if (err.name !== 'AbortError') {
+                        addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
+                    }
                 } finally {
                     setLoading(false);
                 }
             },
         });
-    }, [addMessage]);
+    }, [addMessage, postChatStream]);
 
     const handleNewConversation = useCallback(() => {
         setConfirmAction({
@@ -361,7 +466,41 @@ function AgentChatWidget() {
                             );
                         })}
 
-                        {loading && (
+                        {streamingRef.current && (
+                            <div className="agent-chat__message">
+                                <MessageBubble
+                                    role="agent"
+                                    content={streamingRef.current.message || (streamingRef.current.steps.length > 0 ? '' : 'Thinking...')}
+                                    timestamp={getTimestamp()}
+                                    grouped={false}
+                                />
+                                {streamingRef.current.steps.length > 0 && (
+                                    <div className="agent-chat__tool-outputs">
+                                        {streamingRef.current.steps.length > 1 && (
+                                            <div className="agent-chat__tool-summary">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M20 6 9 17l-5-5" />
+                                                </svg>
+                                                <span>{streamingRef.current.steps.filter((s) => !s.loading).length} of {streamingRef.current.steps.length} actions completed</span>
+                                            </div>
+                                        )}
+                                        {streamingRef.current.steps.map((step, outIdx) => (
+                                            <ToolOutput
+                                                key={step.call_id}
+                                                toolName={step.tool}
+                                                output={step.result?.data || step.result}
+                                                stepIndex={outIdx}
+                                                totalSteps={streamingRef.current.steps.length}
+                                                loading={step.loading}
+                                                progressMessage={step.progressMessage}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {loading && !streamingRef.current && (
                             <div className="agent-chat__typing">
                                 <span className="agent-chat__typing-dot" />
                                 <span className="agent-chat__typing-dot" />

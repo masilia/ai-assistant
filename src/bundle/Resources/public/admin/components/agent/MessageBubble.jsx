@@ -36,6 +36,21 @@ function renderContent(text) {
             return;
         }
 
+        // Markdown headers: ###, ####, #####
+        const headerMatch = trimmed.match(/^(#{1,5})\s+(.+)$/);
+        if (headerMatch) {
+            flushList();
+            const level = headerMatch[1].length;
+            const tag = `h${Math.min(level + 2, 6)}`; // # → h3, ## → h4, ### → h5
+            elements.push(
+                React.createElement(tag, {
+                    key: idx,
+                    className: `agent-chat__heading agent-chat__heading--${tag}`,
+                }, renderInline(headerMatch[2]))
+            );
+            return;
+        }
+
         // Category header: **Hero:** or **Text:**
         if (/^\*\*[^*]+\*\*\s*$/.test(trimmed) || /^\*\*[^*]+\*\*:?\s*$/.test(trimmed)) {
             flushList();

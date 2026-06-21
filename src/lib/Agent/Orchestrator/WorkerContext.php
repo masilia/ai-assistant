@@ -14,9 +14,28 @@ use Masilia\AiAssistant\Agent\Wizard\WizardState;
  */
 final class WorkerContext
 {
+    /** @var array<array{type: string, ...}> */
+    private array $eventBuffer = [];
+
     public function __construct(
         public readonly int          $userId,
         public readonly WizardState  $state,
     ) {
+    }
+
+    public function emitEvent(array $event): void
+    {
+        $this->eventBuffer[] = $event;
+    }
+
+    /**
+     * @return array<array{type: string, ...}>
+     */
+    public function drainEvents(): array
+    {
+        $events = $this->eventBuffer;
+        $this->eventBuffer = [];
+
+        return $events;
     }
 }

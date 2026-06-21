@@ -11,6 +11,7 @@ use Masilia\AiAssistant\Agent\Wizard\WizardState;
 use Masilia\AiAssistant\Agent\Wizard\WizardStoreInterface;
 use Masilia\AiAssistant\Client\AiClientInterface;
 use Masilia\AiAssistant\Client\ToolCallResult;
+use Generator;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -64,6 +65,179 @@ final readonly class AgentOrchestrator
         $this->wizardStore->put($userId, $state);
 
         return $this->runLoop($userId, $state);
+    }
+
+    /**
+     * Streaming version of run() — yields SSE events as the loop progresses.
+     *
+     * Event types:
+     * - step_start:   {type, tool, call_id}
+     * - step_progress: {type, tool, message} — sub-step progress within a tool
+     * - step_result:  {type, tool, call_id, result: {success, message, data}}
+     * - message:      {type, message}
+     * - options:      {type, message, options: [{label, value}]}
+     * - error:        {type, message}
+     *
+     * @return Generator<array{type: string, ...}>
+     */
+    public function runStream(int $userId, string $message, ?string $selectedOption = null): Generator
+    {
+        $state = $this->wizardStore->get($userId) ?? new WizardState();
+
+        $effectiveMessage = $selectedOption ?? $message;
+        $state = $state->withUserMessage($effectiveMessage);
+
+        $this->wizardStore->put($userId, $state);
+
+        yield from $this->runLoopStream($userId, $state);
+    }
+
+    /**
+     * @return Generator<array{type: string, ...}>
+     */
+    private function runLoopStream(int $userId, WizardState $state): Generator
+    {
+        $tools = $this->indexTools();
+        $toolDefinitions = $this->buildToolDefinitions($tools);
+
+        $systemPrompt = AgentSystemPrompt::get();
+        if ($state->messages === [] || ($state->messages[0]['role'] ?? '') !== 'system') {
+            $state = $this->prependSystemPrompt($state, $systemPrompt);
+        }
+
+        $this->aiLogger->debug('[AgentOrchestrator] Stream loop start: {tools} control tools, {msgs} messages', [
+            'tools' => count($toolDefinitions),
+            'msgs' => count($state->messages),
+        ]);
+
+        for ($i = 0; $i < self::MAX_ITERATIONS; $i++) {
+            $this->aiLogger->debug('[AgentOrchestrator] Stream iteration {i}/{max}', [
+                'i' => $i + 1,
+                'max' => self::MAX_ITERATIONS,
+            ]);
+
+            try {
+                $result = $this->aiClient->chatWithTools($state->messages, $toolDefinitions);
+            } catch (Throwable $e) {
+                $this->aiLogger->error('[AgentOrchestrator] LLM call failed: {message}', [
+                    'message' => $e->getMessage(),
+                    'exception' => $e,
+                ]);
+                $this->wizardStore->clear($userId);
+
+                yield ['type' => 'error', 'message' => 'The AI service encountered an error. Please try again later.'];
+
+                return;
+            }
+
+            $this->aiLogger->debug('[AgentOrchestrator] LLM response: {toolCount} tool calls, hasText={hasText}', [
+                'toolCount' => count($result->toolCalls),
+                'hasText' => $result->hasText(),
+                'textPreview' => $result->hasText() ? substr($result->text, 0, 200) : '',
+                'toolNames' => array_map(fn($c) => $c->name, $result->toolCalls),
+            ]);
+
+            // No tool calls → text reply (terminal)
+            if (!$result->hasToolCalls()) {
+                if ($result->hasText()) {
+                    $newState = $state->withAssistantMessage($result->text);
+                    $this->wizardStore->put($userId, $newState);
+
+                    yield ['type' => 'message', 'message' => $result->text];
+
+                    return;
+                }
+
+                // Empty response — let the loop continue
+                continue;
+            }
+
+            // Append assistant message (with tool calls) to history.
+            $state = $state->withAssistantToolCalls(
+                $result->text ?? '',
+                array_map(static fn($c) => [
+                    'id' => $c->id,
+                    'type' => 'function',
+                    'function' => [
+                        'name' => $c->name,
+                        'arguments' => is_string($c->arguments) ? $c->arguments : json_encode($c->arguments, JSON_THROW_ON_ERROR),
+                    ],
+                ], $result->toolCalls),
+            );
+
+            $exitYielded = false;
+
+            foreach ($result->toolCalls as $call) {
+                $this->aiLogger->debug('[AgentOrchestrator] Calling tool: {name}', ['name' => $call->name]);
+
+                $tool = $tools[$call->name] ?? null;
+                if ($tool === null) {
+                    $state = $state->withToolResult($call->id, json_encode(['error' => "Unknown tool: {$call->name}"], JSON_THROW_ON_ERROR));
+                    continue;
+                }
+
+                $context = new WorkerContext($userId, $state);
+
+                yield ['type' => 'step_start', 'tool' => $call->name, 'call_id' => $call->id];
+
+                try {
+                    $toolResponse = $tool->execute($call->arguments, $context);
+                } catch (Throwable $e) {
+                    $this->aiLogger->error('[AgentOrchestrator] Tool {name} threw: {message}', [
+                        'name' => $call->name,
+                        'message' => $e->getMessage(),
+                    ]);
+                    $state = $state->withToolResult($call->id, json_encode(['error' => $e->getMessage()]));
+
+                    yield ['type' => 'step_result', 'tool' => $call->name, 'call_id' => $call->id, 'result' => ['success' => false, 'message' => $e->getMessage()]];
+
+                    continue;
+                }
+
+                // Drain any sub-step events emitted by the tool (e.g. ProposePlanTool progress)
+                foreach ($context->drainEvents() as $event) {
+                    yield $event;
+                }
+
+                $state = $this->applyOrchestratorResponse($state, $toolResponse, $call->id, $userId);
+
+                // Yield the tool result for the frontend
+                $payload = [
+                    'success' => $toolResponse->success,
+                    'message' => $toolResponse->message,
+                    'data' => $toolResponse->data,
+                ];
+                yield ['type' => 'step_result', 'tool' => $call->name, 'call_id' => $call->id, 'result' => $payload];
+
+                if ($toolResponse->isTerminal) {
+                    $exitResponse = $this->buildExitResponse($toolResponse);
+
+                    if ($exitResponse->options !== null) {
+                        yield ['type' => 'options', 'message' => $exitResponse->message, 'options' => $exitResponse->options];
+                    } elseif (!$exitResponse->success) {
+                        yield ['type' => 'error', 'message' => $exitResponse->message];
+                    } else {
+                        yield ['type' => 'message', 'message' => $exitResponse->message];
+                    }
+
+                    $exitYielded = true;
+                    break;
+                }
+            }
+
+            if ($exitYielded) {
+                return;
+            }
+
+            $this->wizardStore->put($userId, $state);
+        }
+
+        $this->aiLogger->warning('[AgentOrchestrator] Stream loop exhausted {max} iterations', [
+            'max' => self::MAX_ITERATIONS,
+        ]);
+        $this->wizardStore->clear($userId);
+
+        yield ['type' => 'error', 'message' => 'I got stuck after several attempts. Please rephrase your request.'];
     }
 
     private function runLoop(int $userId, WizardState $state): AgentResponse

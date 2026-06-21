@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Security;
 use Throwable;
@@ -34,7 +35,7 @@ readonly class AgentChatController
     }
 
     #[Route('/admin/api/ai/agent/chat', name: 'app.ai.agent.chat', methods: ['POST'])]
-    public function chat(Request $request): JsonResponse
+    public function chat(Request $request): Response
     {
         if (($denied = $this->requireSetupAdministrate($this->permissionResolver)) !== null) {
             return $denied;
@@ -66,21 +67,39 @@ readonly class AgentChatController
             );
         }
 
-        try {
-            $response = $this->agentOrchestrator->run($userId, $message, $selectedOption);
+        return new StreamedResponse(function () use ($userId, $message, $selectedOption) {
+            try {
+                $events = $this->agentOrchestrator->runStream($userId, $message, $selectedOption);
 
-            return new JsonResponse($response->toArray());
-        } catch (Throwable $e) {
-            $this->aiLogger->error('[AI Agent] Chat failed: {message}', [
-                'message' => $e->getMessage(),
-                'exception' => $e,
-            ]);
+                foreach ($events as $event) {
+                    echo 'data: ' . json_encode($event, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n\n";
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
+                    flush();
+                }
 
-            return new JsonResponse(
-                AiError::serviceUnavailable(self::GENERIC_SERVICE_ERROR)->toArray(),
-                Response::HTTP_SERVICE_UNAVAILABLE,
-            );
-        }
+                echo "data: [DONE]\n\n";
+            } catch (Throwable $e) {
+                $this->aiLogger->error('[AI Agent] Chat failed: {message}', [
+                    'message' => $e->getMessage(),
+                    'exception' => $e,
+                ]);
+
+                $error = ['type' => 'error', 'message' => self::GENERIC_SERVICE_ERROR];
+                echo 'data: ' . json_encode($error, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n\n";
+            }
+
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
+        }, Response::HTTP_OK, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 
     #[Route('/admin/api/ai/agent/clear', name: 'app.ai.agent.clear', methods: ['POST'])]

@@ -134,7 +134,7 @@ final readonly class AgentOrchestrator
                 'toolCount' => count($result->toolCalls),
                 'hasText' => $result->hasText(),
                 'textPreview' => $result->hasText() ? substr($result->text, 0, 200) : '',
-                'toolNames' => array_map(fn($c) => $c->name, $result->toolCalls),
+                'toolNames' => array_map(static fn($c) => $c->name, $result->toolCalls),
             ]);
 
             // No tool calls → text reply (terminal)

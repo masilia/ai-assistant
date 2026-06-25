@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Worker;
 
+use InvalidArgumentException;
 use Masilia\AiAssistant\Agent\Block\BlockCatalog;
 use Masilia\AiAssistant\Agent\Block\ContentCatalog;
+use Masilia\AiAssistant\Field\FieldType;
 
 /**
  * Validates and constructs a Plan from orchestrator tool arguments.
@@ -26,11 +28,11 @@ use Masilia\AiAssistant\Agent\Block\ContentCatalog;
  * produce content with no blocks — the LLM should always propose its own
  * layout based on the explore_site output.
  */
-final class PlanBuilder
+final readonly class PlanBuilder
 {
     public function __construct(
-        private readonly ?BlockCatalog $blockCatalog = null,
-        private readonly ?ContentCatalog $contentCatalog = null,
+        private ?BlockCatalog   $blockCatalog = null,
+        private ?ContentCatalog $contentCatalog = null,
     ) {
     }
 
@@ -43,17 +45,17 @@ final class PlanBuilder
 
         $error = $plan->validate();
         if ($error !== null) {
-            throw new \InvalidArgumentException($error);
+            throw new InvalidArgumentException($error);
         }
 
         $schemaError = $this->validateBlockSchemas($plan);
         if ($schemaError !== null) {
-            throw new \InvalidArgumentException($schemaError);
+            throw new InvalidArgumentException($schemaError);
         }
 
         $requiredError = $this->validateRequiredFields($plan);
         if ($requiredError !== null) {
-            throw new \InvalidArgumentException($requiredError);
+            throw new InvalidArgumentException($requiredError);
         }
 
         return $plan;
@@ -94,7 +96,7 @@ final class PlanBuilder
 
         foreach ($schema['fields'] as $fieldId => $fieldInfo) {
             $fieldType = (string) ($fieldInfo['type'] ?? '');
-            if ($fieldType !== 'ezmatrix') {
+            if ($fieldType !== FieldType::EZMATRIX) {
                 continue;
             }
 

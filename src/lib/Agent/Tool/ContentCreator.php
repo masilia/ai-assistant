@@ -13,6 +13,7 @@ use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\ContentCreateStruct;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\ContentType;
+use RuntimeException;
 
 /**
  * Create + publish content items, with field-value transformation.
@@ -67,7 +68,7 @@ final readonly class ContentCreator
             $draft = $contentService->createContent($createStruct, $locStructs);
             $published = $contentService->publishVersion($draft->versionInfo);
         } catch (BadStateException|ContentFieldValidationException|ContentValidationException|InvalidArgumentException|UnauthorizedException $e) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 sprintf('Failed to create content of type "%s": %s', $contentTypeIdentifier, $e->getMessage()),
                 previous: $e,
             );

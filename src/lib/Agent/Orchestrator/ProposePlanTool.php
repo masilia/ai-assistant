@@ -128,7 +128,7 @@ final readonly class ProposePlanTool implements OrchestratorTool
                 'message' => 'Executing plan...',
             ]);
 
-            return $this->executeAndRespond($plan);
+            return $this->executeAndRespond($plan, $context);
         }
 
         // Different plan → treat as modification: save and await approval again.
@@ -196,9 +196,9 @@ final readonly class ProposePlanTool implements OrchestratorTool
         return $types;
     }
 
-    private function executeAndRespond(Plan $plan): OrchestratorResponse
+    private function executeAndRespond(Plan $plan, WorkerContext $context): OrchestratorResponse
     {
-        $result = $this->planExecutor->execute($plan);
+        $result = $this->planExecutor->execute($plan, $context);
 
         if (!$result->success) {
             return OrchestratorResponse::error($result->message);

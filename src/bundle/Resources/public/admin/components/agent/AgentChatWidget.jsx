@@ -4,6 +4,7 @@ import { cleanErrorMessage } from '../ai-settings/constants.js';
 import MessageBubble from './MessageBubble.jsx';
 import ToolOutput from './ToolOutput.jsx';
 import ActionConfirmDialog from './ActionConfirmDialog.jsx';
+import BrainVisualization from './BrainVisualization.jsx';
 
 /**
  * @typedef {{ role: 'user'|'agent', content: string, timestamp: string, isError?: boolean, options?: Array<{label: string, value: string}>, toolOutputs?: Array<{tool: string, output: object}> }} ChatMessage
@@ -22,6 +23,7 @@ function AgentChatWidget() {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
+    const [streamKey, setStreamKey] = useState(0);
     const [, forceRender] = useState(0);
 
     const messagesEndRef = useRef(null);
@@ -82,6 +84,7 @@ function AgentChatWidget() {
 
     const startStreaming = useCallback(() => {
         streamingRef.current = { steps: [], message: '', error: false, done: false };
+        setStreamKey((k) => k + 1);
         forceRender((v) => v + 1);
     }, []);
 
@@ -89,14 +92,17 @@ function AgentChatWidget() {
         const s = streamingRef.current;
         if (!s) return;
 
+        let stepsChanged = false;
+
         switch (event.type) {
             case 'step_start':
                 s.steps.push({ tool: event.tool, call_id: event.call_id, loading: true });
+                stepsChanged = true;
                 break;
             case 'step_progress':
-                // Sub-step progress (e.g. "Executing plan...")
                 if (s.steps.length > 0) {
                     s.steps[s.steps.length - 1].progressMessage = event.message;
+                    stepsChanged = true;
                 }
                 break;
             case 'step_result': {
@@ -105,6 +111,7 @@ function AgentChatWidget() {
                     step.loading = false;
                     step.result = event.result;
                     step.progressMessage = undefined;
+                    stepsChanged = true;
                 }
                 break;
             }
@@ -119,6 +126,11 @@ function AgentChatWidget() {
                 s.message = event.message;
                 s.error = true;
                 break;
+        }
+
+        // Create a new array reference so useMemo in BrainVisualization detects the change
+        if (stepsChanged) {
+            s.steps = [...s.steps];
         }
 
         forceRender((v) => v + 1);
@@ -142,6 +154,15 @@ function AgentChatWidget() {
         streamingRef.current = null;
         forceRender((v) => v + 1);
     }, [addMessage]);
+
+    // Mark streaming as done so BrainVisualization transitions through
+    // active → summary → exiting phases before finalizeStreaming unmounts it.
+    const completeStreaming = useCallback(() => {
+        const s = streamingRef.current;
+        if (!s || s.done) return;
+        s.done = true;
+        forceRender((v) => v + 1);
+    }, []);
 
     const postChatStream = useCallback(async (body) => {
         const controller = new AbortController();
@@ -195,13 +216,15 @@ function AgentChatWidget() {
 
                         const data = line.slice(6).trim();
                         if (data === '[DONE]') {
-                            finalizeStreaming();
+                            completeStreaming();
                             return;
                         }
 
                         try {
                             const event = JSON.parse(data);
                             handleStreamEvent(event);
+                            // Yield to browser so React can render each step incrementally
+                            await new Promise(resolve => setTimeout(resolve, 0));
                         } catch {
                             // ignore malformed events
                         }
@@ -211,7 +234,7 @@ function AgentChatWidget() {
 
             // If we exit the loop without [DONE], finalize anyway
             if (streamingRef.current && !streamingRef.current.done) {
-                finalizeStreaming();
+                completeStreaming();
             }
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -221,12 +244,12 @@ function AgentChatWidget() {
                     s.error = true;
                     forceRender((v) => v + 1);
                 }
-                finalizeStreaming();
+                completeStreaming();
             }
         } finally {
             abortRef.current = null;
         }
-    }, [startStreaming, handleStreamEvent, finalizeStreaming]);
+    }, [startStreaming, handleStreamEvent, completeStreaming]);
 
     const handleSend = useCallback(async () => {
         const text = input.trim();
@@ -467,37 +490,13 @@ function AgentChatWidget() {
                         })}
 
                         {streamingRef.current && (
-                            <div className="agent-chat__message">
-                                <MessageBubble
-                                    role="agent"
-                                    content={streamingRef.current.message || (streamingRef.current.steps.length > 0 ? '' : 'Thinking...')}
-                                    timestamp={getTimestamp()}
-                                    grouped={false}
-                                />
-                                {streamingRef.current.steps.length > 0 && (
-                                    <div className="agent-chat__tool-outputs">
-                                        {streamingRef.current.steps.length > 1 && (
-                                            <div className="agent-chat__tool-summary">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M20 6 9 17l-5-5" />
-                                                </svg>
-                                                <span>{streamingRef.current.steps.filter((s) => !s.loading).length} of {streamingRef.current.steps.length} actions completed</span>
-                                            </div>
-                                        )}
-                                        {streamingRef.current.steps.map((step, outIdx) => (
-                                            <ToolOutput
-                                                key={step.call_id}
-                                                toolName={step.tool}
-                                                output={step.result?.data || step.result}
-                                                stepIndex={outIdx}
-                                                totalSteps={streamingRef.current.steps.length}
-                                                loading={step.loading}
-                                                progressMessage={step.progressMessage}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            <BrainVisualization
+                                key={streamKey}
+                                steps={streamingRef.current.steps}
+                                message={streamingRef.current.message}
+                                isComplete={streamingRef.current.done}
+                                onExit={finalizeStreaming}
+                            />
                         )}
 
                         {loading && !streamingRef.current && (

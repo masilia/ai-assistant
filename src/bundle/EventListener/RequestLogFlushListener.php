@@ -22,10 +22,10 @@ use Symfony\Component\HttpKernel\Event\KernelEvent;
  *     Symfony exception handler, so rows queued mid-request (e.g. a
  *     `RuntimeException` from `AiClient::assertOk`) still reach the DB
  */
-final class RequestLogFlushListener
+final readonly class RequestLogFlushListener
 {
     public function __construct(
-        private readonly RequestLoggerInterface $requestLogger,
+        private RequestLoggerInterface $requestLogger,
     ) {
     }
 

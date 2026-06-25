@@ -21,8 +21,6 @@ final readonly class ContentUpdater
 
     /**
      * Load content, create draft, set fields via transformation, update, publish.
-     *
-     * @param array<string, mixed> $attributes Field values as key-value pairs
      */
     public function updateFields(int $contentId, array $attributes, string $languageCode): Content
     {
@@ -34,8 +32,6 @@ final readonly class ContentUpdater
 
     /**
      * Update fields starting from a ContentInfo object (avoids loading full content).
-     *
-     * @param array<string, mixed> $attributes Field values as key-value pairs
      */
     public function updateByContentInfo(ContentInfo $contentInfo, array $attributes, string $languageCode): Content
     {

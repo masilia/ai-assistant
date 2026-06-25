@@ -183,23 +183,7 @@ function AiSuggestModal() {
         setImageGenResult(null);
         stream.setError('');
 
-        // Build a contextual prompt that includes field/content info
-        const contextParts = [];
-        if (fieldContext?.contentTypeName) {
-            contextParts.push(fieldContext.contentTypeName);
-        }
-        if (fieldContext?.contentTitle) {
-            contextParts.push(`"${fieldContext.contentTitle}"`);
-        }
-        if (fieldContext?.fieldName) {
-            contextParts.push(`for the "${fieldContext.fieldName}" field`);
-        }
-
-        const contextPrefix = contextParts.length > 0 ? contextParts.join(' ') + ' — ' : '';
-        const userPrompt = prompt.trim();
-        const finalPrompt = userPrompt
-            ? contextPrefix + userPrompt
-            : contextPrefix + 'Generate a relevant image for this content';
+        const userPrompt = prompt.trim() || 'Generate a relevant image for this content';
 
         try {
             const response = await fetch(AI_ROUTES.generateImage, {
@@ -209,8 +193,14 @@ function AiSuggestModal() {
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({
-                    prompt: finalPrompt,
+                    prompt: userPrompt,
                     size: selectedAspectRatio || '1:1',
+                    contentId: fieldContext?.contentId || 0,
+                    language: fieldContext?.language || '',
+                    fieldName: fieldContext?.fieldName || '',
+                    contentType: fieldContext?.contentTypeName || '',
+                    contentTitle: fieldContext?.contentTitle || '',
+                    siblingFields: fieldContext?.siblingFields || [],
                 }),
             });
 

@@ -185,4 +185,51 @@ class AiPromptBuilder
 
         return "$userPrompt\n\nCurrent content for context (do not repeat it unless asked):\n\"\"\"$truncated\"\"\"";
     }
+
+    /**
+     * Build a single enriched prompt string for image generation.
+     *
+     * Image APIs accept one prompt (no system/user split), so all context
+     * is prepended to the user's prompt in a compact block.
+     *
+     * @param array<int, array{label: string, value: string}> $siblingFields
+     */
+    public function enrichImagePrompt(
+        string $prompt,
+        string $contentType = '',
+        string $contentTitle = '',
+        string $fieldDescription = '',
+        array $siblingFields = [],
+    ): string
+    {
+        $context = '';
+
+        if ($contentType !== '') {
+            $context .= 'Content type: "' . AiConstants::scrubForPrompt($contentType) . '".';
+        }
+        if ($contentTitle !== '') {
+            $context .= ' Content title: "' . AiConstants::scrubForPrompt($contentTitle) . '".';
+        }
+        if ($fieldDescription !== '') {
+            $context .= ' Field description: "' . AiConstants::scrubForPrompt($fieldDescription) . '".';
+        }
+
+        if (!empty($siblingFields)) {
+            $context .= "\nExisting field context:";
+            foreach ($siblingFields as $field) {
+                $label = AiConstants::scrubForPrompt($field['label']);
+                $value = AiConstants::scrubForPrompt(mb_substr($field['value'], 0, AiConstants::MAX_SIBLING_CHARS));
+                if ($label !== '' && $value !== '') {
+                    $context .= "\n  - $label: \"$value\"";
+                }
+            }
+        }
+
+        $prompt = trim($prompt);
+        if ($prompt === '') {
+            $prompt = 'Generate a relevant image for this content';
+        }
+
+        return $context !== '' ? trim($context) . "\n\n" . $prompt : $prompt;
+    }
 }

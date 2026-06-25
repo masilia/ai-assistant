@@ -165,6 +165,36 @@ readonly class FieldContextExtractor
     }
 
     /**
+     * Load the field definition's admin-configured description for the
+     * field identified by $request->fieldName. Returns '' when the
+     * content or field definition cannot be resolved.
+     */
+    public function extractFieldDescription(AiSuggestRequest $request, string $normalizedLanguage): string
+    {
+        if ($request->contentId <= 0) {
+            return '';
+        }
+
+        $content = $this->loadOrLog($request->contentId, 'for field description');
+        if ($content === null) {
+            return '';
+        }
+
+        $contentType = $content->getContentType();
+        $identifier = $this->identifierResolver->resolve($request->fieldName, $contentType);
+        if ($identifier === '') {
+            return '';
+        }
+
+        $fieldDef = $contentType->getFieldDefinition($identifier);
+        if ($fieldDef === null) {
+            return '';
+        }
+
+        return $fieldDef->getDescription($normalizedLanguage) ?? '';
+    }
+
+    /**
      * One-shot matrix-context extraction for a request payload: loads the
      * content, resolves the field identifier from the AI request's display
      * label (reusing the same fuzzy match used by the sibling extractor),

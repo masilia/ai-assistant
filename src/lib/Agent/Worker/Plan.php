@@ -7,7 +7,7 @@ namespace Masilia\AiAssistant\Agent\Worker;
 /**
  * Validated plan structure ready for execution.
  */
-final class Plan
+final readonly class Plan
 {
     public const INTENT_CREATE_CONTENT = 'create_content';
     public const INTENT_CREATE_ITEMS = 'create_items';
@@ -157,15 +157,15 @@ final class Plan
         return new self(
             intent: (string) ($data['intent'] ?? ''),
             title: $data['title'] ?? null,
-            contentType: $data['content_type'] ?? $data['contentType'] ?? null,
+            contentType: $data['content_type'] ?? null,
             siteaccess: $data['siteaccess'] ?? null,
-            parentLocationId: isset($data['parent_location_id']) ? (int) $data['parent_location_id'] : ($data['parentLocationId'] ?? null),
+            parentLocationId: isset($data['parent_location_id']) ? (int) $data['parent_location_id'] : null,
             blocks: $data['blocks'] ?? [],
             fields: $data['fields'] ?? [],
-            contentId: isset($data['content_id']) ? (int) $data['content_id'] : ($data['contentId'] ?? null),
+            contentId: isset($data['content_id']) ? (int) $data['content_id'] : null,
             description: $data['description'] ?? null,
             items: $data['items'] ?? [],
-            linkField: $data['link_field'] ?? $data['linkField'] ?? null,
+            linkField: $data['link_field'] ?? null,
         );
     }
 }

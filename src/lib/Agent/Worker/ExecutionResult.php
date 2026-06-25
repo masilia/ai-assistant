@@ -7,7 +7,7 @@ namespace Masilia\AiAssistant\Agent\Worker;
 /**
  * Result of PlanExecutor — structured outcome of executing a Plan.
  */
-final class ExecutionResult
+final readonly class ExecutionResult
 {
     /**
      * @param array<string, mixed> $data Arbitrary data returned by the executor

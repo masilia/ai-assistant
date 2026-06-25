@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Tests\Agent\Worker;
 
-use Masilia\AiAssistant\Agent\Worker\ExplorationResult;
 use Masilia\AiAssistant\Agent\Worker\Plan;
 use Masilia\AiAssistant\Agent\Worker\PlanBuilder;
 use Masilia\AiAssistant\Tests\Agent\Block\BlockCatalogFactoryTrait;
@@ -85,7 +84,7 @@ final class PlanBuilderTest extends TestCase
         $builder->build(['intent' => 'fly_to_mars']);
     }
 
-    public function testBuildWithDefaultsIsAliasForBuild(): void
+    public function testBuildDoesNotInjectHardcodedLayoutsFromExploration(): void
     {
         $builder = new PlanBuilder();
         $args = [
@@ -96,42 +95,9 @@ final class PlanBuilderTest extends TestCase
         ];
 
         $planFromBuild = $builder->build($args);
-        $planFromBuildWithDefaults = $builder->buildWithDefaults($args, new ExplorationResult(
-            siteaccesses: ['mattcch'],
-            matchedSiteaccess: 'mattcch',
-            rootLocationId: 42,
-            siteStructure: [],
-            parentCandidates: [],
-            blockTypes: [],
-        ));
 
-        self::assertSame($planFromBuild->intent, $planFromBuildWithDefaults->intent);
-    }
-
-    public function testBuildWithDefaultsDoesNotInjectHardcodedLayouts(): void
-    {
-        $builder = new PlanBuilder();
-
-        $plan = $builder->buildWithDefaults([
-            'intent' => 'create_content',
-            'content_type' => 'page',
-            'parent_location_id' => 42,
-            'fields' => ['title' => 'About Us'],
-        ], new ExplorationResult(
-            siteaccesses: ['mattcch'],
-            matchedSiteaccess: 'mattcch',
-            rootLocationId: 42,
-            siteStructure: [],
-            parentCandidates: [],
-            blockTypes: [
-                ['identifier' => 'hero_banner', 'fields' => []],
-                ['identifier' => 'paragraph', 'fields' => []],
-                ['identifier' => 'grid_cards', 'fields' => []],
-                ['identifier' => 'cta', 'fields' => []],
-            ],
-        ));
-
-        self::assertSame([], $plan->blocks);
+        // build() never injects blocks — the LLM always proposes its own layout
+        self::assertSame([], $planFromBuild->blocks);
     }
 
     public function testBuildCreateItemsPlan(): void

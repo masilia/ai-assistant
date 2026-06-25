@@ -62,17 +62,6 @@ final readonly class PlanBuilder
     }
 
     /**
-     * Same as build() — kept for backward compatibility. Exploration
-     * result is ignored: the LLM always proposes its own block layout.
-     *
-     * @param array<string, mixed> $arguments
-     */
-    public function buildWithDefaults(array $arguments, ?ExplorationResult $exploration = null): Plan
-    {
-        return $this->build($arguments);
-    }
-
-    /**
      * Validate field structure against actual content type schemas.
      *
      * Currently checks matrix field column identifiers (the most common

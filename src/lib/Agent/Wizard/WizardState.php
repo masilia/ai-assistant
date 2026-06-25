@@ -20,10 +20,10 @@ final class WizardState
      * @param ?array $proposedPlan    The plan awaiting user approval
      */
     public function __construct(
-        public array  $messages = [],
-        public ?array $pendingQuestion = null,
-        public ?array $proposedPlan = null,
-        public int    $turns = 0,
+        public private(set) array  $messages = [],
+        public private(set) ?array $pendingQuestion = null,
+        public private(set) ?array $proposedPlan = null,
+        public private(set) int    $turns = 0,
     ) {
     }
 
@@ -90,6 +90,17 @@ final class WizardState
         $clone = clone $this;
         $clone->pendingQuestion = null;
         $clone->proposedPlan = null;
+
+        return $clone;
+    }
+
+    public function withSystemPrompt(string $systemPrompt): self
+    {
+        $clone = clone $this;
+        $clone->messages = array_merge(
+            [['role' => 'system', 'content' => $systemPrompt]],
+            $this->messages,
+        );
 
         return $clone;
     }

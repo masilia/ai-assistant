@@ -8,17 +8,10 @@ use Locale;
 use Masilia\AiAssistant\DTO\AiError;
 use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\AiSuggestResponse;
-use Masilia\AiAssistant\DTO\SiblingField;
-use Masilia\AiAssistant\AiPromptBuilder;
 use Masilia\AiAssistant\Client\AiClientInterface;
-use Masilia\AiAssistant\DTO\SuggestionEnrichment;
-use Masilia\AiAssistant\Field\FieldType;
-use Masilia\AiAssistant\FieldContextExtractor;
-use Masilia\AiAssistant\FieldFormat;
 use Masilia\AiAssistant\FieldFormatResolver;
-use Masilia\AiAssistant\LanguageNormalizer;
+use Masilia\AiAssistant\SuggestionService;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
-use Masilia\AiAssistant\SystemPromptContext;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,10 +34,8 @@ readonly class AiSuggestController
     public function __construct(
         private AiClientInterface     $aiClient,
         private FieldFormatResolver   $formatResolver,
-        private AiPromptBuilder       $promptBuilder,
         private PermissionResolver    $permissionResolver,
-        private FieldContextExtractor $contextExtractor,
-        private LanguageNormalizer    $languageNormalizer,
+        private SuggestionService     $suggestionService,
         private LoggerInterface       $aiLogger,
     )
     {
@@ -135,7 +126,7 @@ readonly class AiSuggestController
         }
 
         try {
-            $prepared = $this->prepareSuggestion($aiRequest);
+            $prepared = $this->suggestionService->prepare($aiRequest);
             $suggestion = $this->aiClient->suggest($prepared['systemPrompt'], $prepared['userPrompt']);
 
             $response = new AiSuggestResponse($suggestion, $prepared['format']->value);
@@ -167,135 +158,6 @@ readonly class AiSuggestController
         return null;
     }
 
-    /**
-     * Builds the system and user prompts for an AI suggestion request, including
-     * sibling-field context and optional translation handling.
-     *
-     * @return array{systemPrompt: string, userPrompt: string, format: FieldFormat}
-     */
-    private function prepareSuggestion(AiSuggestRequest $aiRequest): array
-    {
-        $enrichment = $this->extractEnrichment($aiRequest);
-
-        return [
-            'systemPrompt' => $this->buildSystemPrompt($aiRequest, $enrichment),
-            'userPrompt'   => $this->buildUserPrompt($aiRequest, $enrichment),
-            'format'       => $enrichment->format,
-        ];
-    }
-
-    /**
-     * Single precomputation pass: resolve language, load content context,
-     * pull sibling fields, decide matrix context, resolve the output format.
-     */
-    private function extractEnrichment(AiSuggestRequest $aiRequest): SuggestionEnrichment
-    {
-        $normalizedLanguage = $this->languageNormalizer->normalize($aiRequest->language);
-
-        $enriched = $this->contextExtractor->extractFromContent($aiRequest, $normalizedLanguage);
-
-        $siblingFields = array_map(
-            static fn(SiblingField $f) => $f->toArray(),
-            $enriched['siblingFields']
-        );
-
-        if (empty($siblingFields) && !empty($aiRequest->siblingFields)) {
-            $siblingFields = $aiRequest->siblingFields;
-        }
-
-        $matrixContext = null;
-        if ($aiRequest->fieldType === FieldType::EZMATRIX && $aiRequest->contentId > 0) {
-            $matrixContext = $this->contextExtractor->extractMatrixContextForRequest($aiRequest, $normalizedLanguage);
-        }
-
-        return new SuggestionEnrichment(
-            normalizedLanguage: $normalizedLanguage,
-            contentType:        $enriched['contentType'],
-            contentTitle:       $enriched['contentTitle'],
-            siblingFields:      $siblingFields,
-            matrixContext:      $matrixContext,
-            format:             $this->formatResolver->resolve($aiRequest->fieldType),
-        );
-    }
-
-    /**
-     * Build the system prompt for the resolved enrichment.
-     */
-    private function buildSystemPrompt(AiSuggestRequest $aiRequest, SuggestionEnrichment $enrichment): string
-    {
-        return $this->promptBuilder->buildSystemPrompt(
-            new SystemPromptContext(
-                format:        $enrichment->format,
-                fieldName:     $aiRequest->fieldName,
-                contentType:   $enrichment->contentType,
-                language:      $enrichment->normalizedLanguage,
-                contentTitle:  $enrichment->contentTitle,
-                siblingFields: $enrichment->siblingFields,
-                fieldType:     $aiRequest->fieldType,
-                subFieldKey:   $aiRequest->subFieldKey,
-                metaKeys:      $aiRequest->metaKeys,
-            ),
-            $this->languageNormalizer,
-            $enrichment->matrixContext,
-        );
-    }
-
-    /**
-     * Build the user prompt: plain prompt + optional translation
-     * (matrix-aware). The current value is cleared when a translation
-     * source is found, so the AI doesn't see both the source and the
-     * editor's draft at once.
-     */
-    private function buildUserPrompt(AiSuggestRequest $aiRequest, SuggestionEnrichment $enrichment): string
-    {
-        $userPromptText = $aiRequest->prompt;
-        $currentValue = $aiRequest->currentValue;
-
-        if ($aiRequest->sourceLanguage === '') {
-            return $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
-        }
-
-        $normalizedSourceLang = $this->languageNormalizer->normalize($aiRequest->sourceLanguage);
-        $sourceValue = $this->contextExtractor->getFieldValueInLanguage(
-            $aiRequest,
-            $normalizedSourceLang,
-            $enrichment->normalizedLanguage,
-        );
-
-        if ($sourceValue === null || $sourceValue->value === '') {
-            return $this->promptBuilder->enrichUserPrompt($userPromptText, $currentValue);
-        }
-
-        $userPromptText = $aiRequest->fieldType === FieldType::EZMATRIX
-            ? $this->translationMatrixPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue->value)
-            : $this->translationTextPrompt($normalizedSourceLang, $enrichment->normalizedLanguage, $sourceValue->value);
-
-        return $this->promptBuilder->enrichUserPrompt($userPromptText, '');
-    }
-
-    private function translationTextPrompt(string $from, string $to, string $sourceValue): string
-    {
-        return sprintf(
-            "Translate the following %s content to %s. Only output the translated text, "
-            . "nothing else. Preserve the tone and style of the original.\n\n%s",
-            $from,
-            $to,
-            $sourceValue
-        );
-    }
-
-    private function translationMatrixPrompt(string $from, string $to, string $sourceValue): string
-    {
-        return sprintf(
-            "Translate each cell of the following matrix from %s to %s. "
-          . "Output ONLY a JSON object with shape {\"rows\": [{\"cells\": {<col_id>: \"<translated_value>\"}}, ...]}. "
-          . "Preserve the original row order. Plain text only in each cell.\n\n%s",
-            $from,
-            $to,
-            $sourceValue
-        );
-    }
-
     #[Route('/admin/api/ai/suggest/stream', name: 'app.ai.suggest.stream', methods: ['POST'])]
     public function suggestStream(Request $request): StreamedResponse
     {
@@ -320,7 +182,7 @@ readonly class AiSuggestController
         }
 
         try {
-            $prepared = $this->prepareSuggestion($aiRequest);
+            $prepared = $this->suggestionService->prepare($aiRequest);
         } catch (\RuntimeException $e) {
             $this->aiLogger->error('[AI] Streaming preparation failed: {message}', [
                 'message' => $e->getMessage(),

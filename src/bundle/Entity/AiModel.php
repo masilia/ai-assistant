@@ -107,4 +107,20 @@ class AiModel
         $this->supportsImage = $supportsImage;
         return $this;
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'providerId' => $this->provider?->getId(),
+            'name' => $this->name,
+            'identifier' => $this->identifier,
+            'temperature' => $this->temperature,
+            'maxTokens' => $this->maxTokens,
+            'supportsImage' => $this->supportsImage,
+        ];
+    }
 }

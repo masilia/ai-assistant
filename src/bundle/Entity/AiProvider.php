@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\Bundle\AiAssistant\Entity;
 
+use Masilia\Bundle\AiAssistant\ApiKey;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -223,5 +224,22 @@ class AiProvider
         }
 
         return $this;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'identifier' => $this->identifier,
+            'siteaccesses' => $this->getSiteaccesses(),
+            'apiKey' => $this->apiKey !== null && $this->apiKey !== '' ? ApiKey::MASK : null,
+            'apiUrl' => $this->apiUrl,
+            'activeChatModelId' => $this->activeChatModel?->getId(),
+            'activeImageModelId' => $this->activeImageModel?->getId(),
+        ];
     }
 }

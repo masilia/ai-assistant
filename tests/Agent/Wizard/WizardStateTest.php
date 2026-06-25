@@ -111,13 +111,7 @@ final class WizardStateTest extends TestCase
         $state = new WizardState();
 
         $state = $state->withUserMessage('');
-        $messages = array_merge(
-            [['role' => 'system', 'content' => 'test']],
-            $state->messages,
-        );
-        $clone = clone $state;
-        $clone->messages = $messages;
-        $state = $clone;
+        $state = $state->withSystemPrompt('test');
 
         for ($i = 0; $i < 21; $i++) {
             $state = $state->withUserMessage("msg $i");

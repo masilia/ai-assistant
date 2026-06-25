@@ -83,15 +83,15 @@ readonly class ProviderManager
 
     public function setChatModel(int $providerId, ?int $modelId): AiProvider
     {
-        return $this->setModel($providerId, $modelId, 'setActiveChatModel');
+        return $this->setModel($providerId, $modelId, fn(AiProvider $p, ?AiModel $m) => $p->setActiveChatModel($m));
     }
 
     public function setImageModel(int $providerId, ?int $modelId): AiProvider
     {
-        return $this->setModel($providerId, $modelId, 'setActiveImageModel');
+        return $this->setModel($providerId, $modelId, fn(AiProvider $p, ?AiModel $m) => $p->setActiveImageModel($m));
     }
 
-    private function setModel(int $providerId, ?int $modelId, string $setter): AiProvider
+    private function setModel(int $providerId, ?int $modelId, \Closure $setter): AiProvider
     {
         $provider = $this->providerRepository->find($providerId)
             ?? throw new \InvalidArgumentException('Provider not found.');
@@ -105,9 +105,9 @@ readonly class ProviderManager
                 throw new \InvalidArgumentException('Model does not belong to this provider.');
             }
 
-            $provider->$setter($model);
+            $setter($provider, $model);
         } else {
-            $provider->$setter(null);
+            $setter($provider, null);
         }
 
         $this->entityManager->flush();

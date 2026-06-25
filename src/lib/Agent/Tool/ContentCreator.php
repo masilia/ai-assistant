@@ -21,7 +21,7 @@ use RuntimeException;
  * Extracted from the previous {@see ContentPublishHelper} monolith to keep
  * creation responsibilities separate from update responsibilities.
  */
-final readonly class ContentCreator
+final readonly class ContentCreator implements ContentFactoryInterface
 {
     public function __construct(
         private Repository $repository,

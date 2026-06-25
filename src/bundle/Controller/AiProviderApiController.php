@@ -7,7 +7,6 @@ namespace Masilia\Bundle\AiAssistant\Controller;
 use Ibexa\Bundle\Core\Controller;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Ibexa\Core\MVC\Symfony\SiteAccess\SiteAccessServiceInterface;
-use Masilia\Bundle\AiAssistant\ApiKey;
 use Masilia\Bundle\AiAssistant\Entity\AiProvider;
 use Masilia\Bundle\AiAssistant\Repository\AiProviderRepository;
 use Masilia\Bundle\AiAssistant\Service\HealthChecker;
@@ -44,32 +43,14 @@ class AiProviderApiController extends Controller
 
         $providers = $this->providerRepository->findAll();
 
-        $providersData = array_map(static function (AiProvider $provider) {
-            return [
-                'id' => $provider->getId(),
-                'name' => $provider->getName(),
-                'identifier' => $provider->getIdentifier(),
-                'siteaccesses' => $provider->getSiteaccesses(),
-                'apiKey' => $provider->getApiKey() ? ApiKey::MASK : null,
-                'apiUrl' => $provider->getApiUrl(),
-                'activeChatModelId' => $provider->getActiveChatModel()?->getId(),
-                'activeImageModelId' => $provider->getActiveImageModel()?->getId(),
-            ];
-        }, $providers);
+        $providersData = array_map(static fn(AiProvider $provider) => $provider->toArray(), $providers);
 
         $modelsData = [];
         foreach ($providers as $provider) {
             foreach ($provider->getModels() as $model) {
-                $modelsData[] = [
-                    'id' => $model->getId(),
-                    'providerId' => $provider->getId(),
-                    'providerName' => $provider->getName(),
-                    'name' => $model->getName(),
-                    'identifier' => $model->getIdentifier(),
-                    'temperature' => $model->getTemperature(),
-                    'maxTokens' => $model->getMaxTokens(),
-                    'supportsImage' => $model->isSupportsImage(),
-                ];
+                $modelArray = $model->toArray();
+                $modelArray['providerName'] = $provider->getName();
+                $modelsData[] = $modelArray;
             }
         }
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Agent\Worker;
 
-use Closure;
 use Ibexa\Contracts\Core\Repository\ContentTypeService;
 use Ibexa\Contracts\Core\Repository\Exceptions\BadStateException;
 use Ibexa\Contracts\Core\Repository\Exceptions\ContentFieldValidationException;
@@ -15,7 +14,7 @@ use Ibexa\Contracts\Core\Repository\Exceptions\UnauthorizedException;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\ContentInfo;
 use Masilia\AiAssistant\Agent\Orchestrator\WorkerContext;
-use Masilia\AiAssistant\Agent\Tool\ContentCreator;
+use Masilia\AiAssistant\Agent\Tool\ContentFactoryInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
@@ -33,24 +32,14 @@ use Throwable;
  */
 final readonly class PlanExecutor
 {
-    /**
-     * Closure signature: fn(string $contentType, int[] $parentLocationIds, array $fields, string $languageCode): array{content: Content, location: ?Location}
-     */
-    private ?Closure $contentFactory;
-
     public function __construct(
-        private ToolRegistry        $toolRegistry,
-        private LoggerInterface     $aiLogger,
-        private ?Repository         $repository = null,
-        private ?ContentTypeService $contentTypeService = null,
-        ?ContentCreator             $contentCreator = null,
-        ?Closure                    $contentFactory = null,
+        private ToolRegistry             $toolRegistry,
+        private LoggerInterface          $aiLogger,
+        private ?Repository              $repository = null,
+        private ?ContentTypeService      $contentTypeService = null,
+        private ?ContentFactoryInterface $contentFactory = null,
     )
     {
-        $this->contentFactory = $contentFactory
-            ?? ($contentCreator !== null
-                ? static fn(string $type, array $parents, array $fields, string $lang): array => $contentCreator->createAndPublish($type, $parents, $fields, $lang)
-                : null);
     }
 
     public function execute(Plan $plan, ?WorkerContext $context = null): ExecutionResult
@@ -176,7 +165,7 @@ final readonly class PlanExecutor
             ]);
 
             try {
-                $result = ($this->contentFactory)(
+                $result = $this->contentFactory->createAndPublish(
                     $itemType,
                     [$folderLocationId],
                     $fields,

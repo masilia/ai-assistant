@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Tests\Agent\Worker;
 
+use Masilia\AiAssistant\Agent\Tool\ContentFactoryInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolRegistry;
@@ -198,7 +199,6 @@ final class PlanExecutorTest extends TestCase
             ['id', 105],
             ['contentInfo', $contentInfo],
         ]);
-        $parentLocation->id = 105;
         $locationService->method('loadLocation')->with(105)->willReturn($parentLocation);
 
         // Make loadContent throw to force the catch branch
@@ -238,12 +238,22 @@ final class PlanExecutorTest extends TestCase
         $itemContent2->method('__get')->willReturnCallback(fn (string $name) => $name === 'id' ? 401 : null);
 
         $callCount = 0;
-        $contentFactory = static function (string $type, array $parentIds, array $attrs, string $lang) use (&$callCount, $itemContent1, $itemContent2): array {
-            $callCount++;
-            return [
-                'content' => $callCount === 1 ? $itemContent1 : $itemContent2,
-                'location' => null,
-            ];
+        $contentFactory = new class($callCount, $itemContent1, $itemContent2) implements ContentFactoryInterface {
+            private int $callCount = 0;
+            public function __construct(
+                private int $initialCount,
+                private $itemContent1,
+                private $itemContent2,
+            ) {}
+            public function createAndPublish(string $contentTypeIdentifier, array $parentLocationIds, array $attributes, string $languageCode): array
+            {
+                $this->callCount++;
+                return [
+                    'content' => $this->callCount === 1 ? $this->itemContent1 : $this->itemContent2,
+                    'location' => null,
+                ];
+            }
+            public function getCallCount(): int { return $this->callCount; }
         };
 
         $executor = new PlanExecutor(
@@ -251,7 +261,6 @@ final class PlanExecutorTest extends TestCase
             $logger,
             $repository,
             $contentTypeService,
-            null,
             $contentFactory,
         );
 
@@ -266,7 +275,7 @@ final class PlanExecutorTest extends TestCase
 
         self::assertTrue($result->success, $result->message);
         self::assertSame([400, 401], $result->data['item_ids']);
-        self::assertSame(2, $callCount);
+        self::assertSame(2, $contentFactory->getCallCount());
     }
 
     public function testExecuteCreateItemsFailsWhenExecutorNotConfigured(): void
@@ -354,6 +363,7 @@ final class PlanExecutorTest extends TestCase
             };
         });
         $contentInfo->method('getMainLocation')->willReturn($parentLocation);
+        $contentInfo->method('getContentType')->willReturn($pageType);
         $contentService->method('loadContentInfo')->with(200)->willReturn($contentInfo);
 
         $parentLocation->method('__get')->willReturnMap([['id', 105]]);
@@ -363,9 +373,14 @@ final class PlanExecutorTest extends TestCase
         $pageType->method('getFieldDefinitions')->willReturn($fieldDefCollection);
         $contentTypeService->method('loadContentType')->with(42)->willReturn($pageType);
 
-        $dummyFactory = static fn (): array => ['content' => null, 'location' => null];
+        $dummyFactory = new class implements ContentFactoryInterface {
+            public function createAndPublish(string $contentTypeIdentifier, array $parentLocationIds, array $attributes, string $languageCode): array
+            {
+                return ['content' => null, 'location' => null];
+            }
+        };
 
-        $executor = new PlanExecutor($registry, $logger, $repository, $contentTypeService, null, $dummyFactory);
+        $executor = new PlanExecutor($registry, $logger, $repository, $contentTypeService, $dummyFactory);
 
         $result = $executor->execute(new Plan(
             intent: Plan::INTENT_CREATE_ITEMS,
@@ -419,6 +434,7 @@ final class PlanExecutorTest extends TestCase
             };
         });
         $contentInfo->method('getMainLocation')->willReturn($parentLocation);
+        $contentInfo->method('getContentType')->willReturn($pageType);
         $contentService->method('loadContentInfo')->willReturnMap([
             [200, $contentInfo],
         ]);
@@ -469,12 +485,15 @@ final class PlanExecutorTest extends TestCase
         $itemContent = $this->createMock(\Ibexa\Contracts\Core\Repository\Values\Content\Content::class);
         $itemContent->method('__get')->willReturnCallback(fn (string $name) => $name === 'id' ? 500 : null);
 
-        $contentFactory = static fn (): array => [
-            'content' => $itemContent,
-            'location' => null,
-        ];
+        $contentFactory = new class($itemContent) implements ContentFactoryInterface {
+            public function __construct(private $itemContent) {}
+            public function createAndPublish(string $contentTypeIdentifier, array $parentLocationIds, array $attributes, string $languageCode): array
+            {
+                return ['content' => $this->itemContent, 'location' => null];
+            }
+        };
 
-        $executor = new PlanExecutor($registry, $logger, $repository, $contentTypeService, null, $contentFactory);
+        $executor = new PlanExecutor($registry, $logger, $repository, $contentTypeService, $contentFactory);
 
         $result = $executor->execute(new Plan(
             intent: Plan::INTENT_CREATE_ITEMS,

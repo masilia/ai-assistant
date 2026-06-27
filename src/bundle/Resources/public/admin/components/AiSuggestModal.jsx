@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { SUGGEST_MODE, applyQuickAction, notify, cleanErrorMessage } from './ai-settings/constants.js';
 import { AI_ROUTES } from './ai-settings/api-routes.js';
@@ -45,9 +45,32 @@ function AiSuggestModal() {
     const [availableLanguages, setAvailableLanguages] = useState(/** @type {Array<{code: string, name: string}>} */ ([]));
     const [imageGenLoading, setImageGenLoading] = useState(false);
     const [imageGenResult, setImageGenResult] = useState(/** @type {{ imageData: string, mimeType: string } | null} */ (null));
+    const [imageGenElapsed, setImageGenElapsed] = useState(0);
+    const imageGenAbortRef = useRef(null);
+    const imageGenTimerRef = useRef(null);
+    const [recentPrompts, setRecentPrompts] = useState(() => {
+        try {
+            const stored = localStorage.getItem('ai-suggest-recent-prompts');
+            return stored ? JSON.parse(stored) : [];
+        } catch { return []; }
+    });
+
+    const saveRecentPrompt = useCallback((text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        setRecentPrompts((prev) => {
+            const filtered = prev.filter(p => p !== trimmed);
+            const next = [trimmed, ...filtered].slice(0, 8);
+            try { localStorage.setItem('ai-suggest-recent-prompts', JSON.stringify(next)); } catch {}
+            return next;
+        });
+    }, []);
 
     const promptRef = useRef(null);
     const onApplyRef = useRef(null);
+    const onUndoRef = useRef(null);
+    const [undoSnapshot, setUndoSnapshot] = useState(null);
+    const undoTimerRef = useRef(null);
 
     const stream = useAiStream(fieldContext, prompt, sourceLanguage);
 
@@ -68,6 +91,7 @@ function AiSuggestModal() {
                 contentId: detail.contentId || '',
             });
             onApplyRef.current = detail.onApply;
+            onUndoRef.current = detail.onUndo || null;
             setOpen(true);
             setPrompt('');
             setMode(SUGGEST_MODE.REPLACE);
@@ -126,25 +150,47 @@ function AiSuggestModal() {
         }
     }, [open]);
 
-    // Close on Escape
+    // Close on Escape — warn if there's an unsaved suggestion
     useEffect(() => {
         if (!open) return;
         const handler = (e) => {
             if (e.key === 'Escape') {
-                setOpen(false);
+                if (stream.suggestion && !undoSnapshot) {
+                    if (window.confirm('You have an unsaved AI suggestion. Discard it and close?')) {
+                        setOpen(false);
+                    }
+                } else {
+                    setOpen(false);
+                }
             }
         };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
-    }, [open]);
+    }, [open, stream.suggestion, undoSnapshot]);
 
     const handleGenerate = useCallback(() => {
         if (stream.streaming) {
             stream.stop();
         } else {
+            saveRecentPrompt(prompt);
             stream.start();
         }
-    }, [stream]);
+    }, [stream, prompt, saveRecentPrompt]);
+
+    const dismissUndo = useCallback(() => {
+        clearTimeout(undoTimerRef.current);
+        setUndoSnapshot(null);
+        setOpen(false);
+    }, []);
+
+    const handleUndo = useCallback(() => {
+        if (undoSnapshot && onUndoRef.current) {
+            onUndoRef.current(undoSnapshot);
+        }
+        clearTimeout(undoTimerRef.current);
+        setUndoSnapshot(null);
+        setOpen(false);
+    }, [undoSnapshot]);
 
     const handleApply = useCallback(() => {
         // Image generation: inject the generated image into the file picker
@@ -164,8 +210,15 @@ function AiSuggestModal() {
             stream.setError(result.error || 'Failed to apply the suggestion.');
             return;
         }
-        setOpen(false);
-    }, [stream, mode, imageGenResult]);
+
+        if (result?.snapshot && onUndoRef.current) {
+            setUndoSnapshot(result.snapshot);
+            clearTimeout(undoTimerRef.current);
+            undoTimerRef.current = setTimeout(dismissUndo, 5000);
+        } else {
+            setOpen(false);
+        }
+    }, [stream, mode, imageGenResult, dismissUndo]);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -178,16 +231,43 @@ function AiSuggestModal() {
         }
     }, [stream.suggestion, imageGenResult, handleApply, handleGenerate]);
 
+    const cancelImageGen = useCallback(() => {
+        if (imageGenAbortRef.current) {
+            imageGenAbortRef.current.abort();
+            imageGenAbortRef.current = null;
+        }
+        clearInterval(imageGenTimerRef.current);
+        setImageGenLoading(false);
+        setImageGenElapsed(0);
+    }, []);
+
+    const imageGenStatusCopy = useMemo(() => {
+        if (!imageGenLoading) return '';
+        if (imageGenElapsed < 5) return 'Sending request…';
+        if (imageGenElapsed < 12) return 'Generating image…';
+        if (imageGenElapsed < 22) return 'Rendering details…';
+        return 'Almost there…';
+    }, [imageGenLoading, imageGenElapsed]);
+
     const handleImageGeneration = useCallback(async (selectedAspectRatio) => {
         setImageGenLoading(true);
         setImageGenResult(null);
+        setImageGenElapsed(0);
         stream.setError('');
+
+        const controller = new AbortController();
+        imageGenAbortRef.current = controller;
+
+        imageGenTimerRef.current = setInterval(() => {
+            setImageGenElapsed((s) => s + 1);
+        }, 1000);
 
         const userPrompt = prompt.trim() || 'Generate a relevant image for this content';
 
         try {
             const response = await fetch(AI_ROUTES.generateImage, {
                 method: 'POST',
+                signal: controller.signal,
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
@@ -218,8 +298,12 @@ function AiSuggestModal() {
                 mimeType: data.mimeType || 'image/png',
             });
         } catch (err) {
-            stream.setError(cleanErrorMessage(err.message || 'Image generation failed.'));
+            if (err.name !== 'AbortError') {
+                stream.setError(cleanErrorMessage(err.message || 'Image generation failed.'));
+            }
         } finally {
+            clearInterval(imageGenTimerRef.current);
+            imageGenAbortRef.current = null;
             setImageGenLoading(false);
         }
     }, [prompt, fieldContext, stream]);
@@ -304,6 +388,7 @@ function AiSuggestModal() {
                                 onChange={handlePromptChange}
                                 disabled={stream.loading}
                                 inputRef={promptRef}
+                                recentPrompts={recentPrompts}
                             />
 
                             <QuickActions
@@ -345,7 +430,45 @@ function AiSuggestModal() {
                             />
                         </div>
 
+                        {undoSnapshot && (
+                            <div className="ai-suggest-modal__undo-banner">
+                                <span>Applied to field.</span>
+                                <button
+                                    type="button"
+                                    className="ai-suggest-modal__undo-btn"
+                                    onClick={handleUndo}
+                                >
+                                    Undo
+                                </button>
+                                <button
+                                    type="button"
+                                    className="ai-suggest-modal__undo-dismiss"
+                                    onClick={dismissUndo}
+                                    aria-label="Dismiss"
+                                >✕</button>
+                            </div>
+                        )}
+
+                        {imageGenLoading && (
+                            <div className="ai-suggest-modal__image-gen-status">
+                                <span className="ai-suggest-modal__image-gen-copy">{imageGenStatusCopy}</span>
+                                <span className="ai-suggest-modal__image-gen-elapsed">{imageGenElapsed}s</span>
+                                <button
+                                    type="button"
+                                    className="ai-suggest-modal__image-gen-cancel"
+                                    onClick={cancelImageGen}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+
                         <div className="modal-footer">
+                            <span className="ai-suggest-modal__token-hint">
+                                {prompt.trim() && !stream.streaming && !stream.loading && !imageGenLoading
+                                    ? `~${Math.max(1, Math.ceil(prompt.trim().length / 4))} tokens`
+                                    : ''}
+                            </span>
                             <button
                                 className="ibexa-btn ibexa-btn--tertiary"
                                 onClick={() => setOpen(false)}
@@ -372,6 +495,7 @@ function AiSuggestModal() {
                                     <>
                                         <SparklesIcon size={16} className="ibexa-icon--small" />
                                         <span className="ibexa-btn__label">{stream.suggestion || imageGenResult ? 'Regenerate' : 'Generate'}</span>
+                                        <kbd className="ai-suggest-modal__kbd-hint">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+↵</kbd>
                                     </>
                                 )}
                             </button>

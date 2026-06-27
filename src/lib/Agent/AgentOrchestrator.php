@@ -148,7 +148,7 @@ final readonly class AgentOrchestrator
                 ]);
                 $this->wizardStore->clear($userId);
 
-                yield ['type' => 'error', 'message' => 'The AI service encountered an error. Please try again later.'];
+                yield ['type' => 'error', 'error_type' => 'service_error', 'message' => 'The AI service encountered an error. Please try again later.'];
 
                 return;
             }
@@ -260,7 +260,7 @@ final readonly class AgentOrchestrator
         ]);
         $this->wizardStore->clear($userId);
 
-        yield ['type' => 'error', 'message' => 'I got stuck after several attempts. Please rephrase your request.'];
+        yield ['type' => 'error', 'error_type' => 'loop_exhausted', 'message' => 'I got stuck after several attempts. Please try rephrasing your request.'];
     }
 
     private function indexTools(): array

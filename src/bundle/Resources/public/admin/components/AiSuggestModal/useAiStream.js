@@ -1,17 +1,17 @@
 import { useCallback, useRef, useState } from 'react';
 import { AI_ROUTES } from '../ai-settings/api-routes.js';
+import { useSSEStream } from '../shared/useSSEStream.js';
 
 /**
  * @typedef {import('../ai-settings/types.js').FieldContext} FieldContext
  */
 
 /**
- * Owns the SSE streaming lifecycle: fetch + ReadableStream reader +
- * TextDecoder + line buffering + abort.
+ * Owns the SSE streaming lifecycle for AI field suggestions.
  *
- * Returns reactive state (suggestion, streaming, loading, error)
- * and imperative start()/stop()/clear() methods. The shell component
- * stays pure presentational.
+ * Delegates the low-level protocol (chunked decode, line buffering, UTF-8
+ * tail flush) to the shared useSSEStream hook. This hook manages only the
+ * suggestion-specific reactive state on top.
  *
  * @param {FieldContext|null} fieldContext   Field context payload (null until modal opens)
  * @param {string}            prompt         The current prompt text
@@ -33,14 +33,51 @@ export function useAiStream(fieldContext, prompt, sourceLanguage) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const abortControllerRef = useRef(null);
+    const activeRef = useRef(false);
 
-    const stop = useCallback(() => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
+    const handleEvent = useCallback((event) => {
+        if (!activeRef.current) return;
+
+        if (event.error) {
+            setError(event.error.message || 'An error occurred');
+            setStreaming(false);
+            return;
+        }
+
+        if (event.token) {
+            setSuggestion((prev) => prev + event.token);
+        }
+
+        if (event.done) {
+            setStreaming(false);
         }
     }, []);
+
+    const handleDone = useCallback(() => {
+        if (!activeRef.current) return;
+        setStreaming(false);
+        setLoading(false);
+    }, []);
+
+    const handleError = useCallback((message) => {
+        if (!activeRef.current) return;
+        setError(message);
+        setStreaming(false);
+        setLoading(false);
+    }, []);
+
+    const { stream, cancel } = useSSEStream({
+        onEvent: handleEvent,
+        onDone: handleDone,
+        onError: handleError,
+    });
+
+    const stop = useCallback(() => {
+        activeRef.current = false;
+        cancel();
+        setStreaming(false);
+        setLoading(false);
+    }, [cancel]);
 
     const clear = useCallback(() => {
         setSuggestion('');
@@ -56,117 +93,33 @@ export function useAiStream(fieldContext, prompt, sourceLanguage) {
     const start = useCallback(async () => {
         if (!prompt.trim() || !fieldContext) return;
 
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        abortControllerRef.current = new AbortController();
-
+        activeRef.current = true;
         setLoading(true);
         setStreaming(true);
         setError('');
         setSuggestion('');
 
-        try {
-            const res = await fetch(AI_ROUTES.suggestStream, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fieldType: fieldContext.fieldType,
-                    prompt: prompt.trim(),
-                    currentValue: fieldContext.currentValue,
-                    contentType: fieldContext.contentTypeName,
-                    fieldName: fieldContext.fieldName,
-                    language: fieldContext.language,
-                    contentTitle: fieldContext.contentTitle,
-                    siblingFields: fieldContext.siblingFields,
-                    contentId: fieldContext.contentId,
-                    sourceLanguage: sourceLanguage,
-                    subFieldKey: fieldContext.subFieldKey,
-                    metaKeys: fieldContext.metaKeys,
-                }),
-                signal: abortControllerRef.current.signal,
-            });
+        await stream(AI_ROUTES.suggestStream, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fieldType: fieldContext.fieldType,
+                prompt: prompt.trim(),
+                currentValue: fieldContext.currentValue,
+                contentType: fieldContext.contentTypeName,
+                fieldName: fieldContext.fieldName,
+                language: fieldContext.language,
+                contentTitle: fieldContext.contentTitle,
+                siblingFields: fieldContext.siblingFields,
+                contentId: fieldContext.contentId,
+                sourceLanguage: sourceLanguage,
+                subFieldKey: fieldContext.subFieldKey,
+                metaKeys: fieldContext.metaKeys,
+            }),
+        });
 
-            if (!res.ok) {
-                const data = await res.json();
-                const errorMessage = data.error?.message
-                    || (typeof data.error === 'string' ? data.error : 'An error occurred');
-                setError(errorMessage);
-                setStreaming(false);
-                setLoading(false);
-                return;
-            }
-
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            const processLines = (text) => {
-                if (!text) return;
-                const lines = text.split('\n');
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed.startsWith('data: ')) continue;
-
-                    const jsonStr = trimmed.slice(6);
-                    if (!jsonStr) continue;
-
-                    try {
-                        const data = JSON.parse(jsonStr);
-
-                        if (data.error) {
-                            const errorMessage = data.error.message || 'An error occurred';
-                            setError(errorMessage);
-                            setStreaming(false);
-                            return;
-                        }
-
-                        if (data.token) {
-                            setSuggestion((prev) => prev + data.token);
-                        }
-
-                        if (data.done) {
-                            setStreaming(false);
-                            return;
-                        }
-                    } catch (e) {
-                        // Skip malformed JSON lines
-                    }
-                }
-            };
-
-            let streamDone = false;
-
-            while (!streamDone) {
-                const { done, value } = await reader.read();
-
-                if (done) {
-                    // Flush any bytes still held by the decoder (e.g. a trailing
-                    // multi-byte UTF-8 sequence split across chunks) so the last
-                    // characters of non-ASCII content are not silently dropped.
-                    buffer += decoder.decode();
-                    processLines(buffer);
-                    break;
-                }
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                processLines(lines.join('\n'));
-            }
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                // Stream was cancelled, ignore
-            } else {
-                setError(err.message || 'Network error');
-                setStreaming(false);
-            }
-        } finally {
-            setLoading(false);
-            setStreaming(false);
-            abortControllerRef.current = null;
-        }
-    }, [fieldContext, prompt, sourceLanguage]);
+        activeRef.current = false;
+    }, [fieldContext, prompt, sourceLanguage, stream]);
 
     return { suggestion, streaming, loading, error, start, stop, clear, setError: setErrorMessage };
 }

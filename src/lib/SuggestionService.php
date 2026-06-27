@@ -8,9 +8,6 @@ use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\SiblingField;
 use Masilia\AiAssistant\DTO\SuggestionEnrichment;
 use Masilia\AiAssistant\Field\FieldType;
-use Masilia\AiAssistant\FieldFormat;
-use Masilia\AiAssistant\FieldFormatResolver;
-use Masilia\AiAssistant\SystemPromptContext;
 
 /**
  * Prepares system and user prompts for AI suggestion requests.
@@ -29,9 +26,6 @@ readonly class SuggestionService
     {
     }
 
-    /**
-     * @return array{systemPrompt: string, userPrompt: string, format: FieldFormat}
-     */
     public function prepare(AiSuggestRequest $aiRequest): array
     {
         $enrichment = $this->extractEnrichment($aiRequest);

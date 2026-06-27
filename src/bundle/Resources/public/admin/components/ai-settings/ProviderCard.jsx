@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getProviderLabel } from './constants.js';
 import { ChevronIcon, BotIcon } from './icons.jsx';
 import EmptyState from './EmptyState.jsx';
@@ -25,6 +25,7 @@ export default function ProviderCard({
     onDeleteModel,
     onAddModel,
 }) {
+    const [apiKeyRevealed, setApiKeyRevealed] = useState(false);
     const providerModels = models.filter(m => m.providerId === provider.id);
 
     const matchesCurrentScope = provider.siteaccesses.includes(currentSiteaccess);
@@ -65,7 +66,16 @@ export default function ProviderCard({
                 />
 
                 <div className="ai-provider-card__info">
-                    <div className="ai-provider-card__name">{provider.name}</div>
+                    <div className="ai-provider-card__name">
+                        {provider.name}
+                        {testResult && (
+                            <span
+                                className={`ai-provider-card__health-dot ${testResult.success ? 'ai-provider-card__health-dot--ok' : 'ai-provider-card__health-dot--fail'}`}
+                                title={testResult.success ? 'Connection healthy' : 'Connection failed'}
+                                aria-label={testResult.success ? 'Connection healthy' : 'Connection failed'}
+                            />
+                        )}
+                    </div>
                     <div className="ai-provider-card__meta">
                         <span className="ai-provider-card__type-badge">{getProviderLabel(provider.identifier)}</span>
                         <span className={`ai-provider-card__scope-badge ${provider.siteaccesses.length > 0 ? 'ai-provider-card__scope-badge--scoped' : ''}`}>
@@ -115,7 +125,24 @@ export default function ProviderCard({
                     {/* Details row */}
                     <div className="ai-provider-card__details">
                         <span><strong>Endpoint:</strong> {provider.apiUrl || 'Default'}</span>
-                        <span><strong>API Key:</strong> {provider.apiKey || 'Not set'}</span>
+                        <span>
+                            <strong>API Key:</strong>{' '}
+                            {provider.apiKey ? (
+                                <>
+                                    <span className="ai-provider-card__api-key-value">
+                                        {apiKeyRevealed ? provider.apiKey : '••••••••••••'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="ai-provider-card__api-key-toggle"
+                                        onClick={() => setApiKeyRevealed(v => !v)}
+                                        aria-label={apiKeyRevealed ? 'Hide API key' : 'Show API key'}
+                                    >
+                                        {apiKeyRevealed ? 'Hide' : 'Show'}
+                                    </button>
+                                </>
+                            ) : 'Not set'}
+                        </span>
                     </div>
 
                     {/* Configuration section */}

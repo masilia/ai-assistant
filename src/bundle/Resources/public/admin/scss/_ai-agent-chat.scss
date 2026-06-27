@@ -1,24 +1,4 @@
-// Design tokens (matches DESIGN.md)
-$color-primary: #4a5af0;
-$color-primary-hover: #3a4ae0;
-$color-on-primary: #ffffff;
-$color-ink: #1a1a1a;
-$color-ink-muted: #6b7280;
-$color-ink-subtle: #9ca3af;
-$color-canvas: #ffffff;
-$color-surface-1: #fafafa;
-$color-surface-2: #f3f4f6;
-$color-surface-3: #e5e7eb;
-$color-hairline: #e0e0e0;
-$color-error-surface: #fef2f2;
-$color-error-border: #fecaca;
-$color-error-text: #991b1b;
-$color-plan-bg: #f0f7ff;
-$color-plan-border: #bfdbfe;
-$color-plan-text: #1e40af;
-$color-plan-desc: #3b82f6;
-$color-plan-step-border: #e0e7ff;
-$color-plan-confirm: #10b981;
+@import 'ai-shared-tokens';
 
 .agent-chat {
     position: fixed;
@@ -658,6 +638,42 @@ $color-plan-confirm: #10b981;
         word-break: break-word;
     }
 
+    // Skeleton loader for history fetch
+    &__skeleton {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+    }
+
+    &__skeleton-bubble {
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(
+            90deg,
+            $color-surface-2 25%,
+            $color-surface-1 50%,
+            $color-surface-2 75%
+        );
+        background-size: 200% 100%;
+        animation: agent-skeleton-shimmer 1.4s ease infinite;
+
+        &--agent {
+            width: 75%;
+            align-self: flex-start;
+        }
+
+        &--user {
+            width: 55%;
+            align-self: flex-end;
+        }
+
+        &--short {
+            width: 45%;
+            height: 28px;
+        }
+    }
+
     // Typing indicator
     &__typing {
         display: flex;
@@ -710,18 +726,29 @@ $color-plan-confirm: #10b981;
         background: $color-surface-1;
         color: $color-ink;
         border: 1px solid $color-hairline;
+        border-left: 3px solid transparent;
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 8px 12px 8px 10px;
         font-size: 13px;
         font-weight: 500;
         cursor: pointer;
         font-family: inherit;
         min-height: 36px;
-        transition: background 0.15s, border-color 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s, border-color 0.15s, transform 0.1s;
 
         &:hover:not(:disabled) {
             background: $color-surface-2;
             border-color: $color-surface-3;
+            border-left-color: $color-primary;
+            transform: translateY(-1px);
+        }
+
+        &:focus-visible {
+            outline: 2px solid $color-primary;
+            outline-offset: 2px;
         }
 
         &:disabled {
@@ -730,8 +757,123 @@ $color-plan-confirm: #10b981;
         }
     }
 
+    // Error recovery actions (loop exhausted / service error)
+    &__error-actions {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__error-hint {
+        font-size: 11px;
+        color: $color-ink-muted;
+        font-style: italic;
+    }
+
+    &__error-btns {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    // Retry button (shown below last error bubble)
+    &__retry-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 6px;
+        padding: 5px 12px;
+        background: $color-error-surface;
+        color: $color-error-text;
+        border: 1px solid $color-error-border;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+
+        &:hover:not(:disabled) {
+            background: darken($color-error-surface, 4%);
+            border-color: $color-error-text;
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        &--secondary {
+            background: $color-surface-2;
+            color: $color-ink-muted;
+            border-color: $color-hairline;
+
+            &:hover:not(:disabled) {
+                background: $color-surface-3;
+                color: $color-ink;
+                border-color: $color-ink-subtle;
+            }
+        }
+    }
+
+    // Slash command dropdown
+    &__slash-menu {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: $color-canvas;
+        border: 1px solid $color-hairline;
+        border-radius: 8px 8px 0 0;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+        z-index: 10;
+    }
+
+    &__slash-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        border-bottom: 1px solid $color-surface-2;
+        cursor: pointer;
+        text-align: left;
+        font-family: inherit;
+        transition: background 0.1s;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &:hover {
+            background: $color-surface-1;
+        }
+    }
+
+    &__slash-cmd {
+        font-size: 13px;
+        font-weight: 600;
+        color: $color-primary;
+        flex-shrink: 0;
+        min-width: 56px;
+    }
+
+    &__slash-desc {
+        font-size: 12px;
+        color: $color-ink-muted;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     // Input area
     &__input-area {
+        position: relative;
         display: flex;
         align-items: flex-end;
         gap: 8px;
@@ -860,6 +1002,11 @@ $color-plan-confirm: #10b981;
 @keyframes agent-chat-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+@keyframes agent-skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 @import 'brain-visualization';

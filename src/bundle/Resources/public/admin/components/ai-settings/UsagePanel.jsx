@@ -21,6 +21,34 @@ const formatInt = (n) => (n ? n.toLocaleString() : '0');
 const formatPct = (success, total) => (total > 0 ? `${Math.round((success / total) * 100)}%` : '—');
 
 /**
+ * Mini sparkline bar chart — renders up to 12 bars from a value array.
+ * Pure SVG, no dependencies. Bars are normalized to the max value.
+ */
+function Sparkline({ values, width = 80, height = 20 }) {
+    if (!values || values.length === 0) return null;
+    const max = Math.max(...values, 1);
+    const barWidth = width / values.length;
+    return (
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="ai-usage__sparkline" aria-hidden="true">
+            {values.map((v, i) => {
+                const h = Math.max(1, (v / max) * height);
+                return (
+                    <rect
+                        key={i}
+                        x={i * barWidth + 0.5}
+                        y={height - h}
+                        width={Math.max(1, barWidth - 1)}
+                        height={h}
+                        rx={1}
+                        className="ai-usage__spark-bar"
+                    />
+                );
+            })}
+        </svg>
+    );
+}
+
+/**
  * UsagePanel — read-only AI telemetry view.
  *
  * Shows three time windows (24h / 7d / 30d) with totals and a
@@ -50,7 +78,16 @@ export default function UsagePanel() {
     useEffect(() => { fetchData(); }, []);
 
     if (loading && !data) {
-        return <div className="ai-loader" aria-label="Loading AI usage"><div className="ai-loader__spinner" /></div>;
+        return (
+            <div className="ai-skeleton-usage" aria-busy="true" aria-label="Loading AI usage">
+                <div className="ai-skeleton-card ai-skeleton-card--usage">
+                    <div className="ai-skeleton-card__line ai-skeleton-card__line--title" />
+                    {[1, 2, 3, 4].map((n) => (
+                        <div key={n} className="ai-skeleton-card__line ai-skeleton-card__line--row" />
+                    ))}
+                </div>
+            </div>
+        );
     }
 
     if (error) {
@@ -130,6 +167,7 @@ export default function UsagePanel() {
                     <thead>
                         <tr>
                             <th scope="col">Provider</th>
+                            <th scope="col">Trend</th>
                             <th scope="col">Requests</th>
                             <th scope="col">Success</th>
                             <th scope="col">Errors</th>
@@ -137,15 +175,21 @@ export default function UsagePanel() {
                         </tr>
                     </thead>
                     <tbody>
-                        {window.perProvider.map((row) => (
-                            <tr key={row.providerIdentifier}>
-                                <td>{PROVIDER_LABELS[row.providerIdentifier] ?? row.providerIdentifier}</td>
-                                <td>{formatInt(row.total)}</td>
-                                <td>{formatPct(row.success, row.total)}</td>
-                                <td>{formatInt(row.error)}</td>
-                                <td>{formatMs(row.avgLatencyMs)}</td>
-                            </tr>
-                        ))}
+                        {window.perProvider.map((row) => {
+                            const sparkValues = WINDOWS.map(w =>
+                                (data.windows[w.key]?.perProvider || []).find(p => p.providerIdentifier === row.providerIdentifier)?.total || 0
+                            );
+                            return (
+                                <tr key={row.providerIdentifier}>
+                                    <td>{PROVIDER_LABELS[row.providerIdentifier] ?? row.providerIdentifier}</td>
+                                    <td><Sparkline values={sparkValues} /></td>
+                                    <td>{formatInt(row.total)}</td>
+                                    <td>{formatPct(row.success, row.total)}</td>
+                                    <td>{formatInt(row.error)}</td>
+                                    <td>{formatMs(row.avgLatencyMs)}</td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             )}

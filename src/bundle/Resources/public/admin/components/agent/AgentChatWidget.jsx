@@ -1,14 +1,62 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useReducer, useRef, useEffect, useCallback } from 'react';
 import { AI_ROUTES } from '../ai-settings/api-routes.js';
 import { cleanErrorMessage } from '../ai-settings/constants.js';
+import { useSSEStream } from '../shared/useSSEStream.js';
 import MessageBubble from './MessageBubble.jsx';
 import ToolOutput from './ToolOutput.jsx';
 import ActionConfirmDialog from './ActionConfirmDialog.jsx';
 import BrainVisualization from './BrainVisualization.jsx';
 
 /**
- * @typedef {{ role: 'user'|'agent', content: string, timestamp: string, isError?: boolean, options?: Array<{label: string, value: string}>, toolOutputs?: Array<{tool: string, output: object}> }} ChatMessage
+ * @typedef {{ role: 'user'|'agent', content: string, timestamp: string, isError?: boolean, errorType?: string|null, options?: Array<{label: string, value: string}>, toolOutputs?: Array<{tool: string, output: object}> }} ChatMessage
+ * @typedef {{ steps: Array<{tool: string, call_id: string, loading: boolean, result?: object, progressMessage?: string}>, message: string, options?: Array<{label: string, value: string}>, error: boolean, errorType?: string, done: boolean } | null} StreamingState
  */
+
+/**
+ * Reducer for the in-flight streaming bubble state.
+ * All mutations go through dispatch — no more mutable ref + forceRender.
+ */
+function streamingReducer(state, action) {
+    if (action.type === 'START') {
+        return { steps: [], message: '', error: false, errorType: null, done: false };
+    }
+    if (action.type === 'CLEAR') {
+        return null;
+    }
+    if (state === null) return null;
+
+    switch (action.type) {
+        case 'STEP_START':
+            return { ...state, steps: [...state.steps, { tool: action.tool, call_id: action.call_id, loading: true }] };
+        case 'STEP_PROGRESS': {
+            if (state.steps.length === 0) return state;
+            const steps = state.steps.map((s, i) =>
+                i === state.steps.length - 1 ? { ...s, progressMessage: action.message } : s
+            );
+            return { ...state, steps };
+        }
+        case 'STEP_RESULT': {
+            const steps = state.steps.map((s) =>
+                s.call_id === action.call_id
+                    ? { ...s, loading: false, result: action.result, progressMessage: undefined }
+                    : s
+            );
+            return { ...state, steps };
+        }
+        case 'MESSAGE':
+            return { ...state, message: action.message };
+        case 'OPTIONS':
+            return { ...state, message: action.message, options: action.options };
+        case 'ERROR':
+            return { ...state, message: action.message, error: true, errorType: action.errorType || 'service_error' };
+        case 'DONE':
+            return { ...state, done: true };
+        case 'NETWORK_ERROR':
+            return { ...state, message: action.message, error: true, errorType: 'service_error', done: true };
+        default:
+            return state;
+    }
+}
 
 const EXAMPLES = [
     'Create a team page with hero and cards',
@@ -17,19 +65,27 @@ const EXAMPLES = [
     'Undo that last page creation',
 ];
 
+const SLASH_COMMANDS = [
+    { cmd: '/undo',   label: 'Undo last action',     description: 'Revert the most recent agent action' },
+    { cmd: '/blocks', label: 'List block types',     description: 'Show all available block types' },
+    { cmd: '/create', label: 'Create content',       description: 'Start the content creation wizard' },
+    { cmd: '/search', label: 'Search content',       description: 'Search for content across the site' },
+    { cmd: '/clear',  label: 'Clear conversation',   description: 'Start a fresh conversation' },
+];
+
 function AgentChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState(/** @type {ChatMessage[]} */ ([]));
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(true);
     const [confirmAction, setConfirmAction] = useState(null);
     const [streamKey, setStreamKey] = useState(0);
-    const [, forceRender] = useState(0);
+    const [lastFailedInput, setLastFailedInput] = useState('');
+    const [streaming, dispatchStreaming] = useReducer(streamingReducer, null);
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
-    const abortRef = useRef(/** @type {AbortController|null} */ (null));
-    const streamingRef = useRef(/** @type {{ steps: Array<{tool: string, call_id: string, loading: boolean, result?: object, progressMessage?: string}>, message: string, options?: Array<{label: string, value: string}>, error: boolean, done: boolean } | null} */ (null));
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,7 +124,8 @@ function AgentChatWidget() {
                     setMessages(data.messages);
                 }
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setHistoryLoading(false));
     }, []);
 
     const getTimestamp = () => {
@@ -83,179 +140,70 @@ function AgentChatWidget() {
     }, []);
 
     const startStreaming = useCallback(() => {
-        streamingRef.current = { steps: [], message: '', error: false, done: false };
+        dispatchStreaming({ type: 'START' });
         setStreamKey((k) => k + 1);
-        forceRender((v) => v + 1);
     }, []);
 
-    const handleStreamEvent = useCallback((event) => {
-        const s = streamingRef.current;
-        if (!s) return;
-
-        let stepsChanged = false;
-
-        switch (event.type) {
-            case 'step_start':
-                s.steps.push({ tool: event.tool, call_id: event.call_id, loading: true });
-                stepsChanged = true;
-                break;
-            case 'step_progress':
-                if (s.steps.length > 0) {
-                    s.steps[s.steps.length - 1].progressMessage = event.message;
-                    stepsChanged = true;
-                }
-                break;
-            case 'step_result': {
-                const step = s.steps.find((x) => x.call_id === event.call_id);
-                if (step) {
-                    step.loading = false;
-                    step.result = event.result;
-                    step.progressMessage = undefined;
-                    stepsChanged = true;
-                }
-                break;
+    const { stream: sseStream, cancel: sseCancel } = useSSEStream({
+        onEvent: useCallback((event) => {
+            switch (event.type) {
+                case 'step_start':    dispatchStreaming({ type: 'STEP_START', tool: event.tool, call_id: event.call_id }); break;
+                case 'step_progress': dispatchStreaming({ type: 'STEP_PROGRESS', message: event.message }); break;
+                case 'step_result':   dispatchStreaming({ type: 'STEP_RESULT', call_id: event.call_id, result: event.result }); break;
+                case 'message':       dispatchStreaming({ type: 'MESSAGE', message: event.message }); break;
+                case 'options':       dispatchStreaming({ type: 'OPTIONS', message: event.message, options: event.options }); break;
+                case 'error':         dispatchStreaming({ type: 'ERROR', message: event.message, errorType: event.error_type }); break;
+                default: break;
             }
-            case 'message':
-                s.message = event.message;
-                break;
-            case 'options':
-                s.message = event.message;
-                s.options = event.options;
-                break;
-            case 'error':
-                s.message = event.message;
-                s.error = true;
-                break;
-        }
+        }, []),
+        onDone: useCallback(() => {
+            dispatchStreaming({ type: 'DONE' });
+        }, []),
+        onError: useCallback((message) => {
+            dispatchStreaming({ type: 'NETWORK_ERROR', message: cleanErrorMessage(message) });
+        }, []),
+    });
 
-        // Create a new array reference so useMemo in BrainVisualization detects the change
-        if (stepsChanged) {
-            s.steps = [...s.steps];
+    // Commit the streamed message to history when done, then wait for
+    // BrainVisualization's exit animation before clearing (CLEAR unmounts it).
+    const committedRef = useRef(false);
+    useEffect(() => {
+        if (streaming && streaming.done && !committedRef.current) {
+            committedRef.current = true;
+            const s = streaming;
+            const toolOutputs = s.steps.map((step) => ({
+                tool: step.tool,
+                output: step.result?.data || step.result || {},
+            }));
+            addMessage('agent', s.message || 'Done.', {
+                isError: s.error,
+                errorType: s.errorType || null,
+                ...(s.options ? { options: s.options } : {}),
+                ...(toolOutputs.length > 0 ? { toolOutputs } : {}),
+            });
         }
-
-        forceRender((v) => v + 1);
-    }, []);
+        if (!streaming) {
+            committedRef.current = false;
+        }
+    }, [streaming, addMessage]);
 
     const finalizeStreaming = useCallback(() => {
-        const s = streamingRef.current;
-        if (!s) return;
-
-        const toolOutputs = s.steps.map((step) => ({
-            tool: step.tool,
-            output: step.result?.data || step.result || {},
-        }));
-
-        addMessage('agent', s.message || 'Done.', {
-            isError: s.error,
-            ...(s.options ? { options: s.options } : {}),
-            ...(toolOutputs.length > 0 ? { toolOutputs } : {}),
-        });
-
-        streamingRef.current = null;
-        forceRender((v) => v + 1);
-    }, [addMessage]);
-
-    // Mark streaming as done so BrainVisualization transitions through
-    // active → summary → exiting phases before finalizeStreaming unmounts it.
-    const completeStreaming = useCallback(() => {
-        const s = streamingRef.current;
-        if (!s || s.done) return;
-        s.done = true;
-        forceRender((v) => v + 1);
+        dispatchStreaming({ type: 'CLEAR' });
     }, []);
 
     const postChatStream = useCallback(async (body) => {
-        const controller = new AbortController();
-        abortRef.current = controller;
         startStreaming();
+        await sseStream(AI_ROUTES.agentChat, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    }, [startStreaming, sseStream]);
 
-        try {
-            const res = await fetch(AI_ROUTES.agentChat, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-                signal: controller.signal,
-            });
-
-            if (!res.ok) {
-                let errorMsg = 'Request failed';
-                try {
-                    const data = await res.json();
-                    errorMsg = data.error?.message || data.error || errorMsg;
-                } catch {}
-                const s = streamingRef.current;
-                if (s) {
-                    s.message = cleanErrorMessage(errorMsg);
-                    s.error = true;
-                    s.done = true;
-                    forceRender((v) => v + 1);
-                }
-                return;
-            }
-
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                // Process complete SSE events (separated by \n\n)
-                const parts = buffer.split('\n\n');
-                buffer = parts.pop(); // Keep incomplete chunk
-
-                for (const part of parts) {
-                    const trimmed = part.trim();
-                    if (!trimmed) continue;
-
-                    for (const line of trimmed.split('\n')) {
-                        if (!line.startsWith('data: ')) continue;
-
-                        const data = line.slice(6).trim();
-                        if (data === '[DONE]') {
-                            completeStreaming();
-                            return;
-                        }
-
-                        try {
-                            const event = JSON.parse(data);
-                            handleStreamEvent(event);
-                            // Yield to browser so React can render each step incrementally
-                            await new Promise(resolve => setTimeout(resolve, 0));
-                        } catch {
-                            // ignore malformed events
-                        }
-                    }
-                }
-            }
-
-            // If we exit the loop without [DONE], finalize anyway
-            if (streamingRef.current && !streamingRef.current.done) {
-                completeStreaming();
-            }
-        } catch (err) {
-            if (err.name !== 'AbortError') {
-                const s = streamingRef.current;
-                if (s) {
-                    s.message = cleanErrorMessage(err.message || 'Network error');
-                    s.error = true;
-                    forceRender((v) => v + 1);
-                }
-                completeStreaming();
-            }
-        } finally {
-            abortRef.current = null;
-        }
-    }, [startStreaming, handleStreamEvent, completeStreaming]);
-
-    const handleSend = useCallback(async () => {
-        const text = input.trim();
+    const sendMessage = useCallback(async (text) => {
         if (!text || loading) return;
 
-        setInput('');
+        setLastFailedInput('');
         addMessage('user', text);
         setLoading(true);
 
@@ -263,12 +211,20 @@ function AgentChatWidget() {
             await postChatStream({ message: text });
         } catch (err) {
             if (err.name !== 'AbortError') {
+                setLastFailedInput(text);
                 addMessage('agent', cleanErrorMessage(err.message || 'Network error'), { isError: true });
             }
         } finally {
             setLoading(false);
         }
-    }, [input, loading, addMessage, postChatStream]);
+    }, [loading, addMessage, postChatStream]);
+
+    const handleSend = useCallback(async () => {
+        const text = input.trim();
+        if (!text || loading) return;
+        setInput('');
+        await sendMessage(text);
+    }, [input, loading, sendMessage]);
 
     const handleOptionSelect = useCallback(async (value) => {
         if (loading) return;
@@ -287,13 +243,10 @@ function AgentChatWidget() {
     }, [loading, addMessage, postChatStream]);
 
     const handleCancel = useCallback(() => {
-        if (abortRef.current) {
-            abortRef.current.abort();
-            abortRef.current = null;
-            setLoading(false);
-            addMessage('agent', 'Cancelled.');
-        }
-    }, [addMessage]);
+        sseCancel();
+        setLoading(false);
+        addMessage('agent', 'Cancelled.');
+    }, [addMessage, sseCancel]);
 
     const handleUndo = useCallback(() => {
         setConfirmAction({
@@ -344,6 +297,21 @@ function AgentChatWidget() {
         el.style.height = 'auto';
         el.style.height = Math.min(el.scrollHeight, 120) + 'px';
     }, []);
+
+    const slashOpen = input.startsWith('/') && !input.includes(' ') && !loading;
+    const filteredCommands = slashOpen
+        ? SLASH_COMMANDS.filter(c => c.cmd.startsWith(input))
+        : [];
+
+    const handleSlashSelect = useCallback((cmd) => {
+        if (cmd.cmd === '/clear') {
+            handleNewConversation();
+            setInput('');
+        } else {
+            setInput(cmd.cmd + ' ');
+            inputRef.current?.focus();
+        }
+    }, [handleNewConversation]);
 
     const handleExampleClick = useCallback((example) => {
         setInput(example);
@@ -416,7 +384,15 @@ function AgentChatWidget() {
                     </div>
 
                     <div className="agent-chat__messages">
-                        {messages.length === 0 && (
+                        {historyLoading && (
+                            <div className="agent-chat__skeleton" aria-label="Loading conversation history" aria-busy="true">
+                                <div className="agent-chat__skeleton-bubble agent-chat__skeleton-bubble--agent" />
+                                <div className="agent-chat__skeleton-bubble agent-chat__skeleton-bubble--user" />
+                                <div className="agent-chat__skeleton-bubble agent-chat__skeleton-bubble--agent agent-chat__skeleton-bubble--short" />
+                            </div>
+                        )}
+
+                        {!historyLoading && messages.length === 0 && (
                             <div className="agent-chat__empty">
                                 <p>Ask me to create pages, manage content, or list available blocks.</p>
                                 <p className="agent-chat__empty-hint">Try one of these:</p>
@@ -439,6 +415,7 @@ function AgentChatWidget() {
                         {messages.map((msg, index) => {
                             const prevMsg = index > 0 ? messages[index - 1] : null;
                             const isGrouped = prevMsg && prevMsg.role === msg.role;
+                            const isLastError = msg.isError && index === messages.length - 1;
 
                             return (
                             <div key={index} className={`agent-chat__message${isGrouped ? ' agent-chat__message--grouped' : ''}`}>
@@ -449,8 +426,64 @@ function AgentChatWidget() {
                                     isError={msg.isError}
                                     grouped={isGrouped}
                                 />
+                                {isLastError && msg.errorType === 'loop_exhausted' && (
+                                    <div className="agent-chat__error-actions">
+                                        <span className="agent-chat__error-hint">Try rephrasing your request or start fresh.</span>
+                                        <div className="agent-chat__error-btns">
+                                            {lastFailedInput && (
+                                                <button
+                                                    type="button"
+                                                    className="agent-chat__retry-btn"
+                                                    onClick={() => {
+                                                        inputRef.current?.focus();
+                                                        setInput(lastFailedInput);
+                                                    }}
+                                                    disabled={loading}
+                                                >
+                                                    Edit &amp; Rephrase
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="agent-chat__retry-btn agent-chat__retry-btn--secondary"
+                                                onClick={handleNewConversation}
+                                                disabled={loading}
+                                            >
+                                                Start Over
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {isLastError && msg.errorType !== 'loop_exhausted' && lastFailedInput && (
+                                    <button
+                                        type="button"
+                                        className="agent-chat__retry-btn"
+                                        onClick={() => sendMessage(lastFailedInput)}
+                                        disabled={loading}
+                                    >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                            <path d="M3 3v5h5" />
+                                        </svg>
+                                        Retry
+                                    </button>
+                                )}
                                 {msg.options && msg.options.length > 0 && (
-                                    <div className="agent-chat__options">
+                                    <div
+                                        className="agent-chat__options"
+                                        onKeyDown={(e) => {
+                                            if (loading) return;
+                                            const btns = /** @type {HTMLButtonElement[]} */ (e.currentTarget.querySelectorAll('button'));
+                                            const idx = btns.indexOf(/** @type {HTMLButtonElement} */ (document.activeElement));
+                                            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                btns[(idx + 1) % btns.length]?.focus();
+                                            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                btns[(idx - 1 + btns.length) % btns.length]?.focus();
+                                            }
+                                        }}
+                                    >
                                         {msg.options.map((opt) => (
                                             <button
                                                 key={opt.value}
@@ -489,17 +522,17 @@ function AgentChatWidget() {
                             );
                         })}
 
-                        {streamingRef.current && (
+                        {streaming && (
                             <BrainVisualization
                                 key={streamKey}
-                                steps={streamingRef.current.steps}
-                                message={streamingRef.current.message}
-                                isComplete={streamingRef.current.done}
+                                steps={streaming.steps}
+                                message={streaming.message}
+                                isComplete={streaming.done}
                                 onExit={finalizeStreaming}
                             />
                         )}
 
-                        {loading && !streamingRef.current && (
+                        {loading && !streaming && (
                             <div className="agent-chat__typing">
                                 <span className="agent-chat__typing-dot" />
                                 <span className="agent-chat__typing-dot" />
@@ -522,6 +555,23 @@ function AgentChatWidget() {
                     </div>
 
                     <div className="agent-chat__input-area">
+                        {filteredCommands.length > 0 && (
+                            <div className="agent-chat__slash-menu" role="listbox" aria-label="Slash commands">
+                                {filteredCommands.map((cmd) => (
+                                    <button
+                                        key={cmd.cmd}
+                                        type="button"
+                                        className="agent-chat__slash-item"
+                                        role="option"
+                                        aria-selected="false"
+                                        onClick={() => handleSlashSelect(cmd)}
+                                    >
+                                        <span className="agent-chat__slash-cmd">{cmd.cmd}</span>
+                                        <span className="agent-chat__slash-desc">{cmd.description}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <textarea
                             ref={inputRef}
                             className="agent-chat__input"

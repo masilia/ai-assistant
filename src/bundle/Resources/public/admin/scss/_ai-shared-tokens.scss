@@ -1,0 +1,51 @@
+// ============================================================
+// AI Assistant — Shared design tokens
+//
+// Single source of truth for all AI component SCSS files.
+// Maps AI-specific aliases onto Ibexa design system variables
+// so any upstream palette change propagates automatically.
+//
+// Import order:
+//   1. Ibexa base (provides $ibexa-color-* and calculateRem())
+//   2. This file
+// ============================================================
+
+@import './public/bundles/ibexaadminui/scss/functions/calculate.rem.scss';
+@import './public/bundles/ibexaadminui/scss/custom.scss';
+
+// ── Agent chat / UI surface tokens ──────────────────────────
+// The agent chat panel uses an indigo primary that differs from
+// Ibexa's magenta brand color — kept as explicit overrides.
+$color-primary:       #4a5af0;
+$color-primary-hover: #3a4ae0;
+$color-on-primary:    $ibexa-color-white;
+
+$color-ink:           $ibexa-color-dark;
+$color-ink-muted:     $ibexa-color-dark-400;
+$color-ink-subtle:    $ibexa-color-dark-300;
+
+$color-canvas:        $ibexa-color-white;
+$color-surface-1:     $ibexa-color-light-100;
+$color-surface-2:     $ibexa-color-light-300;
+$color-surface-3:     $ibexa-color-light-500;
+$color-hairline:      $ibexa-color-light;
+
+$color-error-surface: $ibexa-color-danger-100;
+$color-error-border:  $ibexa-color-danger-200;
+$color-error-text:    $ibexa-color-danger-700;
+
+$color-plan-bg:           #f0f7ff;
+$color-plan-border:       $ibexa-color-info-200;
+$color-plan-text:         $ibexa-color-info-800;
+$color-plan-desc:         $ibexa-color-info;
+$color-plan-step-border:  $ibexa-color-info-100;
+$color-plan-confirm:      $ibexa-color-success;
+
+// ── Brain visualization tokens ───────────────────────────────
+$swarm-cyan:        #00e5ff;
+$swarm-violet:      #7c4dff;
+$swarm-complete:    $ibexa-color-success;
+$swarm-error:       $ibexa-color-danger;
+$swarm-waiting:     #f59e0b;
+$swarm-text:        #e0e0e0;
+$swarm-text-muted:  $ibexa-color-dark-400;

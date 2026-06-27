@@ -263,3 +263,22 @@ export function RefreshIcon({ size, className }) {
         </svg>
     );
 }
+
+/** Check — used in onboarding wizard step indicators. */
+export function CheckIcon({ size, className }) {
+    return (
+        <svg {...svgProps(size, className)}>
+            <path d="M20 6 9 17l-5-5" />
+        </svg>
+    );
+}
+
+/** ArrowRight — used in onboarding wizard navigation. */
+export function ArrowRightIcon({ size, className }) {
+    return (
+        <svg {...svgProps(size, className)}>
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+        </svg>
+    );
+}

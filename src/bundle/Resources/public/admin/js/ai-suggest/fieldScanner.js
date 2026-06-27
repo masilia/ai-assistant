@@ -1,7 +1,7 @@
 import { SELECTORS, MATRIX, EZIMAGE } from './selectors.js';
 import { getFieldType, getFieldLabel, getCurrentValue, getContentTypeName, getContentTitle, getSiblingFields, getFieldIdentifier, getContentId } from './fieldInfo.js';
 import { collectNovaseoMetaKeys, injectNovaseoMetaButtons, createAiButton, createTranslateButton, createImageGenButton, injectTranslateButtonsForSiblings } from './novaseo.js';
-import { applyToField } from './apply.js';
+import { applyToField, restoreSnapshot } from './apply.js';
 import { APPLY_MODE, SUGGEST_MODE } from '../../components/ai-settings/constants.js';
 
 /**
@@ -29,6 +29,7 @@ function openAiModal(doc, fieldEdit, fieldType, targetElement, subFieldName, app
         siblingFields: getSiblingFields(doc, getFieldIdentifier(currentInput)),
         contentId: getContentId(doc),
         onApply: (suggestion, mode) => applyToField(fieldEdit, fieldType, currentInput, suggestion, mode, resolvedApplyMode),
+        onUndo: (snapshot) => restoreSnapshot(snapshot, fieldEdit),
     };
 
     doc.dispatchEvent(new CustomEvent('ai-suggest:open', { detail }));
@@ -212,6 +213,7 @@ function openTranslateModal(doc, fieldEdit, fieldType) {
         siblingFields: getSiblingFields(doc, getFieldIdentifier(currentInput)),
         contentId: getContentId(doc),
         onApply: (suggestion, mode) => applyToField(fieldEdit, fieldType, currentInput, suggestion, mode, APPLY_MODE.SUB_FIELD),
+        onUndo: (snapshot) => restoreSnapshot(snapshot, fieldEdit),
         hintAction: 'translate',
         hintSourceLanguage: '',
     };
@@ -242,6 +244,7 @@ export function scanFields(doc) {
             siblingFields: [],
             contentId: '',
             onApply: (suggestion, mode) => applyToField(fieldEdit, fieldType, currentInput, suggestion, mode, APPLY_MODE.SUB_FIELD),
+            onUndo: (snapshot) => restoreSnapshot(snapshot, fieldEdit),
             // New: hint to the modal to pre-select translate + language.
             hintAction: 'translate',
             hintSourceLanguage: sourceLanguage,

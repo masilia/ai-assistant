@@ -69,8 +69,99 @@ export function extractSubFieldValue(suggestion, metaKey) {
 }
 
 /**
+ * Capture a snapshot of the current field state so the apply can be undone.
+ * Returns an opaque object passed back to restoreSnapshot().
+ *
+ * @param {HTMLElement} fieldEdit
+ * @param {string}      fieldType
+ * @param {HTMLElement|null} targetElement
+ * @param {string}      applyMode
+ * @returns {object}
+ */
+export function captureSnapshot(fieldEdit, fieldType, targetElement, applyMode) {
+    if (fieldType === 'ezrichtext') {
+        const editor = getEditor(fieldEdit);
+        return { type: 'richtext', data: editor ? editor.getData() : '' };
+    }
+
+    if (fieldType === 'novaseometas' && applyMode === APPLY_MODE.WHOLE_BLOCK) {
+        const values = {};
+        fieldEdit.querySelectorAll(NOVASEO.row).forEach((row) => {
+            const { metaKey, contentInput } = readNovaseoRow(row);
+            if (metaKey && contentInput) values[metaKey] = contentInput.value;
+        });
+        return { type: 'novaseo_block', values };
+    }
+
+    if (fieldType === 'novaseometas' && applyMode === APPLY_MODE.SUB_FIELD && targetElement) {
+        return { type: 'novaseo_sub', element: targetElement, value: targetElement.value };
+    }
+
+    if (fieldType === 'ezmatrix') {
+        const cells = [];
+        fieldEdit.querySelectorAll(MATRIX.rows).forEach((row) => {
+            row.querySelectorAll('input[type="text"], textarea').forEach((inp) => {
+                cells.push({ element: inp, value: inp.value });
+            });
+        });
+        return { type: 'matrix', cells };
+    }
+
+    // ezstring, eztext, ezimage alt, generic
+    const input = targetElement || fieldEdit.querySelector('.ibexa-data-source__input');
+    return input ? { type: 'input', element: input, value: input.value } : { type: 'noop' };
+}
+
+/**
+ * Restore a previously captured snapshot.
+ *
+ * @param {object} snapshot  The value returned by captureSnapshot()
+ * @param {HTMLElement} fieldEdit
+ */
+export function restoreSnapshot(snapshot, fieldEdit) {
+    if (!snapshot || snapshot.type === 'noop') return;
+
+    if (snapshot.type === 'richtext') {
+        const editor = getEditor(fieldEdit);
+        if (editor) editor.setData(snapshot.data);
+        return;
+    }
+
+    if (snapshot.type === 'novaseo_block') {
+        const inputsByKey = new Map();
+        fieldEdit.querySelectorAll(NOVASEO.row).forEach((row) => {
+            const { metaKey, contentInput } = readNovaseoRow(row);
+            if (metaKey && contentInput) inputsByKey.set(metaKey, contentInput);
+        });
+        for (const [key, val] of Object.entries(snapshot.values)) {
+            const input = inputsByKey.get(key);
+            if (input) {
+                input.value = val;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+        return;
+    }
+
+    if (snapshot.type === 'novaseo_sub' || snapshot.type === 'input') {
+        if (snapshot.element) {
+            snapshot.element.value = snapshot.value;
+            snapshot.element.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        return;
+    }
+
+    if (snapshot.type === 'matrix') {
+        snapshot.cells.forEach(({ element, value }) => {
+            element.value = value;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+}
+
+/**
  * Apply AI-generated content to a field.
- * @returns {{ success: true } | { success: false, error: string }}
+ * @returns {{ success: true, snapshot: object } | { success: false, error: string }}
  */
 export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mode, applyMode) {
     if (fieldType === 'novaseometas' && applyMode === APPLY_MODE.WHOLE_BLOCK) {
@@ -84,6 +175,8 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
 
         // Resolve target inputs by meta key using the same row contract as
         // everywhere else (no fragile [value="..."] attribute matching).
+        const snapshot = captureSnapshot(fieldEdit, fieldType, targetElement, applyMode);
+
         const inputsByKey = new Map();
         fieldEdit.querySelectorAll(NOVASEO.row).forEach((row) => {
             const { metaKey, contentInput } = readNovaseoRow(row);
@@ -110,7 +203,7 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             applied++;
         }
         return applied > 0
-            ? { success: true }
+            ? { success: true, snapshot }
             : { success: false, error: 'No matching SEO fields were found to update.' };
     }
 
@@ -129,13 +222,14 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             return { success: false, error: 'AI returned an empty response. Please try again.' };
         }
 
+        const snapshot = captureSnapshot(fieldEdit, fieldType, targetElement, applyMode);
         if (mode === SUGGEST_MODE.REPLACE) {
             targetElement.value = extracted;
         } else {
             targetElement.value = (targetElement.value ? targetElement.value + extracted : '') || extracted;
         }
         targetElement.dispatchEvent(new Event('input', { bubbles: true }));
-        return { success: true };
+        return { success: true, snapshot };
     }
 
     if (fieldType === 'ezmatrix') {
@@ -158,6 +252,8 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
         // the matrix first by clicking Ibexa's own Add-row button,
         // which expands the row template and auto-increments
         // [entries][N] indexes for us.
+        const snapshot = captureSnapshot(fieldEdit, fieldType, targetElement, applyMode);
+
         const addBtn = fieldEdit.querySelector(MATRIX.addEntry);
         let existingRows = fieldEdit.querySelectorAll(MATRIX.rows).length;
         const needed = data.rows.length - existingRows;
@@ -233,7 +329,7 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
         });
 
         return applied > 0
-            ? { success: true }
+            ? { success: true, snapshot }
             : { success: false, error: 'No matching matrix cells were found to update.' };
     }
 
@@ -243,24 +339,27 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             console.warn('[AI] No CKEditor instance found for field');
             return { success: false, error: 'No editor instance found for this field.' };
         }
+        const snapshot = captureSnapshot(fieldEdit, fieldType, targetElement, applyMode);
         if (mode === SUGGEST_MODE.REPLACE) {
             editor.setData(suggestion);
         } else {
             const current = editor.getData();
             editor.setData(current + suggestion);
         }
-        return { success: true };
+        return { success: true, snapshot };
     }
 
     if (fieldType === 'ezimage') {
         // Image generation result: inject the generated image into the file picker
         if (suggestion && typeof suggestion === 'object' && suggestion.imageData) {
-            return applyGeneratedImage(fieldEdit, suggestion);
+            const result = applyGeneratedImage(fieldEdit, suggestion);
+            return result.success ? { ...result, snapshot: { type: 'noop' } } : result;
         }
 
         // Alt text generation: write to the alt text input
         const input = targetElement || fieldEdit.querySelector('.ibexa-field-edit-preview__image-alt .ibexa-data-source__input');
         if (!input) return { success: false, error: 'No alt text input found for this image.' };
+        const snapshot = captureSnapshot(fieldEdit, fieldType, targetElement, applyMode);
         const cleaned = sanitizeAiText(suggestion);
         if (mode === SUGGEST_MODE.REPLACE) {
             input.value = cleaned;
@@ -268,11 +367,12 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
             input.value = (input.value ? input.value + cleaned : '') || cleaned;
         }
         input.dispatchEvent(new Event('input', { bubbles: true }));
-        return { success: true };
+        return { success: true, snapshot };
     }
 
     const input = targetElement || fieldEdit.querySelector('.ibexa-data-source__input');
     if (!input) return { success: false, error: 'No input element found for this field.' };
+    const snapshot = captureSnapshot(fieldEdit, fieldType, targetElement, applyMode);
     const cleaned = sanitizeAiText(suggestion);
     if (mode === SUGGEST_MODE.REPLACE) {
         input.value = cleaned;
@@ -280,7 +380,7 @@ export function applyToField(fieldEdit, fieldType, targetElement, suggestion, mo
         input.value += cleaned;
     }
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    return { success: true };
+    return { success: true, snapshot };
 }
 
 /**

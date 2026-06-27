@@ -310,6 +310,16 @@
         font-style: italic;
     }
 
+    &__sparkline {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    &__spark-bar {
+        fill: $ibexa-color-primary;
+        opacity: 0.6;
+    }
+
     &__table {
         width: 100%;
         border-collapse: collapse;
@@ -437,6 +447,27 @@
         font-size: $ibexa-text-font-size;
         font-weight: $ibexa-font-weight-bold;
         color: $ibexa-color-dark;
+        display: flex;
+        align-items: center;
+        gap: calculateRem(6px);
+    }
+
+    &__health-dot {
+        display: inline-block;
+        width: calculateRem(8px);
+        height: calculateRem(8px);
+        border-radius: 50%;
+        flex-shrink: 0;
+
+        &--ok {
+            background: $ibexa-color-success;
+            box-shadow: 0 0 0 2px rgba($ibexa-color-success, 0.2);
+        }
+
+        &--fail {
+            background: $ibexa-color-danger;
+            box-shadow: 0 0 0 2px rgba($ibexa-color-danger, 0.2);
+        }
     }
 
     &__meta {
@@ -627,6 +658,31 @@
         }
     }
 
+    &__api-key-value {
+        font-family: monospace;
+        letter-spacing: 0.05em;
+    }
+
+    &__api-key-toggle {
+        margin-left: calculateRem(6px);
+        padding: 0 calculateRem(6px);
+        height: calculateRem(18px);
+        background: $ibexa-color-light-300;
+        border: calculateRem(1px) solid $ibexa-color-light;
+        border-radius: calculateRem(3px);
+        font-size: calculateRem(10px);
+        font-weight: 600;
+        color: $ibexa-color-dark-400;
+        cursor: pointer;
+        vertical-align: middle;
+        transition: background 0.15s;
+
+        &:hover {
+            background: $ibexa-color-light;
+            color: $ibexa-color-dark;
+        }
+    }
+
     &__actions {
         display: flex;
         align-items: center;
@@ -729,6 +785,320 @@
         border: calculateRem(3px) solid $ibexa-color-light;
         border-top-color: $ibexa-color-primary;
         animation: ai-spin 0.7s linear infinite;
+    }
+}
+
+// ── Skeleton loaders ──────────────────────────────────────────
+@keyframes ai-skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.ai-skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: calculateRem(12px);
+    padding: calculateRem(24px);
+}
+
+.ai-skeleton-usage {
+    padding: calculateRem(24px);
+}
+
+.ai-skeleton-card {
+    background: $ibexa-color-white;
+    border: calculateRem(1px) solid $ibexa-color-light;
+    border-radius: calculateRem(8px);
+    padding: calculateRem(16px) calculateRem(20px);
+    display: flex;
+    flex-direction: column;
+    gap: calculateRem(10px);
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: calculateRem(12px);
+    }
+
+    &__line {
+        border-radius: calculateRem(4px);
+        background: linear-gradient(
+            90deg,
+            $ibexa-color-light-300 25%,
+            $ibexa-color-light-200 50%,
+            $ibexa-color-light-300 75%
+        );
+        background-size: 200% 100%;
+        animation: ai-skeleton-shimmer 1.4s ease infinite;
+
+        &--title {
+            height: calculateRem(16px);
+            width: 40%;
+        }
+
+        &--badge {
+            height: calculateRem(20px);
+            width: 20%;
+            border-radius: calculateRem(10px);
+        }
+
+        &--body {
+            height: calculateRem(12px);
+            width: 65%;
+        }
+
+        &--row {
+            height: calculateRem(14px);
+            width: 80%;
+        }
+    }
+}
+
+// ── Onboarding wizard ─────────────────────────────────────────
+.ai-onboarding {
+    max-width: calculateRem(560px);
+    margin: calculateRem(24px) auto;
+    background: $ibexa-color-white;
+    border: 1px solid $ibexa-color-light;
+    border-radius: calculateRem(12px);
+    overflow: hidden;
+
+    &__hero {
+        text-align: center;
+        padding: calculateRem(32px) calculateRem(24px) calculateRem(16px);
+    }
+
+    &__hero-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: calculateRem(64px);
+        height: calculateRem(64px);
+        border-radius: 50%;
+        background: rgba($ibexa-color-primary, 0.08);
+        color: $ibexa-color-primary;
+        margin-bottom: calculateRem(12px);
+    }
+
+    &__title {
+        font-size: calculateRem(20px);
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark;
+        margin: 0 0 calculateRem(4px);
+    }
+
+    &__subtitle {
+        font-size: $ibexa-text-font-size-small;
+        color: $ibexa-color-dark-400;
+        margin: 0;
+    }
+
+    &__steps {
+        display: flex;
+        justify-content: center;
+        gap: calculateRem(24px);
+        padding: calculateRem(16px) calculateRem(24px);
+        border-bottom: 1px solid $ibexa-color-light-300;
+    }
+
+    &__step-indicator {
+        display: flex;
+        align-items: center;
+        gap: calculateRem(6px);
+        font-size: $ibexa-text-font-size-small;
+        color: $ibexa-color-dark-400;
+
+        &--active {
+            color: $ibexa-color-primary;
+            font-weight: $ibexa-font-weight-bold;
+        }
+
+        &--done {
+            color: $ibexa-color-success;
+        }
+    }
+
+    &__step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: calculateRem(20px);
+        height: calculateRem(20px);
+        border-radius: 50%;
+        border: 1px solid currentColor;
+        font-size: calculateRem(11px);
+        flex-shrink: 0;
+    }
+
+    &__body {
+        padding: calculateRem(24px);
+        min-height: calculateRem(160px);
+    }
+
+    &__options {
+        display: flex;
+        flex-direction: column;
+        gap: calculateRem(8px);
+    }
+
+    &__provider-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: calculateRem(12px) calculateRem(16px);
+        border: 1px solid $ibexa-color-light;
+        border-radius: calculateRem(8px);
+        background: $ibexa-color-white;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: $ibexa-text-font-size;
+        color: $ibexa-color-dark;
+        transition: border-color 0.15s, background 0.15s;
+
+        &:hover {
+            border-color: $ibexa-color-primary;
+            background: rgba($ibexa-color-primary, 0.03);
+        }
+
+        &--selected {
+            border-color: $ibexa-color-primary;
+            background: rgba($ibexa-color-primary, 0.06);
+        }
+    }
+
+    &__provider-check {
+        color: $ibexa-color-primary;
+        display: flex;
+        align-items: center;
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: calculateRem(6px);
+    }
+
+    &__hint {
+        font-size: $ibexa-text-font-size-small;
+        color: $ibexa-color-dark-400;
+        margin: calculateRem(4px) 0 0;
+    }
+
+    &__footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: calculateRem(8px);
+        padding: calculateRem(16px) calculateRem(24px);
+        border-top: 1px solid $ibexa-color-light-300;
+    }
+}
+
+// ── Siteaccess matrix ─────────────────────────────────────────
+.ai-matrix {
+    overflow-x: auto;
+    border: 1px solid $ibexa-color-light;
+    border-radius: calculateRem(8px);
+    background: $ibexa-color-white;
+
+    &__header {
+        display: flex;
+        border-bottom: 2px solid $ibexa-color-light;
+        background: $ibexa-color-light-300;
+    }
+
+    &__corner {
+        flex-shrink: 0;
+        min-width: calculateRem(140px);
+        padding: calculateRem(10px) calculateRem(12px);
+        font-size: $ibexa-text-font-size-small;
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark;
+    }
+
+    &__col-header {
+        flex: 1;
+        min-width: calculateRem(100px);
+        padding: calculateRem(10px) calculateRem(8px);
+        text-align: center;
+        border-left: 1px solid $ibexa-color-light;
+    }
+
+    &__col-name {
+        display: block;
+        font-size: $ibexa-text-font-size-small;
+        font-weight: $ibexa-font-weight-bold;
+        color: $ibexa-color-dark;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__col-type {
+        display: block;
+        font-size: calculateRem(11px);
+        color: $ibexa-color-dark-400;
+        margin-top: calculateRem(2px);
+    }
+
+    &__row {
+        display: flex;
+        border-bottom: 1px solid $ibexa-color-light-300;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &--current {
+            background: rgba($ibexa-color-primary, 0.03);
+        }
+    }
+
+    &__row-label {
+        flex-shrink: 0;
+        min-width: calculateRem(140px);
+        padding: calculateRem(10px) calculateRem(12px);
+        font-size: $ibexa-text-font-size-small;
+        font-weight: 500;
+        color: $ibexa-color-dark;
+        display: flex;
+        align-items: center;
+        gap: calculateRem(6px);
+    }
+
+    &__current-tag {
+        font-size: calculateRem(10px);
+        font-weight: 600;
+        color: $ibexa-color-primary;
+        background: rgba($ibexa-color-primary, 0.1);
+        padding: 0 calculateRem(6px);
+        border-radius: calculateRem(3px);
+    }
+
+    &__cell {
+        flex: 1;
+        min-width: calculateRem(100px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-left: 1px solid $ibexa-color-light-300;
+        padding: calculateRem(10px) calculateRem(8px);
+    }
+
+    &__dot {
+        display: inline-block;
+        width: calculateRem(10px);
+        height: calculateRem(10px);
+        border-radius: 50%;
+
+        &--ok {
+            background: $ibexa-color-success;
+            box-shadow: 0 0 0 2px rgba($ibexa-color-success, 0.2);
+        }
+
+        &--warn {
+            background: $ibexa-color-warning;
+            box-shadow: 0 0 0 2px rgba($ibexa-color-warning, 0.2);
+        }
     }
 }
 
@@ -868,6 +1238,7 @@
 // colors and content only.
 @media (prefers-reduced-motion: reduce) {
     .ai-loader__spinner,
+    .ai-skeleton-card__line,
     .ai-drawer,
     .ai-drawer-overlay,
     .ai-confirm-modal,

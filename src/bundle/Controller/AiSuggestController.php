@@ -9,6 +9,7 @@ use Masilia\AiAssistant\DTO\AiError;
 use Masilia\AiAssistant\DTO\AiSuggestRequest;
 use Masilia\AiAssistant\DTO\AiSuggestResponse;
 use Masilia\AiAssistant\Client\AiClientInterface;
+use Masilia\AiAssistant\FieldContextExtractor;
 use Masilia\AiAssistant\FieldFormatResolver;
 use Masilia\AiAssistant\SuggestionService;
 use Ibexa\Contracts\Core\Repository\PermissionResolver;
@@ -37,6 +38,7 @@ readonly class AiSuggestController
         private PermissionResolver    $permissionResolver,
         private SuggestionService     $suggestionService,
         private LoggerInterface       $aiLogger,
+        private FieldContextExtractor $contextExtractor,
     )
     {
     }

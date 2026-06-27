@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ActiveBanner from './ActiveBanner.jsx';
 import ProviderCard from './ProviderCard.jsx';
 import ProviderDrawer from './ProviderDrawer.jsx';
@@ -6,6 +6,8 @@ import ModelDrawer from './ModelDrawer.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import UsagePanel from './UsagePanel.jsx';
 import EmptyState from './EmptyState.jsx';
+import OnboardingWizard from './OnboardingWizard.jsx';
+import SiteaccessMatrix from './SiteaccessMatrix.jsx';
 import { BrainIcon, SearchXIcon } from './icons.jsx';
 import { useAiSettings } from './useAiSettings.js';
 
@@ -71,18 +73,18 @@ export default function AiSettingsDashboard() {
     //   - Provider name / identifier / siteaccesses
     //   - Model name / identifier belonging to that provider
     const query = searchQuery.trim().toLowerCase();
-    const matchingModelIdsByProvider = new Map();
-    if (query) {
+    const matchingModelIdsByProvider = useMemo(() => {
+        const map = new Map();
+        if (!query) return map;
         for (const m of data.models) {
             const haystack = `${m.name} ${m.identifier}`.toLowerCase();
             if (haystack.includes(query)) {
-                if (!matchingModelIdsByProvider.has(m.providerId)) {
-                    matchingModelIdsByProvider.set(m.providerId, []);
-                }
-                matchingModelIdsByProvider.get(m.providerId).push(m.id);
+                if (!map.has(m.providerId)) map.set(m.providerId, []);
+                map.get(m.providerId).push(m.id);
             }
         }
-    }
+        return map;
+    }, [query, data.models]);
 
     const filteredProviders = query
         ? data.providers.filter((p) => {
@@ -106,9 +108,17 @@ export default function AiSettingsDashboard() {
     // ── Render ─────────────────────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="ai-dashboard">
-                <div className="ai-loader" aria-label="Loading AI settings">
-                    <div className="ai-loader__spinner" />
+            <div className="ai-dashboard" aria-busy="true" aria-label="Loading AI settings">
+                <div className="ai-skeleton-list">
+                    {[1, 2, 3].map((n) => (
+                        <div key={n} className="ai-skeleton-card">
+                            <div className="ai-skeleton-card__header">
+                                <div className="ai-skeleton-card__line ai-skeleton-card__line--title" />
+                                <div className="ai-skeleton-card__line ai-skeleton-card__line--badge" />
+                            </div>
+                            <div className="ai-skeleton-card__line ai-skeleton-card__line--body" />
+                        </div>
+                    ))}
                 </div>
             </div>
         );
@@ -140,6 +150,15 @@ export default function AiSettingsDashboard() {
                     onClick={() => setActiveTab('usage')}
                 >
                     Usage
+                </button>
+                <button
+                    role="tab"
+                    type="button"
+                    aria-selected={activeTab === 'matrix'}
+                    className={`ai-tabs__tab ${activeTab === 'matrix' ? 'ai-tabs__tab--active' : ''}`}
+                    onClick={() => setActiveTab('matrix')}
+                >
+                    Matrix
                 </button>
             </div>
 
@@ -176,13 +195,12 @@ export default function AiSettingsDashboard() {
                                 onCta={() => setSearchQuery('')}
                             />
                         ) : (
-                            <EmptyState
-                                icon={BrainIcon}
-                                title="No providers configured"
-                                description="Add your first AI provider to start using AI-assisted content editing."
-                                ctaLabel="+ Add First Provider"
-                                ctaVariant="primary"
-                                onCta={() => setEditingProvider('new')}
+                            <OnboardingWizard
+                                onAddProvider={(partial) => {
+                                    setEditingProvider({ ...partial, __onboarding: true });
+                                }}
+                                siteaccesses={data.siteaccesses || []}
+                                currentSiteaccess={data.currentSiteaccess}
                             />
                         )
                     ) : (
@@ -212,6 +230,12 @@ export default function AiSettingsDashboard() {
                         </div>
                     )}
                 </>
+            ) : activeTab === 'matrix' ? (
+                <SiteaccessMatrix
+                    providers={data.providers}
+                    siteaccesses={data.siteaccesses || []}
+                    currentSiteaccess={data.currentSiteaccess}
+                />
             ) : (
                 <UsagePanel />
             )}

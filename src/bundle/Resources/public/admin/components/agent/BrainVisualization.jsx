@@ -34,6 +34,13 @@ const ICON_CHECK = (
     </svg>
 );
 
+const ICON_CHECK_CIRCLE = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M16 9 11 14l-3-3" />
+    </svg>
+);
+
 const ICON_SPINNER = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2v4" />
@@ -164,6 +171,9 @@ function BrainVisualization({ steps, message, isComplete, onExit }) {
     );
 
     const completedCount = workflowPhases.filter((p) => p.status === 'complete').length;
+    const visiblePhases = workflowPhases.filter((p) => p.status !== 'pending' || p.toolCalls.length > 0);
+    const totalPhases = workflowPhases.length;
+    const progressPercent = totalPhases > 0 ? (completedCount / totalPhases) * 100 : 0;
 
     // Phase transitions
     useEffect(() => {
@@ -282,25 +292,72 @@ function BrainVisualization({ steps, message, isComplete, onExit }) {
             ref={containerRef}
             className={`brain${phase === 'exiting' ? ' brain--exiting' : ''}`}
         >
+            {/* Progress bar */}
+            <div className="brain__progress-bar">
+                <div
+                    className="brain__progress-fill"
+                    style={{ width: `${progressPercent}%` }}
+                />
+            </div>
+
             {/* SVG particle overlay */}
             <svg className="brain__particles" aria-hidden="true">
                 <defs>
-                    <filter id="particle-glow">
-                        <feGaussianBlur stdDeviation="2.5" />
+                    <filter id="particle-glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                    <filter id="particle-trail" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="1.5" />
                     </filter>
                 </defs>
                 {particles.map((p) => (
-                    <circle
-                        key={p.id}
-                        cx={p.x}
-                        cy={p.y}
-                        r={p.size}
-                        fill={p.color}
-                        opacity={p.opacity * (1 - p.progress)}
-                        filter="url(#particle-glow)"
-                    />
+                    <g key={p.id}>
+                        {/* Trail */}
+                        <circle
+                            cx={p.x - (p.targetX - p.x) * 0.08}
+                            cy={p.y - (p.targetY - p.y) * 0.08}
+                            r={p.size * 0.6}
+                            fill={p.color}
+                            opacity={p.opacity * (1 - p.progress) * 0.3}
+                            filter="url(#particle-trail)"
+                        />
+                        {/* Main particle */}
+                        <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={p.size}
+                            fill={p.color}
+                            opacity={p.opacity * (1 - p.progress)}
+                            filter="url(#particle-glow)"
+                        />
+                    </g>
                 ))}
             </svg>
+
+            {/* Connection lines between steps */}
+            <div className="brain__connections" aria-hidden="true">
+                {workflowPhases.map((wf, idx) => {
+                    if (idx >= workflowPhases.length - 1) return null;
+                    const next = workflowPhases[idx + 1];
+                    const lineClass = wf.status === 'active' ? 'brain__connection-line--active'
+                        : wf.status === 'complete' ? 'brain__connection-line--complete'
+                        : '';
+                    return (
+                        <div
+                            key={`conn-${idx}`}
+                            className={`brain__connection-line ${lineClass}`}
+                            style={{
+                                top: `calc(${idx} * 30px + 16px)`,
+                                height: '30px',
+                            }}
+                        />
+                    );
+                })}
+            </div>
 
             {/* Step checklist */}
             <div className="brain__steps">
@@ -333,6 +390,7 @@ function BrainVisualization({ steps, message, isComplete, onExit }) {
             {/* Summary after all complete */}
             {phase === 'summary' && (
                 <div className="brain__summary">
+                    <span className="brain__summary-icon">{ICON_CHECK_CIRCLE}</span>
                     {completedCount} action{completedCount !== 1 ? 's' : ''} completed
                 </div>
             )}

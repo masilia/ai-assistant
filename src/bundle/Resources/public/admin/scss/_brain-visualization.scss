@@ -1,5 +1,6 @@
 // Swarm Worker Visualization
-// Vertical checklist with SVG particle system
+// Vertical checklist with SVG particle system, progress bar,
+// connection lines, glowing pulses, and shimmer effects.
 //
 // Tokens ($swarm-*) are defined in _ai-shared-tokens.scss and
 // are already in scope because this file is @imported from
@@ -10,8 +11,43 @@
     width: 100%;
     padding: 16px 20px;
     overflow: hidden;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba($swarm-cyan, 0.02) 0%, rgba($swarm-violet, 0.02) 100%);
 
-    // Particle SVG layer
+    // ── Progress bar ──────────────────────────────────────────
+    &__progress-bar {
+        position: relative;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba($swarm-text-muted, 0.15);
+        overflow: hidden;
+        margin-bottom: 12px;
+        z-index: 2;
+    }
+
+    &__progress-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, $swarm-cyan, $swarm-violet);
+        transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 0 8px rgba($swarm-cyan, 0.4);
+
+        &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 20px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6));
+            animation: swarm-progress-shimmer 1.5s ease-in-out infinite;
+        }
+    }
+
+    // ── Particle SVG layer ────────────────────────────────────
     &__particles {
         position: absolute;
         inset: 0;
@@ -19,7 +55,40 @@
         z-index: 1;
     }
 
-    // Step checklist
+    // ── Connection lines layer ────────────────────────────────
+    &__connections {
+        position: absolute;
+        left: 27px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    &__connection-line {
+        position: absolute;
+        width: 100%;
+        background: linear-gradient(180deg,
+            rgba($swarm-cyan, 0.15) 0%,
+            rgba($swarm-violet, 0.15) 100%);
+        transition: opacity 0.4s ease;
+
+        &--active {
+            background: linear-gradient(180deg,
+                rgba($swarm-cyan, 0.5) 0%,
+                rgba($swarm-violet, 0.5) 100%);
+            animation: swarm-connection-flow 2s ease-in-out infinite;
+        }
+
+        &--complete {
+            background: linear-gradient(180deg,
+                rgba($swarm-complete, 0.3) 0%,
+                rgba($swarm-complete, 0.15) 100%);
+        }
+    }
+
+    // ── Step checklist ────────────────────────────────────────
     &__steps {
         position: relative;
         z-index: 2;
@@ -28,7 +97,7 @@
         gap: 2px;
     }
 
-    // Individual step
+    // ── Individual step ───────────────────────────────────────
     &__step {
         display: flex;
         align-items: center;
@@ -38,6 +107,7 @@
         opacity: 0;
         transform: translateX(-8px);
         animation: swarm-step-enter 0.3s ease forwards;
+        position: relative;
 
         &--pending {
             .brain__step-icon {
@@ -49,24 +119,43 @@
         }
 
         &--active {
-            background: rgba($swarm-cyan, 0.04);
+            background: rgba($swarm-cyan, 0.06);
+            box-shadow: 0 0 16px rgba($swarm-cyan, 0.08), inset 0 0 1px rgba($swarm-cyan, 0.15);
+            animation: swarm-step-enter 0.3s ease forwards, swarm-glow-pulse 2.5s ease-in-out infinite 0.3s;
+
             .brain__step-icon {
                 color: $swarm-cyan;
                 animation: swarm-icon-pulse 1.2s ease-in-out infinite;
+                filter: drop-shadow(0 0 4px rgba($swarm-cyan, 0.5));
             }
             .brain__step-label {
                 color: $swarm-text;
+                background: linear-gradient(90deg,
+                    $swarm-text 0%,
+                    rgba($swarm-cyan, 0.7) 50%,
+                    $swarm-text 100%);
+                background-size: 200% 100%;
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+                animation: swarm-label-shimmer 2.5s ease-in-out infinite;
             }
         }
 
         &--complete {
             animation: swarm-step-exit 0.4s ease forwards;
+
+            .brain__step-icon {
+                color: $swarm-complete;
+                filter: drop-shadow(0 0 3px rgba($swarm-complete, 0.4));
+            }
         }
 
         &--error {
             background: rgba($swarm-error, 0.06);
             .brain__step-icon {
                 color: $swarm-error;
+                filter: drop-shadow(0 0 4px rgba($swarm-error, 0.4));
             }
             .brain__step-label {
                 color: $swarm-error;
@@ -75,9 +164,11 @@
 
         &--waiting {
             background: rgba($swarm-waiting, 0.06);
+            box-shadow: 0 0 12px rgba($swarm-waiting, 0.06);
             .brain__step-icon {
                 color: $swarm-waiting;
                 animation: swarm-icon-pulse 1.8s ease-in-out infinite;
+                filter: drop-shadow(0 0 4px rgba($swarm-waiting, 0.4));
             }
             .brain__step-label {
                 color: $swarm-waiting;
@@ -85,7 +176,7 @@
         }
     }
 
-    // Step icon (circle / checkmark / spinner)
+    // ── Step icon ─────────────────────────────────────────────
     &__step-icon {
         width: 16px;
         height: 16px;
@@ -93,15 +184,38 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: color 0.3s ease;
+        transition: color 0.3s ease, filter 0.3s ease;
+        position: relative;
+        z-index: 2;
 
         svg {
             width: 100%;
             height: 100%;
         }
+
+        // Circle background for active/complete icons
+        &::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
     }
 
-    // Step label text
+    &__step--active &__step-icon::before {
+        opacity: 0.08;
+        animation: swarm-icon-ring 1.5s ease-in-out infinite;
+    }
+
+    &__step--complete &__step-icon::before {
+        opacity: 0.06;
+    }
+
+    // ── Step label ────────────────────────────────────────────
     &__step-label {
         font-size: 13px;
         font-weight: 500;
@@ -110,7 +224,7 @@
         white-space: nowrap;
     }
 
-    // Progress sub-label shown below the active step label
+    // ── Progress sub-label ────────────────────────────────────
     &__step-progress {
         font-size: 11px;
         color: $swarm-text-muted;
@@ -123,25 +237,43 @@
         animation: swarm-summary-enter 0.3s ease 0.1s forwards;
     }
 
-    // Summary after all steps complete
+    // ── Summary ───────────────────────────────────────────────
     &__summary {
         position: relative;
         z-index: 2;
         margin-top: 8px;
-        padding: 8px 0;
+        padding: 8px 0 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-size: 12px;
+        font-weight: 600;
         color: $swarm-complete;
         opacity: 0;
         animation: swarm-summary-enter 0.4s ease 0.2s forwards;
     }
 
-    // Exiting state
+    &__summary-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        color: $swarm-complete;
+        filter: drop-shadow(0 0 4px rgba($swarm-complete, 0.4));
+        animation: swarm-check-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    // ── Exiting state ─────────────────────────────────────────
     &--exiting {
         animation: swarm-fade-out 0.6s ease forwards;
     }
 }
 
-// Keyframes
+// ── Keyframes ──────────────────────────────────────────────────
 @keyframes swarm-step-enter {
     from {
         opacity: 0;
@@ -176,6 +308,55 @@
     50% {
         opacity: 1;
         transform: scale(1.15);
+    }
+}
+
+@keyframes swarm-icon-ring {
+    0%, 100% {
+        opacity: 0.05;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.12;
+        transform: scale(1.3);
+    }
+}
+
+@keyframes swarm-glow-pulse {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba($swarm-cyan, 0.06), inset 0 0 1px rgba($swarm-cyan, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba($swarm-cyan, 0.12), inset 0 0 1px rgba($swarm-cyan, 0.2);
+    }
+}
+
+@keyframes swarm-label-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@keyframes swarm-connection-flow {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes swarm-progress-shimmer {
+    0%, 100% { opacity: 0; transform: translateX(0); }
+    50% { opacity: 1; transform: translateX(-4px); }
+}
+
+@keyframes swarm-check-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(-45deg);
+    }
+    60% {
+        transform: scale(1.2) rotate(0deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
     }
 }
 

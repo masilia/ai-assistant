@@ -173,8 +173,14 @@ services:
         resource: '../../Controller/*'
         public: true
 
+    Masilia\Bundle\AiAssistant\Command\:
+        resource: '../../Command/*'
+
     Masilia\Bundle\AiAssistant\Service\:
         resource: '../../Service/*'
+
+    Masilia\Bundle\AiAssistant\AutomatedTranslation\Client\Ai:
+        tags: [ ibexa.automated_translation.client ]
 
     Masilia\Bundle\AiAssistant\EventListener\:
         resource: '../../EventListener/*'

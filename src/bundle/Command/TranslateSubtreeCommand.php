@@ -7,10 +7,7 @@ namespace Masilia\Bundle\AiAssistant\Command;
 use Exception;
 use Ibexa\AutomatedTranslation\Translator as AutomatedTranslator;
 use Ibexa\Contracts\Core\Repository\ContentService;
-use Ibexa\Contracts\Core\Repository\LocationService;
-use Ibexa\Contracts\Core\Repository\PermissionResolver;
 use Ibexa\Contracts\Core\Repository\Repository;
-use Ibexa\Contracts\Core\Repository\SearchService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
 use Ibexa\Contracts\Core\Repository\Values\Content\Location;
 use Ibexa\Contracts\Core\Repository\Values\Content\LocationQuery;
@@ -51,11 +48,12 @@ final class TranslateSubtreeCommand extends Command
     protected static $defaultDescription = 'Translate all translatable content in a subtree using the AI assistant.';
 
     public function __construct(
-        private readonly Repository $repository,
-        private readonly AutomatedTranslator $translator,
+        private readonly Repository             $repository,
+        private readonly AutomatedTranslator    $translator,
         private readonly RequestLoggerInterface $requestLogger,
-        private readonly LoggerInterface $aiLogger,
-    ) {
+        private readonly LoggerInterface        $aiLogger,
+    )
+    {
         parent::__construct();
     }
 
@@ -83,6 +81,12 @@ final class TranslateSubtreeCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Report what would be translated without writing anything.',
+            )
+            ->addOption(
+                'copy',
+                null,
+                InputOption::VALUE_NONE,
+                'Copy source content as-is to the target language (no AI).',
             );
     }
 
@@ -91,12 +95,13 @@ final class TranslateSubtreeCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         try {
-            $locationId = (int) $input->getArgument('location-id');
-            $fromLanguage = (string) $input->getArgument('from-language');
-            $toLanguage = (string) $input->getArgument('to-language');
+            $locationId = (int)$input->getArgument('location-id');
+            $fromLanguage = (string)$input->getArgument('from-language');
+            $toLanguage = (string)$input->getArgument('to-language');
             $typeFilters = $input->getOption('type');
-            $force = (bool) $input->getOption('force');
-            $dryRun = (bool) $input->getOption('dry-run');
+            $force = (bool)$input->getOption('force');
+            $dryRun = (bool)$input->getOption('dry-run');
+            $copy = (bool)$input->getOption('copy');
         } catch (Throwable $e) {
             $io->error(sprintf('Invalid input: %s', $e->getMessage()));
 
@@ -105,13 +110,14 @@ final class TranslateSubtreeCommand extends Command
 
         try {
             return $this->repository->sudo(
-                fn () => $this->process(
+                fn() => $this->process(
                     $locationId,
                     $fromLanguage,
                     $toLanguage,
                     $typeFilters,
                     $force,
                     $dryRun,
+                    $copy,
                     $io,
                     $output,
                 )
@@ -131,19 +137,19 @@ final class TranslateSubtreeCommand extends Command
         }
     }
 
-    /**
-     * @param array<int, string> $typeFilters
-     */
+
     private function process(
-        int $locationId,
-        string $fromLanguage,
-        string $toLanguage,
-        array $typeFilters,
-        bool $force,
-        bool $dryRun,
-        SymfonyStyle $io,
+        int             $locationId,
+        string          $fromLanguage,
+        string          $toLanguage,
+        array           $typeFilters,
+        bool            $force,
+        bool            $dryRun,
+        bool            $copy,
+        SymfonyStyle    $io,
         OutputInterface $output,
-    ): int {
+    ): int
+    {
         $locationService = $this->repository->getLocationService();
         $contentService = $this->repository->getContentService();
         $searchService = $this->repository->getSearchService();
@@ -156,13 +162,14 @@ final class TranslateSubtreeCommand extends Command
         $rootLocation = $locationService->loadLocation($locationId);
 
         $io->section(sprintf(
-            'Subtree %s | %s → %s | service=%s | force=%s | dry-run=%s',
+            'Subtree %s | %s → %s | service=%s | force=%s | dry-run=%s | copy=%s',
             $rootLocation->pathString,
             $fromLanguage,
             $toLanguage,
             self::SERVICE_KEY,
             $force ? 'yes' : 'no',
             $dryRun ? 'yes' : 'no',
+            $copy ? 'yes' : 'no',
         ));
 
         $query = $this->buildQuery($rootLocation, $typeFilters);
@@ -241,13 +248,17 @@ final class TranslateSubtreeCommand extends Command
             }
 
             try {
-                $draft = $this->translator->getTranslatedContent(
-                    $fromLanguage,
-                    $toLanguage,
-                    self::SERVICE_KEY,
-                    $content,
-                );
-                $this->publishTranslatedDraft($contentService, $draft->getVersionInfo()->versionNo, $toLanguage, $content->id);
+                if ($copy) {
+                    $this->copyContent($contentService, $content, $fromLanguage, $toLanguage);
+                } else {
+                    $draft = $this->translator->getTranslatedContent(
+                        $fromLanguage,
+                        $toLanguage,
+                        self::SERVICE_KEY,
+                        $content,
+                    );
+                    $this->publishTranslatedDraft($contentService, $draft->getVersionInfo()->versionNo, $toLanguage, $content->id);
+                }
                 $translated++;
             } catch (Throwable $e) {
                 $this->aiLogger->warning('Translation failed for content.', [
@@ -275,9 +286,6 @@ final class TranslateSubtreeCommand extends Command
         return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    /**
-     * @param array<int, string> $typeFilters
-     */
     private function buildQuery(Location $rootLocation, array $typeFilters): LocationQuery
     {
         $criteria = [
@@ -294,17 +302,6 @@ final class TranslateSubtreeCommand extends Command
             'sortClauses' => [new Path()],
             'limit' => self::BATCH_SIZE,
         ]);
-    }
-
-    private function publishTranslatedDraft(
-        ContentService $contentService,
-        int $versionNo,
-        string $toLanguage,
-        int $contentId,
-    ): void {
-        $contentInfo = $contentService->loadContentInfo($contentId);
-        $versionInfo = $contentService->loadVersionInfo($contentInfo, $versionNo);
-        $contentService->publishVersion($versionInfo, [$toLanguage]);
     }
 
     private function reportDryRunSample(SymfonyStyle $io, Content $content, string $from, string $to): void
@@ -327,5 +324,46 @@ final class TranslateSubtreeCommand extends Command
         } catch (Exception $e) {
             $io->text('  (could not load content type for field list)');
         }
+    }
+
+    private function copyContent(
+        ContentService $contentService,
+        Content        $sourceContent,
+        string         $fromLanguage,
+        string         $toLanguage,
+    ): void
+    {
+        $contentType = $sourceContent->getContentType();
+
+        $draft = $contentService->createContentDraft($sourceContent->contentInfo);
+
+        $updateStruct = $contentService->newContentUpdateStruct();
+        $updateStruct->initialLanguageCode = $toLanguage;
+
+        foreach ($contentType->getFieldDefinitions() as $fieldDef) {
+            if (!$fieldDef->isTranslatable) {
+                continue;
+            }
+            $field = $sourceContent->getField($fieldDef->identifier, $fromLanguage);
+            if ($field === null || $field->value === null) {
+                continue;
+            }
+            $updateStruct->setField($fieldDef->identifier, $field->value, $toLanguage);
+        }
+
+        $contentService->updateContent($draft->getVersionInfo(), $updateStruct);
+        $contentService->publishVersion($draft->getVersionInfo());
+    }
+
+    private function publishTranslatedDraft(
+        ContentService $contentService,
+        int            $versionNo,
+        string         $toLanguage,
+        int            $contentId,
+    ): void
+    {
+        $contentInfo = $contentService->loadContentInfo($contentId);
+        $versionInfo = $contentService->loadVersionInfo($contentInfo, $versionNo);
+        $contentService->publishVersion($versionInfo, [$toLanguage]);
     }
 }

@@ -68,10 +68,11 @@ final class MatrixTransformerTest extends TestCase
         });
     }
 
-    private function makeFieldDef(): FieldDefinition
+    private function makeFieldDef(array $columns = []): FieldDefinition
     {
         $fieldDef = $this->createMock(FieldDefinition::class);
         $fieldDef->method('getFieldTypeIdentifier')->willReturn('ezmatrix');
+        $fieldDef->fieldSettings = ['columns' => $columns];
 
         return $fieldDef;
     }
@@ -207,5 +208,70 @@ final class MatrixTransformerTest extends TestCase
         ]);
 
         self::assertFalse($result[0]->isEmpty());
+    }
+
+    public function testJsonWrappedSingleCellIsUnwrappedToCorrectColumns(): void
+    {
+        $transformer = new MatrixTransformer();
+
+        $columns = [
+            ['identifier' => 'text', 'name' => 'Button Text'],
+            ['identifier' => 'url', 'name' => 'Button URL'],
+            ['identifier' => 'style', 'name' => 'Button Style'],
+        ];
+
+        // LLM sent: [{item: "[{\"text\":\"Click\",\"url\":\"/page\",\"style\":\"btn-primary\"}]"}]
+        $jsonRows = json_encode([
+            ['text' => 'Click me', 'url' => '/page', 'style' => 'btn-primary'],
+            ['text' => 'Learn more', 'url' => '/about', 'style' => 'btn-outline'],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $result = $transformer->transform($this->makeFieldDef($columns), [
+            ['item' => $jsonRows],
+        ]);
+
+        self::assertCount(2, $result);
+        self::assertContainsOnlyInstancesOf(Row::class, $result);
+        self::assertSame(['text' => 'Click me', 'url' => '/page', 'style' => 'btn-primary'], $result[0]->getCells());
+        self::assertSame(['text' => 'Learn more', 'url' => '/about', 'style' => 'btn-outline'], $result[1]->getCells());
+    }
+
+    public function testJsonUnwrapFailsWhenDecodedRowsDontMatchColumns(): void
+    {
+        $transformer = new MatrixTransformer();
+
+        $columns = [
+            ['identifier' => 'text', 'name' => 'Text'],
+            ['identifier' => 'url', 'name' => 'URL'],
+        ];
+
+        // JSON decodes to objects with keys that don't match any column identifier
+        $jsonRows = json_encode([
+            ['foo' => 'bar', 'baz' => 'qux'],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $result = $transformer->transform($this->makeFieldDef($columns), [
+            ['item' => $jsonRows],
+        ]);
+
+        // Should fall back to treating it as a regular row with a single 'item' cell
+        self::assertCount(1, $result);
+        self::assertSame(['item' => $jsonRows], $result[0]->getCells());
+    }
+
+    public function testNonJsonSingleCellIsNotUnwrapped(): void
+    {
+        $transformer = new MatrixTransformer();
+
+        $columns = [
+            ['identifier' => 'text', 'name' => 'Text'],
+        ];
+
+        $result = $transformer->transform($this->makeFieldDef($columns), [
+            ['text' => 'just a plain string'],
+        ]);
+
+        self::assertCount(1, $result);
+        self::assertSame(['text' => 'just a plain string'], $result[0]->getCells());
     }
 }

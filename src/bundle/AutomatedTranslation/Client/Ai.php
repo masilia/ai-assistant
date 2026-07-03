@@ -288,7 +288,26 @@ TXT;
 
         // Strip namespace mangling AFTER serialization — importNode/saveXML
         // may re-introduce xmlns:* declarations that were stripped before parsing.
-        return $this->stripSpuriousNamespaces($xml);
+        $xml = $this->stripSpuriousNamespaces($xml);
+
+        // Ensure the rebuilt XML has element children (not just text content).
+        // XmlEncoder::decode() returns a string for text-only <response>,
+        // which breaks Encoder::decode()'s foreach().
+        $checkDoc = new DOMDocument();
+        if (@$checkDoc->loadXML($xml) && $checkDoc->documentElement !== null) {
+            $hasElementChildren = false;
+            foreach ($checkDoc->documentElement->childNodes as $node) {
+                if ($node instanceof DOMElement) {
+                    $hasElementChildren = true;
+                    break;
+                }
+            }
+            if (!$hasElementChildren) {
+                return null;
+            }
+        }
+
+        return $xml;
     }
 
     /**
@@ -333,7 +352,7 @@ TXT;
         // Step 2: Find all prefixed element names in the XML (e.g.
         // <default:section>, </default:section>). The prefix pattern
         // is [a-z][\w-]*: followed by a valid element name.
-        if (preg_match_all('/(?<=<\/?)([a-z][\w-]*):([a-z][\w-]*)/i', $xml, $prefixMatches)) {
+        if (preg_match_all('/(?:<\/?)([a-z][\w-]*):([a-z][\w-]*)/i', $xml, $prefixMatches)) {
             $prefixes = array_unique($prefixMatches[1]);
 
             foreach ($prefixes as $prefix) {

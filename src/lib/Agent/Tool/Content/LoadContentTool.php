@@ -9,6 +9,7 @@ use Masilia\AiAssistant\Agent\Tool\AgentErrorHelper;
 use Masilia\AiAssistant\Agent\Tool\ToolInterface;
 use Masilia\AiAssistant\Agent\Tool\ToolName;
 use Masilia\AiAssistant\Agent\Tool\ToolResult;
+use Masilia\AiAssistant\Field\FieldValueStringifierRegistry;
 use Psr\Log\LoggerInterface;
 
 readonly class LoadContentTool implements ToolInterface
@@ -16,7 +17,9 @@ readonly class LoadContentTool implements ToolInterface
     public function __construct(
         private Repository $repository,
         private LoggerInterface $aiLogger,
+        private FieldValueStringifierRegistry $stringifierRegistry,
     ) {
+
     }
 
     public function getName(): string
@@ -31,6 +34,11 @@ readonly class LoadContentTool implements ToolInterface
 
     public function getParameters(): array
     {
+        $availableLanguages = array_map(
+            static fn($lang) => $lang->languageCode,
+            $this->repository->getContentLanguageService()->loadLanguages(),
+        );
+
         return [
             'type' => 'object',
             'properties' => [
@@ -48,7 +56,10 @@ readonly class LoadContentTool implements ToolInterface
                 ],
                 'language' => [
                     'type' => 'string',
-                    'description' => 'Language code (defaults to repository default)',
+                    'description' => sprintf(
+                        'Language code (defaults to content main language). Available: %s',
+                        implode(', ', $availableLanguages),
+                    ),
                 ],
             ],
         ];
@@ -57,25 +68,34 @@ readonly class LoadContentTool implements ToolInterface
     public function execute(array $params): ToolResult
     {
         try {
-            $languageCode = $params['language']
-                ?? $this->repository->getContentLanguageService()->getDefaultLanguageCode();
             $contentService = $this->repository->getContentService();
+            $requestedLanguage = $params['language'] ?? null;
+
+            // When a specific language is requested, load in that language.
+            // Otherwise, load without language restriction (loads the main
+            // translation) and use the content's mainLanguageCode for field
+            // extraction — this prevents empty fields when content isn't in
+            // the repository's default language (e.g. eng-GB).
+            $languages = $requestedLanguage !== null ? [$requestedLanguage] : null;
 
             if (isset($params['content_id'])) {
-                $content = $contentService->loadContent((int) $params['content_id'], [$languageCode]);
+                $content = $contentService->loadContent((int) $params['content_id'], $languages);
             } elseif (isset($params['remote_id'])) {
-                $content = $contentService->loadContentByRemoteId($params['remote_id'], [$languageCode]);
+                $content = $contentService->loadContentByRemoteId($params['remote_id'], $languages);
             } elseif (isset($params['location_id'])) {
                 $locationService = $this->repository->getLocationService();
                 $location = $locationService->loadLocation((int) $params['location_id']);
-                $content = $contentService->loadContent($location->contentId, [$languageCode]);
+                $content = $contentService->loadContent($location->contentId, $languages);
             } else {
                 throw new \InvalidArgumentException('Must provide content_id, remote_id, or location_id');
             }
 
+            $languageCode = $requestedLanguage ?? $content->contentInfo->mainLanguageCode;
+
             $fields = [];
             foreach ($content->getFieldsByLanguage($languageCode) as $field) {
-                $fields[$field->identifier] = $field->value?->text ?? $field->value?->toHash() ?? null;
+                $fieldDef = $content->getContentType()->getFieldDefinition($field->fieldDefIdentifier);
+                $fields[$field->identifier] = $this->stringifierRegistry->toString($field, $fieldDef);
             }
 
             return ToolResult::ok(

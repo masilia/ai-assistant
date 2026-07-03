@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Masilia\AiAssistant\Field\Stringifier;
 
+use Ibexa\AdminUi\Form\DataTransformer\FieldType\ImageValueTransformer;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Contracts\Core\Repository\Values\ContentType\FieldDefinition;
 use Masilia\AiAssistant\Field\FieldType;
@@ -18,6 +19,7 @@ final class FileStringifier implements FieldValueStringifierInterface
 
     public function toString(Field $field, FieldDefinition $fieldDefinition): string
     {
+        /** @var \Ibexa\Core\FieldType\Image\Value $value */
         $value = $field->value;
 
         if ($value === null || !property_exists($value, 'fileName') || !$value->fileName) {

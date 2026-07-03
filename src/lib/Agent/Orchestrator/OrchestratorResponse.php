@@ -63,16 +63,17 @@ final class OrchestratorResponse
     }
 
     /**
-     * propose_plan: store the plan + stay in loop (await approval)
+     * propose_plan: store the plan + EXIT the loop (pending approval, no more tool calls)
      *
      * @param array<string, mixed> $planData
      */
-    public static function proposePlan(string $summary, array $planData): self
+    public static function proposePlanTerminal(string $summary, array $planData): self
     {
         return new self(
             success: true,
             message: $summary,
             proposedPlanDelta: $planData,
+            isTerminal: true,
         );
     }
 

@@ -314,6 +314,7 @@ final readonly class AgentOrchestrator
         }
         if ($response->proposedPlanDelta !== null) {
             $state = $state->withProposedPlan($response->proposedPlanDelta);
+            $state = $state->withPlanModifiedInTurn(true);
             $stateMutated = true;
         }
 

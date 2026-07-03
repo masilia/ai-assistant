@@ -18,12 +18,16 @@ final class WizardState
      * @param array  $messages        Full message history (provider-native format, capped at MAX_MESSAGES)
      * @param ?array $pendingQuestion {question: string, options: [{label, value}]}
      * @param ?array $proposedPlan    The plan awaiting user approval
+     * @param bool   $planModifiedInTurn  True when the plan was modified (not approved) in the current user turn.
+     *                                     Reset to false when a new user message is appended.
+     *                                     Prevents the LLM from auto-approving a modified plan within the same turn.
      */
     public function __construct(
         public private(set) array  $messages = [],
         public private(set) ?array $pendingQuestion = null,
         public private(set) ?array $proposedPlan = null,
         public private(set) int    $turns = 0,
+        public private(set) bool   $planModifiedInTurn = false,
     ) {
     }
 
@@ -39,7 +43,10 @@ final class WizardState
 
     public function withUserMessage(string $content): self
     {
-        return $this->appendMessage(['role' => 'user', 'content' => $content]);
+        $clone = $this->appendMessage(['role' => 'user', 'content' => $content]);
+        $clone->planModifiedInTurn = false;
+
+        return $clone;
     }
 
     public function withAssistantMessage(string $content): self
@@ -85,11 +92,20 @@ final class WizardState
         return $clone;
     }
 
+    public function withPlanModifiedInTurn(bool $modified = true): self
+    {
+        $clone = clone $this;
+        $clone->planModifiedInTurn = $modified;
+
+        return $clone;
+    }
+
     public function clearPending(): self
     {
         $clone = clone $this;
         $clone->pendingQuestion = null;
         $clone->proposedPlan = null;
+        $clone->planModifiedInTurn = false;
 
         return $clone;
     }

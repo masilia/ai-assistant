@@ -116,7 +116,19 @@ final readonly class ProposePlanTool implements OrchestratorTool
         $existingPlanData = $context->state->proposedPlan;
 
         // Same plan re-invoked → user has approved the saved plan → execute.
+        // BUT: if the plan was just modified in this same user turn, the LLM is
+        // auto-approving its own modification — reject and force it to wait for
+        // actual user input.
         if ($existingPlanData !== null && $this->samePlan($existingPlanData, $newPlanData)) {
+            if ($context->state->planModifiedInTurn) {
+                $this->aiLogger->warning('[ProposePlanTool] Same-turn auto-approval blocked — plan was modified this turn');
+
+                return OrchestratorResponse::proposePlanTerminal(
+                    $this->buildSummary($plan) . "\n\nPlan is pending user approval. Do NOT call propose_plan again — end your turn and wait for the user to say \"yes\" or request changes.",
+                    $newPlanData,
+                );
+            }
+
             $this->aiLogger->info('[ProposePlanTool] Approval detected — executing plan', [
                 'intent' => $newPlanData['intent'] ?? null,
                 'title' => $newPlanData['title'] ?? null,
@@ -144,7 +156,7 @@ final readonly class ProposePlanTool implements OrchestratorTool
         }
 
         $summary = $this->buildSummary($plan);
-        return OrchestratorResponse::proposePlan(
+        return OrchestratorResponse::proposePlanTerminal(
             $summary . "\n\nShall I proceed? Say \"yes\" to confirm.",
             $newPlanData,
         );
@@ -209,6 +221,11 @@ final readonly class ProposePlanTool implements OrchestratorTool
             'content_id' => $result->contentId,
             'location_id' => $result->locationId,
         ];
+        // Merge extra data (e.g. item_ids from create_items) so the LLM
+        // can reference created content IDs in subsequent turns.
+        if ($result->data !== []) {
+            $response = array_merge($response, $result->data);
+        }
 
         return OrchestratorResponse::ok($result->message, $response);
     }

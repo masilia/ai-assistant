@@ -79,7 +79,7 @@ final class ProposePlanToolTest extends TestCase
         self::assertNotNull($response->proposedPlanDelta);
         self::assertSame('create_content', $response->proposedPlanDelta['intent']);
         self::assertSame('page', $response->proposedPlanDelta['content_type']);
-        self::assertFalse($response->isTerminal);
+        self::assertTrue($response->isTerminal, 'Plan proposal must be terminal so the loop stops');
         self::assertStringContainsString('Shall I proceed', $response->message);
         self::assertSame(0, self::$executions, 'PlanExecutor must NOT run on first propose');
     }
@@ -162,6 +162,7 @@ final class ProposePlanToolTest extends TestCase
         ], new WorkerContext(1, $state));
 
         self::assertNotNull($response->proposedPlanDelta, 'Changing content_type is a modification');
+        self::assertTrue($response->isTerminal, 'Modified plan must be terminal so the loop stops');
         self::assertSame(0, self::$executions);
     }
 
@@ -188,6 +189,7 @@ final class ProposePlanToolTest extends TestCase
         ], new WorkerContext(1, $state));
 
         self::assertNotNull($response->proposedPlanDelta, 'parent_location_id change is a modification');
+        self::assertTrue($response->isTerminal, 'Modified plan must be terminal so the loop stops');
         self::assertSame(0, self::$executions);
     }
 
@@ -250,5 +252,6 @@ final class ProposePlanToolTest extends TestCase
         self::assertTrue($response->success);
         self::assertNotNull($response->proposedPlanDelta);
         self::assertSame('blocks', $response->proposedPlanDelta['link_field']);
+        self::assertTrue($response->isTerminal, 'Plan proposal must be terminal so the loop stops');
     }
 }

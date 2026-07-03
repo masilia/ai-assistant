@@ -255,6 +255,13 @@ TXT;
             // Encoder::decode() → DOMDocument::loadXML().
             $translatedValue = preg_replace('/<XEOL\s*\/>/', '', $translatedValue);
 
+            // Matrix fields encode as JSON (from MatrixFieldEncoder). Wrap
+            // the JSON in the field's XML tags so DOMDocument can parse it.
+            if ($this->looksLikeJson($translatedValue)) {
+                $wrapped = '<' . $fieldId . '>' . $translatedValue . '</' . $fieldId . '>';
+                $translatedValue = $wrapped;
+            }
+
             $replacementDoc = new DOMDocument();
             $replacementLoaded = @$replacementDoc->loadXML($translatedValue);
             if ($replacementLoaded !== false && $replacementDoc->documentElement !== null) {
@@ -282,6 +289,17 @@ TXT;
         // Strip namespace mangling AFTER serialization — importNode/saveXML
         // may re-introduce xmlns:* declarations that were stripped before parsing.
         return $this->stripSpuriousNamespaces($xml);
+    }
+
+    /**
+     * Detect whether a string looks like a JSON object (starts with '{').
+     * Used to identify matrix field payloads returned by the AI.
+     */
+    private function looksLikeJson(string $value): bool
+    {
+        $trimmed = ltrim($value);
+
+        return str_starts_with($trimmed, '{');
     }
 
     /**

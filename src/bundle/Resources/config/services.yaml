@@ -182,6 +182,9 @@ services:
     Masilia\Bundle\AiAssistant\AutomatedTranslation\Client\Ai:
         tags: [ ibexa.automated_translation.client ]
 
+    Masilia\Bundle\AiAssistant\AutomatedTranslation\Encoder\Field\MatrixFieldEncoder:
+        tags: [ ibexa.automated_translation.field_encoder ]
+
     Masilia\Bundle\AiAssistant\EventListener\:
         resource: '../../EventListener/*'
 

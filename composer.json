@@ -16,6 +16,7 @@
         "ibexa/core": "^4.6",
         "ibexa/admin-ui": "^4.6",
         "ibexa/automated-translation": "^4.6",
+        "ibexa/fieldtype-matrix": "^4.6",
         "doctrine/orm": "^2.13",
         "doctrine/doctrine-bundle": "^2.7",
         "knplabs/knp-menu": "^3.3",

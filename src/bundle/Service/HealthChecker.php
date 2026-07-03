@@ -13,7 +13,7 @@ use Masilia\AiAssistant\Repository\AiProviderRepositoryInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Computes the 3-state health of the AI engine for any configured provider:
+ * Computes the 3-state health of the AI engine for a configured provider:
  *   - not_configured: no active provider in DB
  *   - online:        configured provider is reachable (or the adapter can't be tested)
  *   - offline:       configured provider unreachable / test failed
@@ -22,11 +22,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * ProviderConnectionTester). The result is cheap enough to call on
  * every dashboard load.
  *
- * Note: looks up a configured provider globally (findActive — any
- * siteaccess scope), not for the current siteaccess. The health banner
- * is intentionally global because the dashboard renders one banner per
- * provider row and uses the current siteaccess to highlight which row
- * is "yours" separately.
+ * When a siteaccess is provided, resolves the provider assigned to that
+ * siteaccess (findActiveForSiteaccess). Falls back to findActive() (any
+ * provider with a chat model) when no siteaccess is given.
  */
 readonly class HealthChecker
 {
@@ -37,9 +35,12 @@ readonly class HealthChecker
     ) {
     }
 
-    public function check(): HealthReport
+    public function check(?string $siteaccess = null): HealthReport
     {
-        $resolved = $this->providerRepository->findActive();
+        $resolved = $siteaccess !== null
+            ? $this->providerRepository->findActiveForSiteaccess($siteaccess)
+            : $this->providerRepository->findActive();
+
         if ($resolved === null) {
             return HealthReport::notConfigured();
         }

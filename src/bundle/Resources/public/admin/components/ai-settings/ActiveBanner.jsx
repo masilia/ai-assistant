@@ -44,7 +44,12 @@ export default function ActiveBanner({ providers, models, currentSiteaccess = 'd
     const hasImage = imageProvider && imageModel;
 
     // Determine state
-    const state = health?.state ?? (hasChat ? 'online' : 'not_configured');
+    // If health says not_configured but we have a chat provider for this
+    // siteaccess, the health check may have failed to resolve — show online
+    // as a fallback so the banner doesn't contradict the provider list.
+    const state = health?.state === 'not_configured' && hasChat
+        ? 'online'
+        : (health?.state ?? (hasChat ? 'online' : 'not_configured'));
 
     const renderContent = () => {
         if (state === 'online' && hasChat) {
@@ -82,11 +87,12 @@ export default function ActiveBanner({ providers, models, currentSiteaccess = 'd
         }
 
         if (state === 'offline') {
+            const providerName = chatProvider?.name ?? health?.providerName ?? 'Unknown';
             return (
                 <>
                     <div className="ai-banner__row">
                         <span className="ai-banner__label">Provider</span>
-                        <span className="ai-banner__value">{health?.providerName ?? 'Unknown'}</span>
+                        <span className="ai-banner__value">{providerName}</span>
                     </div>
                     <p className="ai-banner__desc ai-banner__desc--error">
                         {health?.message ?? 'Connection failed.'}

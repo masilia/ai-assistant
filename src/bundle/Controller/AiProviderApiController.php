@@ -204,7 +204,9 @@ class AiProviderApiController extends Controller
             return $denied;
         }
 
-        return new JsonResponse($this->healthChecker->check()->toArray());
+        $siteaccess = $this->siteAccessService->getCurrent()?->name;
+
+        return new JsonResponse($this->healthChecker->check($siteaccess)->toArray());
     }
 
 

@@ -303,45 +303,46 @@ TXT;
     }
 
     /**
-     * Strip spurious namespace declarations injected by the AI.
+     * Strip spurious namespace declarations and prefixes injected by the AI.
      *
-     * The AI sometimes adds xmlns:default (or similar) declarations to the
-     * field (root) element and prefixes child element names (e.g. <section>
-     * becomes <default:section>). This breaks Encoder::decode() because the
-     * prefixed names appear inside CDATA content without a namespace context.
+     * The AI sometimes:
+     *   a) Adds xmlns:default declarations to the root tag and prefixes
+     *      element names (e.g. <section> becomes <default:section>).
+     *   b) Adds prefix:elementName WITHOUT a matching xmlns declaration.
      *
-     * Only namespaces declared on the ROOT element are stripped — nested
-     * declarations (e.g. xmlns:ezxhtml on <section> inside <fakecdata>) are
-     * legitimate and must be preserved.
+     * Both break DOMDocument::loadXML() in Encoder::decode(). Legitimate
+     * nested declarations (e.g. xmlns:ezxhtml on <section> inside
+     * <fakecdata>) are preserved because they appear on child elements,
+     * not the root.
      */
     private function stripSpuriousNamespaces(string $xml): string
     {
-        // Find the root element's opening tag and extract xmlns:prefix
-        // declarations. We only strip namespaces declared on the ROOT element
-        // — nested declarations (e.g. xmlns:ezxhtml on <section> inside
-        // <fakecdata>) are legitimate and must be preserved.
-        if (!preg_match('/^(<[^>]+>)/', $xml, $rootMatch)) {
-            return $xml;
+        // Step 1: Strip xmlns:* declarations from the root tag.
+        if (preg_match('/^(<[^>]+>)/', $xml, $rootMatch)) {
+            $rootTag = $rootMatch[1];
+            if (preg_match_all('/xmlns:([a-z]+)/i', $rootTag, $nsMatches)) {
+                $xml = substr_replace(
+                    $xml,
+                    preg_replace('/\s+xmlns:[a-z]+="[^"]*"/i', '', $rootTag),
+                    0,
+                    strlen($rootMatch[1]),
+                );
+            }
         }
 
-        $rootTag = $rootMatch[1];
-        if (!preg_match_all('/xmlns:([a-z]+)/i', $rootTag, $nsMatches)) {
-            return $xml;
-        }
+        // Step 2: Find all prefixed element names in the XML (e.g.
+        // <default:section>, </default:section>). The prefix pattern
+        // is [a-z][\w-]*: followed by a valid element name.
+        if (preg_match_all('/(?<=<\/?)([a-z][\w-]*):([a-z][\w-]*)/i', $xml, $prefixMatches)) {
+            $prefixes = array_unique($prefixMatches[1]);
 
-        $prefixes = array_unique($nsMatches[1]);
-
-        // Remove xmlns:* declarations from the root tag only.
-        $stripped = preg_replace('/\s+xmlns:[a-z]+="[^"]*"/i', '', $rootTag);
-        $xml = substr_replace($xml, $stripped, 0, strlen($rootMatch[1]));
-
-        // Strip the identified prefixes from element and attribute names.
-        foreach ($prefixes as $prefix) {
-            $esc = preg_quote($prefix, '/');
-            // Element names: <prefix:el> → <el>, </prefix:el> → </el>
-            $xml = preg_replace('/<(\/?)' . $esc . ':/', '<$1', $xml);
-            // Attribute names (preceded by whitespace): prefix:attr → attr
-            $xml = preg_replace('/(?<=\s)' . $esc . ':(\w+)/', '$1', $xml);
+            foreach ($prefixes as $prefix) {
+                $esc = preg_quote($prefix, '/');
+                // Element names: <prefix:el> → <el>, </prefix:el> → </el>
+                $xml = preg_replace('/<(\/?)' . $esc . ':/', '<$1', $xml);
+                // Attribute names (preceded by whitespace): prefix:attr → attr
+                $xml = preg_replace('/(?<=\s)' . $esc . ':(\w+)/', '$1', $xml);
+            }
         }
 
         return $xml;

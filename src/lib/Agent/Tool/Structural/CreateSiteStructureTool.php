@@ -339,7 +339,7 @@ readonly class CreateSiteStructureTool implements ToolInterface
             $tempFiles[] = $faviconPath;
 
             // Update site content with favicon
-            $this->contentUpdater->updateFields(
+            $this->contentUpdater->update(
                 $siteContentId,
                 [FieldId::FAVICON => $faviconPath],
                 $languageCode,

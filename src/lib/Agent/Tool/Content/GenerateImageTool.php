@@ -93,7 +93,7 @@ readonly class GenerateImageTool implements ToolInterface
 
             try {
                 // 3. Update content's image field (runs as the current admin user)
-                $published = $this->contentUpdater->updateFields(
+                $published = $this->contentUpdater->update(
                     $contentId,
                     [$fieldIdentifier => $tempPath],
                     $languageCode,

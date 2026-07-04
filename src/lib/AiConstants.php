@@ -6,9 +6,9 @@ namespace Masilia\AiAssistant;
 
 final class AiConstants
 {
-    public const MAX_SIBLING_CHARS = 250;
+    public const MAX_SIBLING_CHARS = 1000;
 
-    public const MAX_CURRENT_VALUE_CHARS = 500;
+    public const MAX_CURRENT_VALUE_CHARS = 4000;
 
     public const MAX_ALT_TEXT_CHARS = 125;
 

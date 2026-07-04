@@ -10,7 +10,6 @@ use Ibexa\Contracts\Core\Repository\LanguageService;
 use Ibexa\Contracts\Core\Repository\LocationService;
 use Ibexa\Contracts\Core\Repository\Repository;
 use Ibexa\Contracts\Core\Repository\Values\Content\Content;
-use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Masilia\AiAssistant\AiConstants;
 use Masilia\AiAssistant\FieldId;
 use Psr\Cache\CacheItemPoolInterface;
@@ -27,8 +26,8 @@ final class BlockFlattener
     private const CACHE_PREFIX = 'ai_block_flattener_';
     private const CACHE_TTL = 3600; // 1 hour
     private const BLOCKS_FIELD = FieldId::BLOCKS;
-    /** Block context uses a higher limit than sibling fields (500 vs 250) because the full page summary can tolerate more detail. */
-    private const MAX_FLATTEN_CHARS = 500;
+    /** Block context uses a higher limit than sibling fields because the full page summary can tolerate more detail. */
+    private const MAX_FLATTEN_CHARS = 2000;
 
     private ContentService $contentService;
     private ContentTypeService $contentTypeService;

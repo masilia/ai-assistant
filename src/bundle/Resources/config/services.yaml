@@ -185,6 +185,9 @@ services:
     Masilia\Bundle\AiAssistant\AutomatedTranslation\Encoder\Field\MatrixFieldEncoder:
         tags: [ ibexa.automated_translation.field_encoder ]
 
+    Masilia\Bundle\AiAssistant\AutomatedTranslation\Encoder\Field\NovaSeoMetasFieldEncoder:
+        tags: [ ibexa.automated_translation.field_encoder ]
+
     Masilia\Bundle\AiAssistant\EventListener\:
         resource: '../../EventListener/*'
 

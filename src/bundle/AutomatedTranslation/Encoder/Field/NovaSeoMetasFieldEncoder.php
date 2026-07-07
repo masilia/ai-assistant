@@ -7,7 +7,6 @@ namespace Masilia\Bundle\AiAssistant\AutomatedTranslation\Encoder\Field;
 use Ibexa\Contracts\AutomatedTranslation\Encoder\Field\FieldEncoderInterface;
 use Ibexa\Contracts\Core\Repository\Values\Content\Field;
 use Ibexa\Core\FieldType\Value;
-use Novactive\Bundle\eZSEOBundle\Core\FieldType\Metas\Type;
 use Novactive\Bundle\eZSEOBundle\Core\FieldType\Metas\Value as MetasValue;
 use Novactive\Bundle\eZSEOBundle\Core\Meta;
 use RuntimeException;
@@ -32,8 +31,7 @@ final class NovaSeoMetasFieldEncoder implements FieldEncoderInterface
 
     public function canDecode(string $type): bool
     {
-        return is_a($type, Type::class, true)
-            || $type === Type::IDENTIFIER;
+        return is_a($type, MetasValue::class, true);
     }
 
     public function encode(Field $field): string
@@ -79,12 +77,9 @@ final class NovaSeoMetasFieldEncoder implements FieldEncoderInterface
         }
 
         // Collect translated text metas into a map for quick lookup.
-        $translated = [];
-        foreach ($decoded as $key => $content) {
-            if (is_string($key) && is_string($content)) {
-                $translated[$key] = $content;
-            }
-        }
+        $translated = array_filter($decoded, static function ($content, $key) {
+            return is_string($key) && is_string($content);
+        }, ARRAY_FILTER_USE_BOTH);
 
         // Start from previous metas (preserves image/canonical keys that
         // were skipped during encoding) then overwrite with translations.
